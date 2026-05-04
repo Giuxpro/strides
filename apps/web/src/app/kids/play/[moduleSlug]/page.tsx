@@ -1,0 +1,150 @@
+import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
+import { notFound } from 'next/navigation'
+import Link from 'next/link'
+import { LessonCard } from '@/components/kids/LessonCard'
+import { getModuleConfig } from '@/components/kids/moduleConfig'
+
+interface Props {
+  params: Promise<{ moduleSlug: string }>
+}
+
+export default async function ModulePage({ params }: Props) {
+  const { moduleSlug } = await params
+  const supabase = createClient()
+  const selectedChildId = cookies().get('selected_child_id')?.value
+
+  const { data: module } = await supabase
+    .from('modules')
+    .select('*')
+    .eq('slug', moduleSlug)
+    .eq('is_published', true)
+    .single()
+
+  if (!module) notFound()
+
+  const [{ data: lessons }, { data: completions }] = await Promise.all([
+    supabase
+      .from('lessons')
+      .select('*')
+      .eq('module_id', module.id)
+      .eq('is_published', true)
+      .order('order'),
+    selectedChildId
+      ? supabase
+          .from('child_lesson_completions')
+          .select('lesson_id')
+          .eq('child_id', selectedChildId)
+          .eq('passed', true)
+      : Promise.resolve({ data: [] }),
+  ])
+
+  const config = getModuleConfig(moduleSlug)
+  const completedIds = new Set((completions ?? []).map(c => c.lesson_id))
+
+  return (
+    <div className="min-h-screen relative overflow-hidden" style={{ background: 'var(--kids-bg)' }}>
+
+      {/* ── Decoraciones de fondo ── */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* Manchas de color suaves */}
+        <div
+          className="absolute -top-24 -left-24 w-72 h-72 rounded-full blur-3xl opacity-30"
+          style={{ background: 'var(--kids-blob-1)' }}
+        />
+        <div
+          className="absolute -top-12 right-0 w-56 h-56 rounded-full blur-3xl opacity-25"
+          style={{ background: 'var(--kids-blob-2)' }}
+        />
+        <div
+          className="absolute bottom-10 left-1/3 w-72 h-72 rounded-full blur-3xl opacity-20"
+          style={{ background: 'var(--kids-blob-3)' }}
+        />
+
+        {/* Chispas y estrellas decorativas */}
+        <span className="absolute text-2xl animate-twinkle" style={{ top: '6%',  left: '6%',  animationDelay: '0s'   }}>✨</span>
+        <span className="absolute text-xl  animate-twinkle" style={{ top: '9%',  right: '9%', animationDelay: '0.7s' }}>⭐</span>
+        <span className="absolute text-lg  animate-twinkle" style={{ top: '42%', left: '3%',  animationDelay: '1.3s' }}>✨</span>
+        <span className="absolute text-xl  animate-twinkle" style={{ top: '58%', right: '5%', animationDelay: '0.4s' }}>⭐</span>
+        <span className="absolute text-base animate-twinkle" style={{ top: '76%', left: '9%',  animationDelay: '1.9s' }}>✨</span>
+      </div>
+
+      {/* ── Header ── */}
+      <header className="relative z-10 px-5 pt-6 pb-2 flex items-center justify-between">
+        <Link
+          href="/kids/play"
+          className="flex items-center gap-1.5 text-sm font-extrabold px-4 py-2 rounded-2xl transition-all hover:scale-105 active:scale-95"
+          style={{
+            background: 'rgba(255,255,255,0.22)',
+            color: 'var(--kids-text)',
+            boxShadow: '0 3px 0 rgba(0,0,0,0.12)',
+          }}
+        >
+          🏠 Inicio
+        </Link>
+
+        {/* Estrellas decorativas */}
+        <div className="flex gap-2">
+          {[0, 1, 2].map(i => (
+            <span
+              key={i}
+              className="text-2xl animate-twinkle"
+              style={{ animationDelay: `${i * 0.35}s` }}
+            >
+              ⭐
+            </span>
+          ))}
+        </div>
+      </header>
+
+      <main className="relative z-10 pb-20">
+
+        {/* ── Título estilo videojuego ── */}
+        <div className="text-center px-6 mb-10 mt-2 animate-slide-up">
+          <h1
+            className="game-title text-5xl font-extrabold leading-tight"
+            style={{
+              color: config.gradientFrom,
+              textShadow: '0 5px 0 rgba(0,0,0,0.12)',
+              letterSpacing: '0.02em',
+            }}
+          >
+            {module.title_es}
+          </h1>
+        </div>
+
+        {/* ── Cards de lecciones — scroll horizontal ── */}
+        {lessons && lessons.length > 0 ? (
+          <div
+            className="flex flex-wrap gap-8 justify-center items-start"
+            style={{
+              paddingLeft: '2rem',
+              paddingRight: '2rem',
+              paddingBottom: '3rem',
+              paddingTop: '1rem',
+            }}
+          >
+            {lessons.map((lesson, index) => (
+              <div key={lesson.id}>
+                <LessonCard
+                  lesson={lesson}
+                  moduleSlug={moduleSlug}
+                  completed={completedIds.has(lesson.id)}
+                  animationDelay={`${index * 90}ms`}
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-16 px-6">
+            <p className="text-5xl mb-4">🚧</p>
+            <p className="font-medium" style={{ color: 'var(--kids-text-muted)' }}>
+              Lecciones en preparación
+            </p>
+          </div>
+        )}
+
+      </main>
+    </div>
+  )
+}

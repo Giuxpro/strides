@@ -25,14 +25,14 @@ export function ThemeButton({ currentTheme }: Props) {
 
   return (
     <>
-      {/* Floating button */}
       <button
         onClick={() => setOpen(true)}
         aria-label="Cambiar tema"
-        className="fixed bottom-6 right-6 z-40 w-11 h-11 rounded-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-lg"
+        className="fixed bottom-6 right-5 z-40 w-10 h-10 rounded-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
         style={{
           background: 'var(--kids-surface-alt)',
           border: '1.5px solid var(--kids-border-color)',
+          boxShadow: '0 3px 0 rgba(0,0,0,0.12)',
         }}
       >
         <span style={{ fontSize: 18 }}>⚙️</span>

@@ -32,6 +32,22 @@
   50%       { box-shadow: 0 0 24px 6px rgba(251, 146, 60, 0.7); }
 }
 
+@keyframes starFillUp {
+  from { clip-path: inset(100% 0 0 0); }
+  to   { clip-path: inset(0% 0 0 0); }
+}
+
+@keyframes starPop {
+  0%   { transform: scale(1); }
+  55%  { transform: scale(1.55); }
+  100% { transform: scale(1); }
+}
+
+@keyframes starParticle {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+}
+
 .animate-twinkle    { animation: twinkle 3s ease-in-out infinite; }
 .animate-float      { animation: float 4s ease-in-out infinite; }
 .animate-slide-up   { animation: slide-up 0.5s ease-out both; }

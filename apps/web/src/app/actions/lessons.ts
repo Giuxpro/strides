@@ -6,19 +6,32 @@ import { redirect } from 'next/navigation'
 export async function completeLesson(formData: FormData) {
   const lessonId = formData.get('lessonId') as string
   const moduleSlug = formData.get('moduleSlug') as string
-  const passed = formData.get('passed') === 'true'
   const score = Number(formData.get('score'))
+  const stars = Math.min(3, Math.max(0, Number(formData.get('stars'))))
 
   const supabase = createClient()
   const selectedChildId = cookies().get('selected_child_id')?.value
   if (!selectedChildId) redirect('/select-profile')
 
-  await supabase.from('child_lesson_completions').insert({
-    child_id: selectedChildId,
-    lesson_id: lessonId,
-    passed,
-    score,
-  })
+  const { data: existing } = await supabase
+    .from('child_lesson_completions')
+    .select('stars')
+    .eq('child_id', selectedChildId)
+    .eq('lesson_id', lessonId)
+    .maybeSingle()
 
-  redirect(`/kids/play/${moduleSlug}`)
+  const { error } = await supabase
+    .from('child_lesson_completions')
+    .upsert({
+      child_id: selectedChildId,
+      lesson_id: lessonId,
+      score,
+      stars: Math.max(stars, existing?.stars ?? 0),
+    }, { onConflict: 'child_id,lesson_id' })
+
+  if (error) throw new Error(`completeLesson: ${error.message}`)
+
+  // Pasamos las estrellas anteriores para que el módulo sepa cuáles animar
+  const prev = existing?.stars ?? 0
+  redirect(`/kids/play/${moduleSlug}?anim=${lessonId}:${prev}`)
 }

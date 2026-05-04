@@ -22,22 +22,23 @@ export type Database = {
           lesson_id: string
           passed: boolean
           score: number | null
+          stars: number
         }
         Insert: {
           child_id: string
           completed_at?: string
           id?: string
           lesson_id: string
-          passed?: boolean
           score?: number | null
+          stars?: number
         }
         Update: {
           child_id?: string
           completed_at?: string
           id?: string
           lesson_id?: string
-          passed?: boolean
           score?: number | null
+          stars?: number
         }
         Relationships: [
           {
@@ -404,6 +405,7 @@ export type Database = {
       }
       lessons: {
         Row: {
+          audio_url: string | null
           cover_url: string | null
           created_at: string
           id: string
@@ -417,6 +419,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          audio_url?: string | null
           cover_url?: string | null
           created_at?: string
           id?: string
@@ -430,6 +433,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          audio_url?: string | null
           cover_url?: string | null
           created_at?: string
           id?: string

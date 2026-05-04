@@ -153,8 +153,10 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig }: Props)
 
   /* ── Results ── */
   if (stage === 'results') {
-    const passed = evalTotal > 0 ? evalCorrect / evalTotal >= 0.6 : true
-    const starCount = evalTotal > 0 ? Math.round((evalCorrect / evalTotal) * 3) : 3
+    const ratio = evalTotal > 0 ? evalCorrect / evalTotal : 1
+    const passed = ratio >= 0.7
+    const scorePercent = Math.round(ratio * 100)
+    const starCount = Math.round(ratio * 3)
 
     return (
       <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
@@ -192,8 +194,8 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig }: Props)
           <form action={completeLesson}>
             <input type="hidden" name="lessonId"   value={lesson.id} />
             <input type="hidden" name="moduleSlug" value={moduleSlug} />
-            <input type="hidden" name="passed"     value={passed ? 'true' : 'false'} />
-            <input type="hidden" name="score"      value={String(evalCorrect)} />
+            <input type="hidden" name="score"      value={String(scorePercent)} />
+            <input type="hidden" name="stars"      value={String(starCount)} />
             <button
               type="submit"
               className="w-full text-white font-extrabold text-lg px-8 py-4 rounded-2xl transition-all hover:scale-105 active:scale-95"

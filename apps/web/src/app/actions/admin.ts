@@ -128,8 +128,10 @@ export async function updateLesson(formData: FormData) {
   const title_en  = formData.get('title_en') as string
   const order     = Number(formData.get('order'))
   const min_age   = Number(formData.get('min_age'))
+  const cover_url = (formData.get('cover_url') as string) || null
+  const audio_url = (formData.get('audio_url') as string) || null
 
-  await supabase.from('lessons').update({ title_es, title_en, order, min_age }).eq('id', lessonId)
+  await supabase.from('lessons').update({ title_es, title_en, order, min_age, cover_url, audio_url }).eq('id', lessonId)
 
   revalidatePath(`/admin/content/${moduleId}`)
   redirect(`/admin/content/${moduleId}`)
@@ -205,6 +207,53 @@ export async function addLessonStep(formData: FormData) {
   await supabase.from('lesson_steps').insert({
     lesson_id: lessonId, position, step_type: stepType, title, config, exercise_id: exerciseId,
   })
+
+  revalidatePath(`/admin/content/${moduleId}/lessons/${lessonId}/edit`)
+  revalidatePath(`/admin/content/${moduleId}`)
+}
+
+export async function updateLessonStep(formData: FormData) {
+  const { supabase } = await requireAdmin()
+  const stepId   = formData.get('step_id') as string
+  const lessonId = formData.get('lesson_id') as string
+  const moduleId = formData.get('module_id') as string
+  const stepType = formData.get('step_type') as 'video' | 'slide' | 'exercise'
+  const title    = (formData.get('title') as string) || null
+
+  if (stepType === 'video') {
+    await supabase.from('lesson_steps').update({
+      title,
+      config: {
+        url:     formData.get('url') as string,
+        caption: (formData.get('caption') as string) || '',
+      },
+    }).eq('id', stepId)
+  } else if (stepType === 'slide') {
+    await supabase.from('lesson_steps').update({
+      title,
+      config: {
+        text_en:   formData.get('text_en') as string,
+        text_es:   formData.get('text_es') as string,
+        image_url: (formData.get('image_url') as string) || '',
+      },
+    }).eq('id', stepId)
+  } else if (stepType === 'exercise') {
+    const exerciseId = formData.get('exercise_id') as string
+    const exType     = formData.get('exercise_type') as 'memory' | 'recognition' | 'speaking'
+    const exPhase    = formData.get('exercise_phase') as 'practice' | 'evaluation'
+    const vocabIds   = formData.getAll('vocab_ids') as string[]
+
+    await Promise.all([
+      supabase.from('lesson_steps').update({ title }).eq('id', stepId),
+      supabase.from('exercises').update({ type: exType, phase: exPhase }).eq('id', exerciseId),
+    ])
+    await supabase.from('exercise_items').delete().eq('exercise_id', exerciseId)
+    if (vocabIds.length > 0) {
+      await supabase.from('exercise_items').insert(
+        vocabIds.map((vid, i) => ({ exercise_id: exerciseId, vocabulary_item_id: vid, order: i + 1 }))
+      )
+    }
+  }
 
   revalidatePath(`/admin/content/${moduleId}/lessons/${lessonId}/edit`)
   revalidatePath(`/admin/content/${moduleId}`)

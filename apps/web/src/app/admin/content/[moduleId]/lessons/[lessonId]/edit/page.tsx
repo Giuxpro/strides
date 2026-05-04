@@ -3,11 +3,17 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { updateLesson } from '@/app/actions/admin'
 import { LessonStepBuilder } from '@/components/admin/LessonStepBuilder'
+import { ImageUploadField } from '@/components/admin/ImageUploadField'
 
 const I = 'w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500'
 const L = 'block text-sm text-gray-400 mb-1.5'
 
 interface Props { params: { moduleId: string; lessonId: string } }
+
+type ExerciseUsageRow = {
+  lesson_id: string | null
+  exercise_items: { vocabulary_item_id: string }[] | null
+}
 
 type RawStep = {
   id: string
@@ -19,25 +25,41 @@ type RawStep = {
     id: string
     type: 'memory' | 'recognition' | 'speaking'
     phase: 'practice' | 'evaluation'
+    exercise_items: { vocabulary_item_id: string }[] | null
   } | null
 }
 
 export default async function EditLessonPage({ params }: Props) {
   const supabase = createClient()
 
-  const [{ data: mod }, { data: lesson }, { data: vocab }] = await Promise.all([
+  const [{ data: mod }, { data: lesson }, { data: vocab }, { data: exercisesRaw }] = await Promise.all([
     supabase.from('modules').select('id, title_es').eq('id', params.moduleId).single(),
-    supabase.from('lessons').select('id, title_es, title_en, slug, order, min_age').eq('id', params.lessonId).single(),
-    supabase.from('vocabulary_items').select('id, text_es, text_en').eq('module_id', params.moduleId).order('order'),
+    supabase.from('lessons').select('id, title_es, title_en, slug, order, min_age, cover_url, audio_url').eq('id', params.lessonId).single(),
+    supabase.from('vocabulary_items').select('id, text_es, text_en, image_url').eq('module_id', params.moduleId).order('order'),
+    supabase.from('exercises').select('lesson_id, exercise_items(vocabulary_item_id)').eq('module_id', params.moduleId) as unknown as Promise<{ data: ExerciseUsageRow[] | null }>,
   ])
 
   if (!mod || !lesson) notFound()
+
+  // Count distinct lessons per vocab item across the whole module
+  const lessonCountMap: Record<string, Set<string>> = {}
+  for (const ex of exercisesRaw ?? []) {
+    if (!ex.lesson_id) continue
+    for (const item of ex.exercise_items ?? []) {
+      const vid = item.vocabulary_item_id
+      if (!lessonCountMap[vid]) lessonCountMap[vid] = new Set()
+      lessonCountMap[vid].add(ex.lesson_id)
+    }
+  }
 
   const { data: rawSteps } = await supabase
     .from('lesson_steps')
     .select(`
       id, position, step_type, title, config,
-      exercises!lesson_steps_exercise_id_fkey(id, type, phase)
+      exercises!lesson_steps_exercise_id_fkey(
+        id, type, phase,
+        exercise_items(vocabulary_item_id)
+      )
     `)
     .eq('lesson_id', params.lessonId)
     .order('position') as { data: RawStep[] | null }
@@ -48,7 +70,14 @@ export default async function EditLessonPage({ params }: Props) {
     step_type: s.step_type,
     title: s.title,
     config: s.config,
-    exercise: s.exercises ?? null,
+    exercise: s.exercises
+      ? {
+        id: s.exercises.id,
+        type: s.exercises.type,
+        phase: s.exercises.phase,
+        vocabIds: (s.exercises.exercise_items ?? []).map(ei => ei.vocabulary_item_id),
+      }
+      : null,
   }))
 
   return (
@@ -65,7 +94,7 @@ export default async function EditLessonPage({ params }: Props) {
 
       {/* Basic info */}
       <form action={updateLesson} className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-5">
-        <input type="hidden" name="id"        value={lesson.id} />
+        <input type="hidden" name="id" value={lesson.id} />
         <input type="hidden" name="module_id" value={params.moduleId} />
 
         <div className="grid grid-cols-2 gap-4">
@@ -100,6 +129,21 @@ export default async function EditLessonPage({ params }: Props) {
           </div>
         </div>
 
+        <ImageUploadField
+          name="cover_url"
+          bucket="lesson-cards"
+          defaultValue={lesson.cover_url ?? ''}
+          label="Imagen de portada"
+        />
+
+        <ImageUploadField
+          name="audio_url"
+          bucket="lesson-audio"
+          defaultValue={lesson.audio_url ?? ''}
+          label="Audio de la tarjeta"
+          accept="audio/*"
+        />
+
         <div className="flex items-center gap-4 pt-2">
           <button
             type="submit"
@@ -118,14 +162,17 @@ export default async function EditLessonPage({ params }: Props) {
         <div className="mb-4">
           <h2 className="text-sm font-semibold text-gray-300">Estructura de la lección</h2>
           <p className="text-xs text-gray-600 mt-1">
-            Define el orden y tipos de pasos que verá el estudiante. Arrastra o usa ↑↓ para reordenar.
+            Define el orden y tipos de pasos que verá el estudiante, o arrastra las tarjetas para reordenarlos.
           </p>
         </div>
         <LessonStepBuilder
           lessonId={params.lessonId}
           moduleId={params.moduleId}
           steps={steps}
-          vocabItems={vocab ?? []}
+          vocabItems={(vocab ?? []).map(v => ({
+            ...v,
+            lessonCount: lessonCountMap[v.id]?.size ?? 0,
+          }))}
         />
       </section>
     </div>

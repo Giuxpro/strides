@@ -2,24 +2,50 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createLesson } from '@/app/actions/admin'
+import { VocabPicker, type VocabItemWithUsage } from '@/components/admin/VocabPicker'
 
 const I = 'w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500'
 const L = 'block text-sm text-gray-400 mb-1.5'
 
 interface Props { params: { moduleId: string } }
 
+type ExerciseRow = {
+  lesson_id: string | null
+  exercise_items: { vocabulary_item_id: string }[] | null
+}
+
 export default async function NewLessonPage({ params }: Props) {
   const supabase = createClient()
 
-  const [{ data: mod }, { data: lessons }, { data: vocab }] = await Promise.all([
+  const [{ data: mod }, { data: lessons }, { data: vocab }, { data: exercisesRaw }] = await Promise.all([
     supabase.from('modules').select('id, title_es').eq('id', params.moduleId).single(),
     supabase.from('lessons').select('order').eq('module_id', params.moduleId).order('order', { ascending: false }).limit(1),
     supabase.from('vocabulary_items').select('id, text_es, text_en, image_url').eq('module_id', params.moduleId).order('order'),
+    supabase.from('exercises').select('lesson_id, exercise_items(vocabulary_item_id)').eq('module_id', params.moduleId) as unknown as Promise<{ data: ExerciseRow[] | null }>,
   ])
 
   if (!mod) notFound()
 
   const nextOrder = (lessons?.[0]?.order ?? 0) + 1
+
+  // Count distinct lessons per vocab item
+  const lessonCountMap: Record<string, Set<string>> = {}
+  for (const ex of exercisesRaw ?? []) {
+    if (!ex.lesson_id) continue
+    for (const item of ex.exercise_items ?? []) {
+      const vid = item.vocabulary_item_id
+      if (!lessonCountMap[vid]) lessonCountMap[vid] = new Set()
+      lessonCountMap[vid].add(ex.lesson_id)
+    }
+  }
+
+  const vocabWithUsage: VocabItemWithUsage[] = (vocab ?? []).map(item => ({
+    id: item.id,
+    text_es: item.text_es,
+    text_en: item.text_en,
+    image_url: item.image_url,
+    lessonCount: lessonCountMap[item.id]?.size ?? 0,
+  }))
 
   return (
     <div className="p-8 max-w-xl">
@@ -58,11 +84,11 @@ export default async function NewLessonPage({ params }: Props) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={L}>Orden</label>
-              <input name="order" type="number" min={1} defaultValue={nextOrder} className={`${I}`} />
+              <input name="order" type="number" min={1} defaultValue={nextOrder} className={I} />
             </div>
             <div>
               <label className={L}>Edad mínima</label>
-              <input name="min_age" type="number" min={4} max={12} defaultValue={4} className={`${I}`} />
+              <input name="min_age" type="number" min={4} max={12} defaultValue={4} className={I} />
             </div>
           </div>
         </div>
@@ -76,26 +102,8 @@ export default async function NewLessonPage({ params }: Props) {
             Se crearán automáticamente 1 ejercicio de práctica (memorama) y 1 de evaluación (reconocimiento) con las palabras seleccionadas.
           </p>
 
-          {vocab && vocab.length > 0 ? (
-            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-              {vocab.map(item => (
-                <label key={item.id} className="flex items-center gap-3 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    name="vocab_ids"
-                    value={item.id}
-                    className="w-4 h-4 accent-violet-500 flex-shrink-0"
-                  />
-                  {item.image_url && (
-                    <img src={item.image_url} alt={item.text_es} className="w-7 h-7 object-contain flex-shrink-0" />
-                  )}
-                  <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
-                    {item.text_es}
-                    <span className="text-gray-600 ml-2">/ {item.text_en}</span>
-                  </span>
-                </label>
-              ))}
-            </div>
+          {vocabWithUsage.length > 0 ? (
+            <VocabPicker items={vocabWithUsage} />
           ) : (
             <p className="text-sm text-gray-600">
               Este módulo no tiene vocabulario aún.{' '}

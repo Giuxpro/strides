@@ -7,10 +7,12 @@ import { getModuleConfig } from '@/components/kids/moduleConfig'
 
 interface Props {
   params: Promise<{ moduleSlug: string }>
+  searchParams: Promise<{ anim?: string }>
 }
 
-export default async function ModulePage({ params }: Props) {
+export default async function ModulePage({ params, searchParams }: Props) {
   const { moduleSlug } = await params
+  const { anim } = await searchParams
   const supabase = createClient()
   const selectedChildId = cookies().get('selected_child_id')?.value
 
@@ -32,18 +34,31 @@ export default async function ModulePage({ params }: Props) {
       .order('order'),
     selectedChildId
       ? supabase
-          .from('child_lesson_completions')
-          .select('lesson_id')
-          .eq('child_id', selectedChildId)
-          .eq('passed', true)
+        .from('child_lesson_completions')
+        .select('lesson_id, stars')
+        .eq('child_id', selectedChildId)
       : Promise.resolve({ data: [] }),
   ])
 
   const config = getModuleConfig(moduleSlug)
-  const completedIds = new Set((completions ?? []).map(c => c.lesson_id))
+  const starsMap = (completions ?? []).reduce<Record<string, number>>((acc, c) => {
+    acc[c.lesson_id] = Math.max(acc[c.lesson_id] ?? 0, c.stars)
+    return acc
+  }, {})
+
+  // Parse animation info: "lessonId:previousStars"
+  let animLessonId: string | null = null
+  let animPrevStars = 0
+  if (anim) {
+    const [lid, prev] = anim.split(':')
+    if (lid) {
+      animLessonId = lid
+      animPrevStars = Number(prev) || 0
+    }
+  }
 
   return (
-    <div className="min-h-screen relative overflow-hidden" style={{ background: 'var(--kids-bg)' }}>
+    <div className="min-h-screen relative" style={{ background: 'var(--kids-bg)' }}>
 
       {/* ── Decoraciones de fondo ── */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -62,15 +77,15 @@ export default async function ModulePage({ params }: Props) {
         />
 
         {/* Chispas y estrellas decorativas */}
-        <span className="absolute text-2xl animate-twinkle" style={{ top: '6%',  left: '6%',  animationDelay: '0s'   }}>✨</span>
-        <span className="absolute text-xl  animate-twinkle" style={{ top: '9%',  right: '9%', animationDelay: '0.7s' }}>⭐</span>
-        <span className="absolute text-lg  animate-twinkle" style={{ top: '42%', left: '3%',  animationDelay: '1.3s' }}>✨</span>
+        <span className="absolute text-2xl animate-twinkle" style={{ top: '6%', left: '9%', animationDelay: '0s' }}>✨</span>
+        <span className="absolute text-xl  animate-twinkle" style={{ top: '9%', right: '9%', animationDelay: '0.7s' }}>⭐</span>
+        <span className="absolute text-lg  animate-twinkle" style={{ top: '42%', left: '3%', animationDelay: '1.3s' }}>✨</span>
         <span className="absolute text-xl  animate-twinkle" style={{ top: '58%', right: '5%', animationDelay: '0.4s' }}>⭐</span>
-        <span className="absolute text-base animate-twinkle" style={{ top: '76%', left: '9%',  animationDelay: '1.9s' }}>✨</span>
+        <span className="absolute text-base animate-twinkle" style={{ top: '76%', left: '9%', animationDelay: '1.9s' }}>✨</span>
       </div>
 
       {/* ── Header ── */}
-      <header className="relative z-10 px-5 pt-6 pb-2 flex items-center justify-between">
+      <header className="relative z-10 px-5 pt-6 pb-2 flex items-center">
         <Link
           href="/kids/play"
           className="flex items-center gap-1.5 text-sm font-extrabold px-4 py-2 rounded-2xl transition-all hover:scale-105 active:scale-95"
@@ -83,18 +98,6 @@ export default async function ModulePage({ params }: Props) {
           🏠 Inicio
         </Link>
 
-        {/* Estrellas decorativas */}
-        <div className="flex gap-2">
-          {[0, 1, 2].map(i => (
-            <span
-              key={i}
-              className="text-2xl animate-twinkle"
-              style={{ animationDelay: `${i * 0.35}s` }}
-            >
-              ⭐
-            </span>
-          ))}
-        </div>
       </header>
 
       <main className="relative z-10 pb-20">
@@ -116,7 +119,7 @@ export default async function ModulePage({ params }: Props) {
         {/* ── Cards de lecciones — scroll horizontal ── */}
         {lessons && lessons.length > 0 ? (
           <div
-            className="flex flex-wrap gap-8 justify-center items-start"
+            className="flex flex-wrap gap-4 justify-center items-start"
             style={{
               paddingLeft: '2rem',
               paddingRight: '2rem',
@@ -129,8 +132,10 @@ export default async function ModulePage({ params }: Props) {
                 <LessonCard
                   lesson={lesson}
                   moduleSlug={moduleSlug}
-                  completed={completedIds.has(lesson.id)}
+                  stars={starsMap[lesson.id] ?? 0}
+                  previousStars={lesson.id === animLessonId ? animPrevStars : undefined}
                   animationDelay={`${index * 90}ms`}
+                  audioUrl={lesson.audio_url ?? undefined}
                 />
               </div>
             ))}

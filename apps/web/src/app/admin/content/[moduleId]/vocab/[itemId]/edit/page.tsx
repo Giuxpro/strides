@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { updateVocabItem } from '@/app/actions/admin'
+import { ImageUploadField } from '@/components/admin/ImageUploadField'
 
 const I = 'w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500'
 const L = 'block text-sm text-gray-400 mb-1.5'
@@ -43,21 +44,20 @@ export default async function EditVocabPage({ params }: Props) {
           </div>
         </div>
 
-        <div>
-          <label className={L}>URL de imagen</label>
-          {item.image_url && (
-            <div className="flex items-center gap-3 mb-2">
-              <img src={item.image_url} alt={item.text_es} className="w-10 h-10 object-contain" />
-              <span className="text-xs text-gray-500 truncate">{item.image_url}</span>
-            </div>
-          )}
-          <input name="image_url" type="url" defaultValue={item.image_url ?? ''} className={I} placeholder="https://..." />
-        </div>
+        <ImageUploadField
+          name="image_url"
+          bucket="vocabulary-images"
+          defaultValue={item.image_url ?? ''}
+          label="Imagen"
+        />
 
-        <div>
-          <label className={L}>URL de audio (opcional)</label>
-          <input name="audio_url" type="url" defaultValue={item.audio_url ?? ''} className={I} placeholder="https://..." />
-        </div>
+        <ImageUploadField
+          name="audio_url"
+          bucket="vocabulary-audio"
+          defaultValue={item.audio_url ?? ''}
+          label="Audio"
+          accept="audio/*"
+        />
 
         <div className="grid grid-cols-2 gap-4">
           <div>

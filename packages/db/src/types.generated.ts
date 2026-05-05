@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      child_countdown_attempts: {
+        Row: {
+          attempted_at: string
+          child_id: string
+          id: string
+          module_id: string
+        }
+        Insert: {
+          attempted_at?: string
+          child_id: string
+          id?: string
+          module_id: string
+        }
+        Update: {
+          attempted_at?: string
+          child_id?: string
+          id?: string
+          module_id?: string
+        }
+        Relationships: []
+      }
+      child_daily_challenges: {
+        Row: {
+          child_id: string
+          completed_at: string
+          date: string
+          id: string
+          module_id: string
+          stars: number
+        }
+        Insert: {
+          child_id: string
+          completed_at?: string
+          date?: string
+          id?: string
+          module_id: string
+          stars?: number
+        }
+        Update: {
+          child_id?: string
+          completed_at?: string
+          date?: string
+          id?: string
+          module_id?: string
+          stars?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "child_daily_challenges_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "child_daily_challenges_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       child_lesson_completions: {
         Row: {
           child_id: string

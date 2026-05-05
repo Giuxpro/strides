@@ -61,7 +61,7 @@ interface Props {
 
 export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig }: Props) {
   const router = useRouter()
-  const [stage, setStage] = useState<'intro' | 'playing' | 'results'>('intro')
+  const [stage, setStage] = useState<'playing' | 'results'>('playing')
   const [currentIndex, setCurrentIndex] = useState(0)
   const [evalCorrect, setEvalCorrect] = useState(0)
 
@@ -75,11 +75,6 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig }: Props)
     .filter(s => s.exercise.phase === 'evaluation')
     .reduce((acc, s) => acc + s.exercise.items.length, 0)
 
-  const uniqueVocab = [...new Map(
-    exerciseSteps.flatMap(s => s.exercise.items).map(v => [v.id, v])
-  ).values()]
-  const wordCount = uniqueVocab.length
-
   function advance(correct: number) {
     const step = steps[currentIndex]
     if (step?.step_type === 'exercise' && step.exercise.phase === 'evaluation') {
@@ -90,65 +85,6 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig }: Props)
     } else {
       setStage('results')
     }
-  }
-
-  /* ── Intro ── */
-  if (stage === 'intro') {
-    return (
-      <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
-        <div
-          className="absolute top-[-20%] left-[-20%] w-[600px] h-[600px] rounded-full opacity-25 blur-[120px] pointer-events-none"
-          style={{ background: `radial-gradient(circle, ${moduleConfig.gradientFrom}, transparent)` }}
-        />
-        <div
-          className="absolute bottom-[-20%] right-[-20%] w-[500px] h-[500px] rounded-full opacity-15 blur-[100px] pointer-events-none"
-          style={{ background: `radial-gradient(circle, ${moduleConfig.gradientTo}, transparent)` }}
-        />
-
-        <button
-          onClick={handleBack}
-          className="absolute top-6 left-6 z-20 flex items-center gap-1.5 text-sm font-bold transition-opacity hover:opacity-70"
-          style={{ color: moduleConfig.accent }}
-        >
-          ← Volver
-        </button>
-
-        <div className="relative z-10 text-center px-8 animate-slide-up">
-          <span className="text-8xl block mb-6 animate-float leading-none">
-            {moduleConfig.emoji}
-          </span>
-          <p
-            className="text-xs font-bold uppercase tracking-widest mb-2"
-            style={{ color: 'var(--kids-text-muted)' }}
-          >
-            {lesson.title_en}
-          </p>
-          <h1
-            className="text-4xl font-extrabold mb-5 leading-tight"
-            style={{ color: 'var(--kids-text)' }}
-          >
-            {lesson.title_es}
-          </h1>
-          {wordCount > 0 && (
-            <div
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-bold mb-10"
-              style={{ background: moduleConfig.accentLight, color: moduleConfig.accent }}
-            >
-              ✨ {wordCount} palabras nuevas · {steps.length} pasos
-            </div>
-          )}
-          <div>
-            <button
-              onClick={() => setStage('playing')}
-              className="text-white font-extrabold text-xl px-10 py-4 rounded-2xl transition-all hover:scale-105 active:scale-95"
-              style={{ background: moduleConfig.gradient, boxShadow: moduleConfig.shadow }}
-            >
-              ¡A jugar! 🚀
-            </button>
-          </div>
-        </div>
-      </div>
-    )
   }
 
   /* ── Results ── */

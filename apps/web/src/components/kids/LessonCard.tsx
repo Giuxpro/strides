@@ -26,9 +26,10 @@ const SLUG_FALLBACK: Record<string, string> = {
   'insectos': '/lesson-cards/insectos.png',
 }
 
-const IMG_W = 500
+const IMG_W = 400
+const IMG_H = 300
 const CARD_W = 220
-const CARD_H = Math.round(IMG_W * 752 / 1380)
+const CARD_H = Math.round(IMG_W * 752 / 1380) //Math.round(CARD_W * IMG_H / IMG_W) //Math.round(IMG_W * 752 / 1380)
 
 export function LessonCard({ lesson, moduleSlug, stars, previousStars, animationDelay, audioUrl }: LessonCardProps) {
   const imageSrc = lesson.cover_url
@@ -38,11 +39,15 @@ export function LessonCard({ lesson, moduleSlug, stars, previousStars, animation
   return (
     <Link
       href={`/kids/play/${moduleSlug}/${lesson.slug}`}
-      className="block group animate-pop-in select-none"
-      style={{ animationDelay }}
+      className="block shrink-0 group animate-pop-in select-none"
+      style={{
+        animationDelay,
+        width: CARD_W,
+        flex: `0 0 ${CARD_W}px`,
+      }}
       onPointerDown={() => audioUrl && playAudio(audioUrl)}
     >
-      <div className="flex flex-col items-center gap-2" style={{ width: CARD_W }}>
+      <div className="flex flex-col items-center gap-2">
 
         <div
           className="transition-all duration-150 group-hover:-translate-y-2 group-hover:scale-[1.04] active:translate-y-1 active:scale-[0.97]"
@@ -55,19 +60,26 @@ export function LessonCard({ lesson, moduleSlug, stars, previousStars, animation
             filter: 'drop-shadow(0 10px 22px rgba(0,0,0,0.30))',
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={imageSrc}
             alt={lesson.title_es}
             width={IMG_W}
-            height={CARD_H}
-            style={{ objectFit: 'cover', width: '100%', height: '100%', display: 'block' }}
-          />
-          <div
-            className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 font-extrabold text-lg uppercase pointer-events-none"
+            height={IMG_H}
             style={{
-              bottom: 21,
-              left: 119,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block',
+            }}
+          />
+
+          <div
+            className="absolute flex items-center gap-1 font-extrabold text-lg uppercase pointer-events-none"
+            style={{
+              bottom: 15,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              whiteSpace: 'nowrap',
               color: '#7a541a',
               letterSpacing: '0.08em',
             }}
@@ -79,8 +91,8 @@ export function LessonCard({ lesson, moduleSlug, stars, previousStars, animation
         <span
           className="font-extrabold text-sm uppercase leading-tight text-center px-3 py-1 rounded-full"
           style={{
-            background: '#8A7A6A',
-            color: '#fff',
+            background: 'rgba(255,253,245,0.94)',
+            color: '#695240ff',
             letterSpacing: '0.07em',
             backdropFilter: 'blur(6px)',
             boxShadow: '0 3px 0 rgba(0,0,0,0.18), 0 4px 6px rgba(0,0,0,0.12)',

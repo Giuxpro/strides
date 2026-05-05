@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { LessonCard } from '@/components/kids/LessonCard'
+import { KidsModuleTabs } from '@/components/kids/KidsModuleTabs'
 import { getModuleConfig } from '@/components/kids/moduleConfig'
 
 interface Props {
@@ -25,7 +25,14 @@ export default async function ModulePage({ params, searchParams }: Props) {
 
   if (!module) notFound()
 
-  const [{ data: lessons }, { data: completions }] = await Promise.all([
+  const today = new Date().toISOString().split('T')[0] ?? ''
+
+  // Inicio de semana (lunes a las 00:00 UTC)
+  const now = new Date()
+  const daysToMonday = now.getUTCDay() === 0 ? 6 : now.getUTCDay() - 1
+  const weekStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysToMonday))
+
+  const [{ data: lessons }, { data: completions }, { data: vocab }, { data: dailyRow }, { count: countdownCount }] = await Promise.all([
     supabase
       .from('lessons')
       .select('*')
@@ -38,6 +45,27 @@ export default async function ModulePage({ params, searchParams }: Props) {
         .select('lesson_id, stars')
         .eq('child_id', selectedChildId)
       : Promise.resolve({ data: [] }),
+    supabase
+      .from('vocabulary_items')
+      .select('id, text_en, text_es, image_url, audio_url')
+      .eq('module_id', module.id),
+    selectedChildId
+      ? supabase
+        .from('child_daily_challenges')
+        .select('id')
+        .eq('child_id', selectedChildId)
+        .eq('module_id', module.id)
+        .eq('date', today)
+        .maybeSingle()
+      : Promise.resolve({ data: null }),
+    selectedChildId
+      ? supabase
+        .from('child_countdown_attempts')
+        .select('id', { count: 'exact', head: true })
+        .eq('child_id', selectedChildId)
+        .eq('module_id', module.id)
+        .gte('attempted_at', weekStart.toISOString())
+      : Promise.resolve({ count: 0 }),
   ])
 
   const config = getModuleConfig(moduleSlug)
@@ -116,30 +144,20 @@ export default async function ModulePage({ params, searchParams }: Props) {
           </h1>
         </div>
 
-        {/* ── Cards de lecciones — scroll horizontal ── */}
         {lessons && lessons.length > 0 ? (
-          <div
-            className="flex flex-wrap gap-4 justify-center items-start"
-            style={{
-              paddingLeft: '2rem',
-              paddingRight: '2rem',
-              paddingBottom: '3rem',
-              paddingTop: '1rem',
-            }}
-          >
-            {lessons.map((lesson, index) => (
-              <div key={lesson.id}>
-                <LessonCard
-                  lesson={lesson}
-                  moduleSlug={moduleSlug}
-                  stars={starsMap[lesson.id] ?? 0}
-                  previousStars={lesson.id === animLessonId ? animPrevStars : undefined}
-                  animationDelay={`${index * 90}ms`}
-                  audioUrl={lesson.audio_url ?? undefined}
-                />
-              </div>
-            ))}
-          </div>
+          <KidsModuleTabs
+            moduleSlug={moduleSlug}
+            moduleId={module.id}
+            lessons={lessons}
+            starsMap={starsMap}
+            animLessonId={animLessonId}
+            animPrevStars={animPrevStars}
+            vocab={vocab ?? []}
+            moduleConfig={config}
+            selectedChildId={selectedChildId ?? null}
+            dailyDone={dailyRow !== null}
+            countdownAttemptsThisWeek={countdownCount ?? 0}
+          />
         ) : (
           <div className="text-center py-16 px-6">
             <p className="text-5xl mb-4">🚧</p>

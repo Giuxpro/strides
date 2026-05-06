@@ -401,10 +401,8 @@ export async function updateModuleRetoConfig(formData: FormData) {
     modifiers.push({ type: 'multiplier' })
   }
 
-  await supabase
-    .from('modules')
-    .update({ reto_game_id, reto_modifiers: modifiers.length > 0 ? modifiers : null })
-    .eq('id', moduleId)
+  const retoPayload = { reto_game_id, reto_modifiers: modifiers.length > 0 ? modifiers : null }
+  await supabase.from('modules').update(retoPayload).eq('id', moduleId)
 
   revalidatePath(`/admin/content/${moduleId}`)
 }

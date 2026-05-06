@@ -15,6 +15,34 @@ interface Props {
 
 type MicState = 'idle' | 'listening' | 'correct' | 'wrong' | 'unsupported'
 
+interface RecognitionResult {
+  transcript: string
+}
+interface RecognitionResultList extends ArrayLike<RecognitionResult> {}
+interface RecognitionEvent {
+  results: ArrayLike<RecognitionResultList>
+}
+interface RecognitionInstance {
+  lang: string
+  interimResults: boolean
+  maxAlternatives: number
+  onresult: ((e: RecognitionEvent) => void) | null
+  onerror: (() => void) | null
+  onend: (() => void) | null
+  start(): void
+  abort(): void
+}
+type RecognitionCtor = new() => RecognitionInstance
+
+function getSpeechRecognition(): RecognitionCtor | null {
+  if (typeof window === 'undefined') return null
+  const w = window as Window & {
+    SpeechRecognition?: RecognitionCtor
+    webkitSpeechRecognition?: RecognitionCtor
+  }
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
+}
+
 function normalize(text: string): string {
   return text.toLowerCase().trim().replace(/[^a-z0-9\s]/g, '')
 }
@@ -35,29 +63,21 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
   const [micState, setMicState] = useState<MicState>('idle')
   const [heard, setHeard] = useState<string | null>(null)
   const [results, setResults] = useState<boolean[]>([])
-  const recognitionRef = useRef<InstanceType<typeof SpeechRecognition> | null>(null)
+  const recognitionRef = useRef<RecognitionInstance | null>(null)
 
   const question = questions[currentQ]
 
   useEffect(() => {
-    const SpeechRecognitionAPI =
-      (window as Window & { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition }).SpeechRecognition ??
-      (window as Window & { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition
-    if (!SpeechRecognitionAPI) {
-      setMicState('unsupported')
-    }
+    if (!getSpeechRecognition()) setMicState('unsupported')
   }, [])
 
   function startListening() {
     if (micState === 'listening' || !question || isTerminated) return
 
-    const SpeechRecognitionAPI =
-      (window as Window & { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition }).SpeechRecognition ??
-      (window as Window & { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition
+    const RecognitionCtor = getSpeechRecognition()
+    if (!RecognitionCtor) return
 
-    if (!SpeechRecognitionAPI) return
-
-    const rec = new SpeechRecognitionAPI()
+    const rec = new RecognitionCtor()
     rec.lang = 'en-US'
     rec.interimResults = false
     rec.maxAlternatives = 3
@@ -66,10 +86,11 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
     setMicState('listening')
     setHeard(null)
 
-    rec.onresult = (event: SpeechRecognitionEvent) => {
-      const transcript = Array.from(event.results[0] ?? [])
-        .map((alt: SpeechRecognitionAlternative) => alt.transcript)
-        .find(t => normalize(t) === normalize(question.text_en)) ?? (event.results[0]?.[0]?.transcript ?? '')
+    rec.onresult = (event: RecognitionEvent) => {
+      const firstResult = event.results[0]
+      const transcript = Array.from({ length: firstResult ? Object.keys(firstResult).length : 0 })
+        .map((_, i) => firstResult?.[i]?.transcript ?? '')
+        .find(t => normalize(t) === normalize(question.text_en)) ?? (firstResult?.[0]?.transcript ?? '')
 
       const isCorrect = normalize(transcript) === normalize(question.text_en)
       if (isCorrect) reportCorrect()
@@ -91,13 +112,9 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
       }, 1500)
     }
 
-    rec.onerror = () => {
-      setMicState('idle')
-    }
+    rec.onerror = () => { setMicState('idle') }
 
-    rec.onend = () => {
-      if (micState === 'listening') setMicState('idle')
-    }
+    rec.onend = () => { setMicState(prev => prev === 'listening' ? 'idle' : prev) }
 
     rec.start()
   }

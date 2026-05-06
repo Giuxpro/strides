@@ -187,7 +187,7 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig }: Props)
           game={game.component}
           items={exercise.items}
           modifiers={step.config.modifiers ?? []}
-          onGameEnd={({ correct, total }) => advance(correct, total)}
+          onGameEnd={({ correct }) => advance(correct)}
           onBack={handleBack}
           moduleConfig={moduleConfig}
           progress={progress}

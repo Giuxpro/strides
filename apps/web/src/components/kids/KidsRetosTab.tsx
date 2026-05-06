@@ -3,8 +3,10 @@
 import { useState } from 'react'
 import type { VocabItem } from './engine/LessonEngine'
 import type { ModuleConfig } from './moduleConfig'
-import { CountdownGame } from './engine/CountdownGame'
-import { RecognitionExercise } from './engine/RecognitionExercise'
+import { RETO_REGISTRY, type RetoId, type RetoConfig, type RetoState } from './engine/retoRegistry'
+import { getGameById } from './engine/gamePool'
+import { ModifierStack } from './engine/modifiers/ModifierStack'
+import type { GameResult } from './engine/modifiers/types'
 import { completeDailyChallenge, recordCountdownAttempt } from '@/app/actions/challenges'
 
 // Seeded PRNG — misma selección cada día para el mismo módulo
@@ -14,7 +16,7 @@ function seededNext(s: number): number {
   return (x ^ (x >>> 16)) >>> 0
 }
 
-function getDailyVocab(vocab: VocabItem[], moduleId: string, dateStr: string, count = 5): VocabItem[] {
+function getDailyVocab(vocab: VocabItem[], moduleId: string, dateStr: string, count: number): VocabItem[] {
   const raw = (moduleId + dateStr).split('').reduce((acc, c) => (acc * 31 + c.charCodeAt(0)) | 0, 1)
   const seed = raw >>> 0
   const arr = [...vocab]
@@ -25,8 +27,7 @@ function getDailyVocab(vocab: VocabItem[], moduleId: string, dateStr: string, co
   return arr.slice(0, Math.min(count, arr.length))
 }
 
-type RetoId = 'contrarreloj' | 'diario'
-type Phase  = 'pick' | 'playing' | 'done'
+type Phase = 'pick' | 'playing' | 'done'
 
 interface Props {
   vocab: VocabItem[]
@@ -35,81 +36,86 @@ interface Props {
   selectedChildId: string | null
   dailyDone: boolean
   countdownAttemptsThisWeek: number
+  countdownWeeklyLimit: number
+  dailyWordCount: number
 }
 
-const COUNTDOWN_WEEKLY_LIMIT = 3
-
-export function KidsRetosTab({ vocab, moduleConfig, moduleId, selectedChildId, dailyDone, countdownAttemptsThisWeek }: Props) {
+export function KidsRetosTab({
+  vocab, moduleConfig, moduleId, selectedChildId, dailyDone,
+  countdownAttemptsThisWeek, countdownWeeklyLimit, dailyWordCount,
+}: Props) {
   const today = new Date().toISOString().split('T')[0] ?? ''
-  const [dailyItems] = useState(() => getDailyVocab(vocab, moduleId, today))
+  const [dailyItems] = useState(() => getDailyVocab(vocab, moduleId, today, dailyWordCount))
 
   const [phase, setPhase] = useState<Phase>('pick')
-  const [activeReto, setActiveReto] = useState<RetoId | null>(null)
-  const [lastScore, setLastScore] = useState<{ correct: number; total: number } | null>(null)
+  const [activeRetoId, setActiveRetoId] = useState<RetoId | null>(null)
+  const [lastResult, setLastResult] = useState<GameResult | null>(null)
   const [completedDaily, setCompletedDaily] = useState(dailyDone)
   const [countdownUsed, setCountdownUsed] = useState(countdownAttemptsThisWeek)
 
-  function startReto(reto: RetoId) {
-    if (reto === 'contrarreloj' && selectedChildId) {
+  const cfg: RetoConfig = { countdownWeeklyLimit, dailyWordCount }
+  const st: RetoState = {
+    completedDaily,
+    countdownUsed,
+    enoughVocab: vocab.length >= 4,
+  }
+
+  function startReto(id: RetoId) {
+    if (id === 'contrarreloj' && selectedChildId) {
       recordCountdownAttempt(selectedChildId, moduleId)
         .then(() => setCountdownUsed(n => n + 1))
         .catch(() => {})
     }
-    setActiveReto(reto)
-    setLastScore(null)
+    setActiveRetoId(id)
+    setLastResult(null)
     setPhase('playing')
   }
 
-  function handleComplete(correct: number, total: number) {
-    setLastScore({ correct, total })
-    if (activeReto === 'diario' && selectedChildId && !completedDaily) {
-      const stars = Math.round((total > 0 ? correct / total : 1) * 3)
+  function handleGameEnd(result: GameResult) {
+    setLastResult(result)
+    if (activeRetoId === 'diario' && selectedChildId && !completedDaily) {
+      const stars = Math.round((result.total > 0 ? result.correct / result.total : 1) * 3)
       completeDailyChallenge(selectedChildId, moduleId, today, stars)
         .then(() => setCompletedDaily(true))
-        .catch(() => { /* silencioso: el usuario ya vio el resultado */ })
+        .catch(() => {})
     }
     setPhase('done')
   }
 
   function backToPick() {
     setPhase('pick')
-    setActiveReto(null)
+    setActiveRetoId(null)
   }
 
-  const countdownRemaining = COUNTDOWN_WEEKLY_LIMIT - countdownUsed
-  const countdownExhausted = countdownRemaining <= 0
-
   /* ── Playing ── */
-  if (phase === 'playing') {
-    return (
-      <div className="fixed inset-0 z-[60]" style={{ background: 'var(--kids-bg)' }}>
-        {activeReto === 'contrarreloj' && (
-          <CountdownGame
-            items={vocab}
-            onComplete={handleComplete}
-            onBack={backToPick}
-            moduleConfig={moduleConfig}
-          />
-        )}
-        {activeReto === 'diario' && (
-          <RecognitionExercise
-            items={dailyItems}
-            onComplete={handleComplete}
+  if (phase === 'playing' && activeRetoId) {
+    const entry = RETO_REGISTRY.find(r => r.id === activeRetoId)
+    const game = entry?.gameId ? getGameById(entry.gameId) : undefined
+    if (entry && game) {
+      return (
+        <div className="fixed inset-0 z-[60]" style={{ background: 'var(--kids-bg)' }}>
+          <ModifierStack
+            game={game.component}
+            items={entry.getItems(vocab, dailyItems)}
+            modifiers={entry.modifiers}
+            onGameEnd={handleGameEnd}
             onBack={backToPick}
             moduleConfig={moduleConfig}
             progress={{ current: 1, total: 1 }}
           />
-        )}
-      </div>
-    )
+        </div>
+      )
+    }
   }
 
   /* ── Done ── */
-  if (phase === 'done' && activeReto && lastScore) {
-    const ratio  = lastScore.total > 0 ? lastScore.correct / lastScore.total : 1
+  if (phase === 'done' && activeRetoId && lastResult) {
+    const entry = RETO_REGISTRY.find(r => r.id === activeRetoId)!
+    const ratio  = lastResult.total > 0 ? lastResult.correct / lastResult.total : 1
     const pct    = Math.round(ratio * 100)
     const stars  = Math.round(ratio * 3)
     const passed = pct >= 70
+    const stAfterComplete: RetoState = { ...st, countdownUsed }
 
     return (
       <div
@@ -121,16 +127,7 @@ export function KidsRetosTab({ vocab, moduleConfig, moduleId, selectedChildId, d
           <p className="font-extrabold text-2xl mb-1" style={{ color: 'var(--kids-text)' }}>
             {passed ? '¡Reto completado!' : '¡Buen intento!'}
           </p>
-          {activeReto === 'contrarreloj' && (
-            <p style={{ color: 'var(--kids-text-muted)' }}>
-              {lastScore.correct} correctas en 60 segundos
-            </p>
-          )}
-          {activeReto === 'diario' && lastScore.total > 0 && (
-            <p style={{ color: 'var(--kids-text-muted)' }}>
-              {lastScore.correct} de {lastScore.total} correctas
-            </p>
-          )}
+          <p style={{ color: 'var(--kids-text-muted)' }}>{entry.getDoneLabel(lastResult, lastResult.reason)}</p>
         </div>
         {stars > 0 && (
           <p className="text-3xl tracking-wider">
@@ -138,13 +135,13 @@ export function KidsRetosTab({ vocab, moduleConfig, moduleId, selectedChildId, d
           </p>
         )}
         <div className="flex gap-3">
-          {activeReto === 'contrarreloj' && countdownRemaining > 0 && (
+          {entry.canRetry(cfg, stAfterComplete) && (
             <button
-              onClick={() => startReto('contrarreloj')}
+              onClick={() => startReto(activeRetoId)}
               className="font-extrabold text-white px-6 py-3 rounded-2xl transition-all hover:scale-105 active:scale-95"
               style={{ background: moduleConfig.gradient, boxShadow: moduleConfig.shadow }}
             >
-              Intentar de nuevo · {countdownRemaining} restante{countdownRemaining !== 1 ? 's' : ''}
+              Intentar de nuevo · {cfg.countdownWeeklyLimit - stAfterComplete.countdownUsed} restante{cfg.countdownWeeklyLimit - stAfterComplete.countdownUsed !== 1 ? 's' : ''}
             </button>
           )}
           <button
@@ -160,8 +157,6 @@ export function KidsRetosTab({ vocab, moduleConfig, moduleId, selectedChildId, d
   }
 
   /* ── Pick ── */
-  const enoughForRecognition = vocab.length >= 4
-
   return (
     <div className="px-6 pt-4">
       <h2 className="text-center font-extrabold text-lg mb-1" style={{ color: 'var(--kids-text)' }}>
@@ -172,48 +167,23 @@ export function KidsRetosTab({ vocab, moduleConfig, moduleId, selectedChildId, d
       </p>
 
       <div className="flex flex-col gap-4 max-w-sm mx-auto">
-        <RetoCard
-          emoji="⭐"
-          title="Reto del día"
-          description="5 palabras especiales para hoy. ¡Solo puedes hacerlo una vez!"
-          badge="Diario"
-          badgeColor="#f59e0b"
-          reward="Estrellas"
-          completed={completedDaily}
-          disabled={!enoughForRecognition || completedDaily}
-          onPlay={() => startReto('diario')}
-          moduleConfig={moduleConfig}
-        />
-        <RetoCard
-          emoji="⏱️"
-          title="Contrarreloj"
-          description={
-            countdownExhausted
-              ? '¡Ya usaste tus 3 intentos esta semana! Vuelve el lunes.'
-              : '¿Cuántas puedes acertar en 60 segundos?'
-          }
-          badge="3 veces por semana"
-          badgeColor={moduleConfig.gradientFrom}
-          reward="Récord personal"
-          counter={{ used: countdownUsed, total: COUNTDOWN_WEEKLY_LIMIT }}
-          completed={false}
-          disabled={!enoughForRecognition || countdownExhausted}
-          onPlay={() => startReto('contrarreloj')}
-          moduleConfig={moduleConfig}
-        />
-        <RetoCard
-          emoji="🏆"
-          title="Reto semanal"
-          description="Completa todos los retos diarios de la semana"
-          badge="Próximamente"
-          badgeColor="#6b7280"
-          reward="Medalla"
-          completed={false}
-          disabled={true}
-          locked
-          onPlay={() => {}}
-          moduleConfig={moduleConfig}
-        />
+        {RETO_REGISTRY.map(entry => (
+          <RetoCard
+            key={entry.id}
+            emoji={entry.emoji}
+            title={entry.title}
+            description={entry.getDescription(cfg, st)}
+            badge={entry.getBadge(cfg)}
+            badgeColor={entry.badgeColor ?? moduleConfig.gradientFrom}
+            reward={entry.reward}
+            completed={entry.getCompleted(st)}
+            disabled={entry.getDisabled(cfg, st)}
+            locked={entry.locked}
+            counter={entry.getCounter(cfg, st)}
+            onPlay={() => startReto(entry.id)}
+            moduleConfig={moduleConfig}
+          />
+        ))}
       </div>
     </div>
   )

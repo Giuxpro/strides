@@ -157,6 +157,8 @@ export default async function ModulePage({ params, searchParams }: Props) {
             selectedChildId={selectedChildId ?? null}
             dailyDone={dailyRow !== null}
             countdownAttemptsThisWeek={countdownCount ?? 0}
+            countdownWeeklyLimit={module.countdown_weekly_limit}
+            dailyWordCount={module.daily_challenge_word_count}
           />
         ) : (
           <div className="text-center py-16 px-6">

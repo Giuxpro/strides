@@ -3,26 +3,27 @@ import type { VocabItem } from './LessonEngine'
 import type { ModuleConfig } from '@/components/kids/moduleConfig'
 import { MemoryGame } from './MemoryGame'
 import { RecognitionExercise } from './RecognitionExercise'
+import { SpeakingExercise } from './SpeakingExercise'
 
-export interface FreePlayProps {
+export interface GameProps {
   items: VocabItem[]
   onComplete: (correct: number, total: number) => void
   onBack: () => void
   moduleConfig: ModuleConfig
-  progress: { current: number; total: number }
+  progress?: { current: number; total: number }
 }
 
-export interface GameEntry {
+export interface PoolEntry {
   id: string
   emoji: string
   title: string
   description: string
   minItems: number
   maxItems: number
-  component: ComponentType<FreePlayProps>
+  component: ComponentType<GameProps>
 }
 
-export const GAME_REGISTRY: GameEntry[] = [
+export const GAME_POOL: PoolEntry[] = [
   {
     id: 'memory',
     emoji: '🃏',
@@ -30,7 +31,7 @@ export const GAME_REGISTRY: GameEntry[] = [
     description: 'Encuentra las parejas de palabras',
     minItems: 3,
     maxItems: 6,
-    component: MemoryGame as ComponentType<FreePlayProps>,
+    component: MemoryGame as ComponentType<GameProps>,
   },
   {
     id: 'recognition',
@@ -39,6 +40,19 @@ export const GAME_REGISTRY: GameEntry[] = [
     description: '¿Cuál es la imagen correcta?',
     minItems: 4,
     maxItems: 12,
-    component: RecognitionExercise as ComponentType<FreePlayProps>,
+    component: RecognitionExercise as ComponentType<GameProps>,
+  },
+  {
+    id: 'speaking',
+    emoji: '🎤',
+    title: 'Pronunciación',
+    description: 'Di la palabra en inglés',
+    minItems: 1,
+    maxItems: 12,
+    component: SpeakingExercise as ComponentType<GameProps>,
   },
 ]
+
+export function getGameById(id: string): PoolEntry | undefined {
+  return GAME_POOL.find(g => g.id === id)
+}

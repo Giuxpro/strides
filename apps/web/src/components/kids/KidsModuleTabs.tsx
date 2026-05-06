@@ -21,11 +21,14 @@ interface Props {
   selectedChildId: string | null
   dailyDone: boolean
   countdownAttemptsThisWeek: number
+  countdownWeeklyLimit: number
+  dailyWordCount: number
 }
 
 export function KidsModuleTabs({
   moduleSlug, moduleId, lessons, starsMap, animLessonId, animPrevStars,
   vocab, moduleConfig, selectedChildId, dailyDone, countdownAttemptsThisWeek,
+  countdownWeeklyLimit, dailyWordCount,
 }: Props) {
   const [tab, setTab] = useState<TabId>('aprender')
 
@@ -63,6 +66,8 @@ export function KidsModuleTabs({
           selectedChildId={selectedChildId}
           dailyDone={dailyDone}
           countdownAttemptsThisWeek={countdownAttemptsThisWeek}
+          countdownWeeklyLimit={countdownWeeklyLimit}
+          dailyWordCount={dailyWordCount}
         />
       )}
       {tab === 'palabras' && <ComingSoon emoji="🎒" label="Tu diccionario personal del módulo" />}

@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { toggleLessonPublished, deleteLesson, deleteVocabItem } from '@/app/actions/admin'
 import { VocabUsagePopover } from '@/components/admin/VocabUsagePopover'
+import { RetoConfigForm } from '@/components/admin/RetoConfigForm'
+import type { ModifierConfig } from '@/components/kids/engine/modifiers/types'
 
 interface Props {
   params: { moduleId: string }
@@ -20,10 +22,12 @@ const TB = 'px-4 py-1.5 rounded-lg text-sm font-medium transition-colors'
 
 export default async function AdminModuleDetailPage({ params, searchParams }: Props) {
   const supabase = createClient()
-  const tab = searchParams.tab === 'lessons' ? 'lessons' : 'vocab'
+  const tab = searchParams.tab === 'lessons' ? 'lessons' : searchParams.tab === 'retos' ? 'retos' : 'vocab'
 
-  const [{ data: mod }, { data: lessons }, { data: vocab }, { data: exercisesRaw }] = await Promise.all([
+  const [{ data: mod }, { data: modReto }, { data: lessons }, { data: vocab }, { data: exercisesRaw }] = await Promise.all([
     supabase.from('modules').select('id, title_es, title_en, slug').eq('id', params.moduleId).single(),
+    supabase.from('modules').select('reto_game_id, reto_modifiers').eq('id', params.moduleId).single() as unknown as
+      Promise<{ data: { reto_game_id: string | null; reto_modifiers: ModifierConfig[] | null } | null }>,
     supabase.from('lessons').select('id, title_es, title_en, order, is_published').eq('module_id', params.moduleId).order('order'),
     supabase.from('vocabulary_items').select('id, text_es, text_en, image_url, type, order').eq('module_id', params.moduleId).order('order'),
     supabase.from('exercises').select('lesson_id, lessons(id, title_es), exercise_items(vocabulary_item_id)').eq('module_id', params.moduleId) as unknown as Promise<{ data: ExerciseRow[] | null }>,
@@ -77,6 +81,12 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
           className={`${TB} ${tab === 'lessons' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
         >
           Lecciones ({lessons?.length ?? 0})
+        </Link>
+        <Link
+          href="?tab=retos"
+          className={`${TB} ${tab === 'retos' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
+        >
+          Retos
         </Link>
       </div>
 
@@ -161,6 +171,24 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
               </tbody>
             </table>
           </div>
+        </section>
+      )}
+
+      {/* ── Tab: Retos ── */}
+      {tab === 'retos' && (
+        <section>
+          <div className="mb-5">
+            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Configuración de retos</h2>
+            <p className="text-xs text-gray-600">
+              Ajusta el juego y los modificadores del contrarreloj para este módulo.
+              Si no se configura, se usan los valores por defecto del registro.
+            </p>
+          </div>
+          <RetoConfigForm
+            moduleId={params.moduleId}
+            initialGameId={modReto?.reto_game_id ?? null}
+            initialModifiers={modReto?.reto_modifiers ?? null}
+          />
         </section>
       )}
 

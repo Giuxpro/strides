@@ -365,6 +365,11 @@ export async function updateSettings(formData: FormData) {
     { key: 'ai_model',        value: formData.get('ai_model') as string },
     { key: 'onboarding_flow', value: formData.get('onboarding_flow') as string },
     { key: 'trial_days',      value: Number(formData.get('trial_days')) },
+    { key: 'available_modifiers', value: {
+        timer:      formData.get('modifier_timer') === 'on',
+        lives:      formData.get('modifier_lives') === 'on',
+        multiplier: formData.get('modifier_multiplier') === 'on',
+      } as Json },
   ]
 
   await Promise.all(
@@ -374,4 +379,32 @@ export async function updateSettings(formData: FormData) {
   )
 
   revalidatePath('/admin/settings')
+}
+
+// ─── Module Reto Config ──────────────────────────────────────────────────────
+
+export async function updateModuleRetoConfig(formData: FormData) {
+  const { supabase } = await requireAdmin()
+  const moduleId = formData.get('module_id') as string
+
+  const gameId = formData.get('reto_game_id') as string
+  const reto_game_id = gameId === 'auto' ? null : gameId
+
+  const modifiers: Json[] = []
+  if (formData.get('timer_enabled') === 'on') {
+    modifiers.push({ type: 'timer', seconds: Number(formData.get('timer_seconds')) })
+  }
+  if (formData.get('lives_enabled') === 'on') {
+    modifiers.push({ type: 'lives', count: Number(formData.get('lives_count')) })
+  }
+  if (formData.get('multiplier_enabled') === 'on' && modifiers.length > 0) {
+    modifiers.push({ type: 'multiplier' })
+  }
+
+  await supabase
+    .from('modules')
+    .update({ reto_game_id, reto_modifiers: modifiers.length > 0 ? modifiers : null })
+    .eq('id', moduleId)
+
+  revalidatePath(`/admin/content/${moduleId}`)
 }

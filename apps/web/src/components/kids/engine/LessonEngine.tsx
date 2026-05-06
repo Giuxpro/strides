@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ModuleConfig } from '@/components/kids/moduleConfig'
-import { MemoryGame } from './MemoryGame'
-import { RecognitionExercise } from './RecognitionExercise'
+import { getGameById } from './gamePool'
+import { ModifierStack } from './modifiers/ModifierStack'
+import type { ModifierConfig } from './modifiers/types'
 import { VideoStep } from './VideoStep'
 import { SlideStep } from './SlideStep'
 import { completeLesson } from '@/app/actions/lessons'
@@ -46,7 +47,7 @@ type ExerciseStepData = {
   position: number
   step_type: 'exercise'
   title: string | null
-  config: Record<string, never>
+  config: { modifiers?: ModifierConfig[] }
   exercise: ExerciseData
 }
 
@@ -179,22 +180,14 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig }: Props)
 
   if (step.step_type === 'exercise') {
     const { exercise } = step
-    if (exercise.type === 'memory') {
+    const game = getGameById(exercise.type)
+    if (game) {
       return (
-        <MemoryGame
+        <ModifierStack
+          game={game.component}
           items={exercise.items}
-          onComplete={advance}
-          onBack={handleBack}
-          moduleConfig={moduleConfig}
-          progress={progress}
-        />
-      )
-    }
-    if (exercise.type === 'recognition') {
-      return (
-        <RecognitionExercise
-          items={exercise.items}
-          onComplete={advance}
+          modifiers={step.config.modifiers ?? []}
+          onGameEnd={({ correct, total }) => advance(correct, total)}
           onBack={handleBack}
           moduleConfig={moduleConfig}
           progress={progress}

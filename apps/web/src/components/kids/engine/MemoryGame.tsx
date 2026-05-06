@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import type { VocabItem } from './LessonEngine'
 import type { ModuleConfig } from '@/components/kids/moduleConfig'
+import { useGameEvents } from './modifiers/ModifierContext'
 
 interface Card {
   uid: string
@@ -32,6 +33,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }: Props) {
+  const { reportCorrect, reportWrong, isTerminated } = useGameEvents()
   const [cards] = useState<Card[]>(() =>
     shuffle([
       ...items.map(v => ({ uid: `en-${v.id}`, pairId: v.id, lang: 'en' as const, text: v.text_en, imageUrl: v.image_url })),
@@ -49,7 +51,7 @@ export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }
   const getCard = useCallback((uid: string) => cards.find(c => c.uid === uid)!, [cards])
 
   function flip(uid: string) {
-    if (locked) return
+    if (locked || isTerminated) return
     const card = getCard(uid)
     if (matched.has(card.pairId)) return
     if (flipped.includes(uid)) return
@@ -63,6 +65,7 @@ export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }
       const [a, b] = [getCard(newFlipped[0]!), getCard(newFlipped[1]!)]
 
       if (a.pairId === b.pairId && a.lang !== b.lang) {
+        reportCorrect()
         setTimeout(() => {
           setMatched(prev => new Set([...prev, a.pairId]))
           setFlipped([])
@@ -70,6 +73,7 @@ export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }
           setPairsFound(prev => prev + 1)
         }, 500)
       } else {
+        reportWrong()
         setTimeout(() => {
           setFlipped([])
           setLocked(false)

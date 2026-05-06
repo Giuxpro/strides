@@ -33,7 +33,22 @@ export type Database = {
           id?: string
           module_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "child_countdown_attempts_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "child_countdown_attempts_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       child_daily_challenges: {
         Row: {
@@ -92,6 +107,7 @@ export type Database = {
           completed_at?: string
           id?: string
           lesson_id: string
+          passed?: boolean
           score?: number | null
           stars?: number
         }
@@ -100,6 +116,7 @@ export type Database = {
           completed_at?: string
           id?: string
           lesson_id?: string
+          passed?: boolean
           score?: number | null
           stars?: number
         }
@@ -325,57 +342,6 @@ export type Database = {
           },
         ]
       }
-      lesson_steps: {
-        Row: {
-          config: Json
-          created_at: string
-          exercise_id: string | null
-          id: string
-          lesson_id: string
-          position: number
-          step_type: Database["public"]["Enums"]["step_type"]
-          title: string | null
-          updated_at: string
-        }
-        Insert: {
-          config?: Json
-          created_at?: string
-          exercise_id?: string | null
-          id?: string
-          lesson_id: string
-          position?: number
-          step_type: Database["public"]["Enums"]["step_type"]
-          title?: string | null
-          updated_at?: string
-        }
-        Update: {
-          config?: Json
-          created_at?: string
-          exercise_id?: string | null
-          id?: string
-          lesson_id?: string
-          position?: number
-          step_type?: Database["public"]["Enums"]["step_type"]
-          title?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lesson_steps_lesson_id_fkey"
-            columns: ["lesson_id"]
-            isOneToOne: false
-            referencedRelation: "lessons"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lesson_steps_exercise_id_fkey"
-            columns: ["exercise_id"]
-            isOneToOne: false
-            referencedRelation: "exercises"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       exercise_items: {
         Row: {
           exercise_id: string
@@ -466,6 +432,144 @@ export type Database = {
           },
         ]
       }
+      household_members: {
+        Row: {
+          child_id: string | null
+          household_id: string
+          id: string
+          joined_at: string
+          member_type: Database["public"]["Enums"]["household_member_type"]
+          profile_id: string | null
+        }
+        Insert: {
+          child_id?: string | null
+          household_id: string
+          id?: string
+          joined_at?: string
+          member_type?: Database["public"]["Enums"]["household_member_type"]
+          profile_id?: string | null
+        }
+        Update: {
+          child_id?: string | null
+          household_id?: string
+          id?: string
+          joined_at?: string
+          member_type?: Database["public"]["Enums"]["household_member_type"]
+          profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_members_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "household_members_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "household_members_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      households: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          owner_id: string
+          status: Database["public"]["Enums"]["household_status"]
+          trial_ends_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          owner_id: string
+          status?: Database["public"]["Enums"]["household_status"]
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          owner_id?: string
+          status?: Database["public"]["Enums"]["household_status"]
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "households_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lesson_steps: {
+        Row: {
+          config: Json
+          created_at: string
+          exercise_id: string | null
+          id: string
+          lesson_id: string
+          position: number
+          step_type: Database["public"]["Enums"]["step_type"]
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          exercise_id?: string | null
+          id?: string
+          lesson_id: string
+          position?: number
+          step_type: Database["public"]["Enums"]["step_type"]
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          exercise_id?: string | null
+          id?: string
+          lesson_id?: string
+          position?: number
+          step_type?: Database["public"]["Enums"]["step_type"]
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_steps_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_steps_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lessons: {
         Row: {
           audio_url: string | null
@@ -521,9 +625,11 @@ export type Database = {
       }
       modules: {
         Row: {
+          countdown_weekly_limit: number
           cover_image_url: string | null
           created_at: string
           created_by: string | null
+          daily_challenge_word_count: number
           description_es: string | null
           id: string
           is_published: boolean
@@ -534,9 +640,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          countdown_weekly_limit?: number
           cover_image_url?: string | null
           created_at?: string
           created_by?: string | null
+          daily_challenge_word_count?: number
           description_es?: string | null
           id?: string
           is_published?: boolean
@@ -547,9 +655,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          countdown_weekly_limit?: number
           cover_image_url?: string | null
           created_at?: string
           created_by?: string | null
+          daily_challenge_word_count?: number
           description_es?: string | null
           id?: string
           is_published?: boolean
@@ -764,9 +874,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_or_create_household: { Args: { p_user_id: string }; Returns: string }
       grant_free_module_access: {
         Args: { p_user_id: string }
         Returns: undefined
+      }
+      has_module_access: {
+        Args: { p_module_id: string; p_user_id: string }
+        Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
     }
@@ -774,9 +889,11 @@ export type Database = {
       access_type: "free" | "purchased" | "subscription"
       exercise_phase: "practice" | "evaluation"
       exercise_type: "memory" | "recognition" | "speaking"
+      household_member_type: "owner" | "included" | "extra"
+      household_status: "active" | "trial" | "inactive" | "cancelled"
       job_status: "pending" | "completed" | "failed"
-      user_role: "parent" | "admin"
       step_type: "video" | "slide" | "exercise"
+      user_role: "parent" | "admin"
       vocabulary_type: "word" | "phrase"
       word_status: "unseen" | "learning" | "mastered"
     }
@@ -909,7 +1026,10 @@ export const Constants = {
       access_type: ["free", "purchased", "subscription"],
       exercise_phase: ["practice", "evaluation"],
       exercise_type: ["memory", "recognition", "speaking"],
+      household_member_type: ["owner", "included", "extra"],
+      household_status: ["active", "trial", "inactive", "cancelled"],
       job_status: ["pending", "completed", "failed"],
+      step_type: ["video", "slide", "exercise"],
       user_role: ["parent", "admin"],
       vocabulary_type: ["word", "phrase"],
       word_status: ["unseen", "learning", "mastered"],

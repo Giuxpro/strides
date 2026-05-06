@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import type { VocabItem } from './LessonEngine'
 import type { ModuleConfig } from '@/components/kids/moduleConfig'
+import { useGameEvents } from './modifiers/ModifierContext'
 
 interface Props {
   items: VocabItem[]
@@ -23,8 +24,9 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-function getOptions(items: VocabItem[], correctId: string): VocabItem[] {
-  const distractors = shuffle(items.filter(v => v.id !== correctId)).slice(0, 3)
+function getOptions(items: VocabItem[], correctId: string, count: number): VocabItem[] {
+  const available = Math.min(count, items.length)
+  const distractors = shuffle(items.filter(v => v.id !== correctId)).slice(0, available - 1)
   const correct = items.find(v => v.id === correctId)!
   return shuffle([...distractors, correct])
 }
@@ -39,6 +41,7 @@ function speak(text: string) {
 }
 
 export function RecognitionExercise({ items, onComplete, onBack, moduleConfig, progress }: Props) {
+  const { reportCorrect, reportWrong, isTerminated, modifierState } = useGameEvents()
   const [questions] = useState(() => shuffle([...items]))
   const [currentQ, setCurrentQ] = useState(0)
   const [options, setOptions] = useState<VocabItem[]>([])
@@ -46,19 +49,22 @@ export function RecognitionExercise({ items, onComplete, onBack, moduleConfig, p
   const [results, setResults] = useState<boolean[]>([])
 
   const question = questions[currentQ]
+  const optionCount = Math.min(modifierState.optionCount, items.length)
 
   useEffect(() => {
     if (!question) return
-    setOptions(getOptions(items, question.id))
+    setOptions(getOptions(items, question.id, optionCount))
     const timer = setTimeout(() => speak(question.text_en), 350)
     return () => clearTimeout(timer)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQ])
 
   function handleAnswer(option: VocabItem) {
-    if (selected !== null || !question) return
+    if (selected !== null || !question || isTerminated) return
 
     const isCorrect = option.id === question.id
+    if (isCorrect) reportCorrect()
+    else reportWrong()
     const newResults = [...results, isCorrect]
     setResults(newResults)
     setSelected(option.id)
@@ -125,7 +131,7 @@ export function RecognitionExercise({ items, onComplete, onBack, moduleConfig, p
         </div>
 
         {/* Options */}
-        <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
+        <div className={`grid gap-3 w-full ${optionCount <= 4 ? 'grid-cols-2 max-w-xs' : 'grid-cols-4 max-w-sm'}`}>
           {options.map(option => {
             const isSelected = selected === option.id
             const isCorrect  = option.id === question.id

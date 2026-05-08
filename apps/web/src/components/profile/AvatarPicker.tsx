@@ -25,7 +25,7 @@ interface Props {
 }
 
 export function AvatarPicker({ name, defaultValue }: Props) {
-  const [selected, setSelected] = useState(defaultValue ?? AVATARS[0].emoji)
+  const [selected, setSelected] = useState(defaultValue ?? AVATARS[0]?.emoji ?? '')
 
   return (
     <div>

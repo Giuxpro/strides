@@ -3,21 +3,21 @@
 import { useState } from 'react'
 import { updateModuleRetoConfig } from '@/app/actions/admin'
 import type { ModifierConfig } from '@/components/kids/engine/modifiers/types'
+import { GAME_POOL } from '@/components/kids/engine/gamePool'
 
 interface Props {
   moduleId: string
   initialGameId: string | null
   initialModifiers: ModifierConfig[] | null
+  initialDiarioGameId: string | null
 }
 
 const GAME_OPTIONS = [
   { value: 'auto', label: 'Auto (según el tipo de reto)' },
-  { value: 'memory',      label: '🃏 Memoria' },
-  { value: 'recognition', label: '👁️ Reconocimiento' },
-  { value: 'speaking',    label: '🎤 Pronunciación' },
+  ...GAME_POOL.map(g => ({ value: g.id, label: `${g.emoji} ${g.title}` })),
 ]
 
-export function RetoConfigForm({ moduleId, initialGameId, initialModifiers }: Props) {
+export function RetoConfigForm({ moduleId, initialGameId, initialModifiers, initialDiarioGameId }: Props) {
   const mods = initialModifiers ?? []
   const initTimer      = mods.find((m): m is Extract<ModifierConfig, { type: 'timer' }> => m.type === 'timer')
   const initLives      = mods.find((m): m is Extract<ModifierConfig, { type: 'lives' }> => m.type === 'lives')
@@ -35,7 +35,17 @@ export function RetoConfigForm({ moduleId, initialGameId, initialModifiers }: Pr
     <form action={updateModuleRetoConfig} className="space-y-6 max-w-md">
       <input type="hidden" name="module_id" value={moduleId} />
 
-      {/* Game selector */}
+      {/* Diario game */}
+      <div>
+        <label className={`block ${labelCls} mb-2`}>Juego del reto diario</label>
+        <select name="diario_game_id" defaultValue={initialDiarioGameId ?? 'auto'} className={`${inputCls} w-full`}>
+          {GAME_OPTIONS.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Contrarreloj game */}
       <div>
         <label className={`block ${labelCls} mb-2`}>Juego del contrarreloj</label>
         <select name="reto_game_id" defaultValue={initialGameId ?? 'auto'} className={`${inputCls} w-full`}>
@@ -43,9 +53,6 @@ export function RetoConfigForm({ moduleId, initialGameId, initialModifiers }: Pr
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
-        <p className="text-xs text-gray-600 mt-1">
-          El juego diario siempre usa Reconocimiento.
-        </p>
       </div>
 
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-5">

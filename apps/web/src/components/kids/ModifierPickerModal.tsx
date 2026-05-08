@@ -32,11 +32,18 @@ export function modifierLabel(sel: ModifierSelection): string {
   return parts.length > 0 ? parts.join(' · ') : 'Normal'
 }
 
+export type AvailableModifiers = {
+  timer?: boolean
+  lives?: boolean
+  multiplier?: boolean
+}
+
 interface Props {
   value: ModifierSelection
   onChange: (v: ModifierSelection) => void
   onClose: () => void
   moduleConfig: ModuleConfig
+  availableModifiers?: AvailableModifiers | null
 }
 
 const TIMER_OPTIONS: { label: string; value: number | null }[] = [
@@ -53,7 +60,10 @@ const LIVES_OPTIONS: { label: string; value: number | null }[] = [
   { label: '5 ❤️', value: 5 },
 ]
 
-export function ModifierPickerModal({ value, onChange, onClose, moduleConfig }: Props) {
+export function ModifierPickerModal({ value, onChange, onClose, moduleConfig, availableModifiers }: Props) {
+  const timerOn      = !availableModifiers || availableModifiers.timer      !== false
+  const livesOn      = !availableModifiers || availableModifiers.lives      !== false
+  const multiplierOn = !availableModifiers || availableModifiers.multiplier !== false
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
@@ -95,74 +105,93 @@ export function ModifierPickerModal({ value, onChange, onClose, moduleConfig }: 
         {/* Handle */}
         <div className="w-10 h-1 rounded-full mx-auto mb-5" style={{ background: 'var(--kids-border-color)' }} />
 
-        <p className="font-extrabold text-xl text-center mb-6" style={{ color: 'var(--kids-text)' }}>
-          🎮 Modo de juego
-        </p>
+        <div className="flex items-center justify-between mb-6">
+          <div className="w-8" />
+          <p className="font-extrabold text-xl" style={{ color: 'var(--kids-text)' }}>
+            🎮 Modo de juego
+          </p>
+          <button
+            onClick={close}
+            className="w-8 h-8 flex items-center justify-center rounded-full text-lg font-bold transition-all hover:scale-110 active:scale-95"
+            style={{ background: 'rgba(0,0,0,0.07)', color: 'var(--kids-text-muted)' }}
+            aria-label="Cerrar"
+          >
+            ✕
+          </button>
+        </div>
 
         {/* Timer */}
-        <Section label="⏱️ Tiempo">
-          {TIMER_OPTIONS.map(opt => (
-            <Pill
-              key={String(opt.value)}
-              label={opt.label}
-              active={value.timer === opt.value}
-              style={pillStyle(value.timer === opt.value)}
-              onTap={() => onChange({ ...value, timer: opt.value })}
-            />
-          ))}
-        </Section>
+        {timerOn && (
+          <Section label="⏱️ Tiempo">
+            {TIMER_OPTIONS.map(opt => (
+              <Pill
+                key={String(opt.value)}
+                label={opt.label}
+                active={value.timer === opt.value}
+                style={pillStyle(value.timer === opt.value)}
+                onTap={() => onChange({ ...value, timer: opt.value })}
+              />
+            ))}
+          </Section>
+        )}
 
         {/* Lives */}
-        <Section label="❤️ Vidas">
-          {LIVES_OPTIONS.map(opt => (
-            <Pill
-              key={String(opt.value)}
-              label={opt.label}
-              active={value.lives === opt.value}
-              style={pillStyle(value.lives === opt.value)}
-              onTap={() => onChange({ ...value, lives: opt.value })}
-            />
-          ))}
-        </Section>
+        {livesOn && (
+          <Section label="❤️ Vidas">
+            {LIVES_OPTIONS.map(opt => (
+              <Pill
+                key={String(opt.value)}
+                label={opt.label}
+                active={value.lives === opt.value}
+                style={pillStyle(value.lives === opt.value)}
+                onTap={() => onChange({ ...value, lives: opt.value })}
+              />
+            ))}
+          </Section>
+        )}
 
         {/* Multiplier */}
-        <Section label="⚡ Multiplicador">
-          <div className="flex items-center gap-3 w-full">
-            {(['off', 'on'] as const).map(v => {
-              const active = v === 'on' ? value.multiplier : !value.multiplier
-              const disabled = v === 'on' && !hasTermination
-              return (
-                <button
-                  key={v}
-                  disabled={disabled}
-                  onClick={() => !disabled && onChange({ ...value, multiplier: v === 'on' })}
-                  className="flex-1 py-3 rounded-2xl font-extrabold text-sm transition-all active:scale-95"
-                  style={{
-                    ...pillStyle(active && !disabled),
-                    opacity: disabled ? 0.35 : 1,
-                    cursor: disabled ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {v === 'off' ? 'Off' : 'On ⚡'}
-                </button>
-              )
-            })}
-          </div>
-          {!hasTermination && (
-            <p className="text-xs mt-1.5 w-full text-center" style={{ color: 'var(--kids-text-muted)' }}>
-              Requiere tiempo o vidas activados
-            </p>
-          )}
-        </Section>
+        {multiplierOn && (
+          <Section label="⚡ Multiplicador">
+            <div className="flex items-center gap-2">
+              {(['off', 'on'] as const).map(v => {
+                const active = v === 'on' ? value.multiplier : !value.multiplier
+                const disabled = v === 'on' && !hasTermination
+                return (
+                  <button
+                    key={v}
+                    disabled={disabled}
+                    onClick={() => !disabled && onChange({ ...value, multiplier: v === 'on' })}
+                    className="px-4 py-1.5 rounded-xl font-bold text-xs transition-all active:scale-95"
+                    style={{
+                      ...pillStyle(active && !disabled),
+                      opacity: disabled ? 0.35 : 1,
+                      cursor: disabled ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {v === 'off' ? 'Off' : 'On ⚡'}
+                  </button>
+                )
+              })}
+            </div>
+            {!hasTermination && (
+              <p className="text-xs mt-1.5 w-full" style={{ color: 'var(--kids-text-muted)' }}>
+                Requiere tiempo o vidas activados
+              </p>
+            )}
+          </Section>
+        )}
 
         {/* CTA */}
-        <button
-          onClick={close}
-          className="w-full mt-6 py-4 rounded-2xl font-extrabold text-white text-lg transition-all hover:scale-[1.02] active:scale-95"
-          style={{ background: moduleConfig.gradient, boxShadow: moduleConfig.shadow }}
-        >
-          ¡Listo!
-        </button>
+        <div className="flex justify-center mt-6">
+          <button
+            onClick={close}
+            className="px-10 py-2.5 rounded-2xl font-extrabold text-white text-base transition-all hover:scale-[1.03] active:scale-95"
+            style={{ background: moduleConfig.gradient, boxShadow: moduleConfig.shadow }}
+          >
+            ¡Listo!
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -186,7 +215,7 @@ function Pill({ label, active, style, onTap }: {
   return (
     <button
       onClick={onTap}
-      className="px-5 py-2.5 rounded-2xl font-extrabold text-sm transition-all active:scale-95"
+      className="px-4 py-1.5 rounded-xl font-bold text-xs transition-all active:scale-95"
       style={style}
     >
       {label}

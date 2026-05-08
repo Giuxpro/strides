@@ -22,14 +22,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (profile?.role !== 'admin') redirect('/kids/play')
 
   return (
-    <div className="min-h-screen flex bg-gray-950 text-gray-100">
+    <div className="h-screen flex overflow-hidden bg-gray-950 text-gray-100">
       <aside className="w-52 flex-shrink-0 flex flex-col bg-[#07070a] border-r border-gray-800">
-        <div className="px-5 py-5 border-b border-gray-800">
+        <div className="flex-shrink-0 px-5 py-5 border-b border-gray-800">
           <p className="text-xs font-bold tracking-widest text-violet-400 uppercase">Strides</p>
           <p className="text-xs text-gray-600 mt-0.5">Administración</p>
         </div>
 
-        <nav className="flex-1 px-2 py-3 flex flex-col gap-0.5">
+        <nav className="flex-1 min-h-0 overflow-y-auto px-2 py-3 flex flex-col gap-0.5">
           {NAV.map(item => (
             <Link
               key={item.href}
@@ -41,7 +41,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           ))}
         </nav>
 
-        <div className="px-4 py-4 border-t border-gray-800">
+        <div className="flex-shrink-0 px-4 py-4 border-t border-gray-800">
           <Link
             href="/select-profile"
             className="block text-xs text-gray-600 hover:text-gray-400 transition-colors mb-3"

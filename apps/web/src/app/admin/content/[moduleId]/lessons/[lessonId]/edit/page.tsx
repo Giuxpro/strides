@@ -23,7 +23,7 @@ type RawStep = {
   config: Record<string, string>
   exercises: {
     id: string
-    type: 'memory' | 'recognition' | 'speaking'
+    type: string
     phase: 'practice' | 'evaluation'
     exercise_items: { vocabulary_item_id: string }[] | null
   } | null

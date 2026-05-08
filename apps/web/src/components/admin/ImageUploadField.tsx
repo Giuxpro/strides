@@ -25,11 +25,20 @@ export function ImageUploadField({ name, bucket, defaultValue = '', label = 'Ima
     setError(null)
     try {
       const supabase = createClient()
-      const ext = file.name.split('.').pop() ?? 'jpg'
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-      const { error: uploadErr } = await supabase.storage.from(bucket).upload(path, file)
+
+      // Delete previous file if it came from the same bucket
+      if (url) {
+        const marker = `/storage/v1/object/public/${bucket}/`
+        const idx    = url.indexOf(marker)
+        if (idx !== -1) {
+          const oldPath = decodeURIComponent(url.slice(idx + marker.length).split('?')[0] ?? '')
+          if (oldPath) await supabase.storage.from(bucket).remove([oldPath])
+        }
+      }
+
+      const { error: uploadErr } = await supabase.storage.from(bucket).upload(file.name, file, { upsert: true })
       if (uploadErr) throw uploadErr
-      const { data } = supabase.storage.from(bucket).getPublicUrl(path)
+      const { data } = supabase.storage.from(bucket).getPublicUrl(file.name)
       setUrl(data.publicUrl)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al subir')

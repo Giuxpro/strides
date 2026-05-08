@@ -19,7 +19,7 @@ export async function selectSelf() {
   redirect('/adult')
 }
 
-export async function createChild(formData: FormData) {
+export async function createChild(formData: FormData): Promise<void> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -33,11 +33,11 @@ export async function createChild(formData: FormData) {
       avatar_url: (formData.get('avatar_url') as string) || null,
     })
 
-  if (error) return { error: error.message }
+  if (error) throw new Error(error.message)
   redirect('/select-profile')
 }
 
-export async function updateChild(childId: string, formData: FormData) {
+export async function updateChild(childId: string, formData: FormData): Promise<void> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -52,7 +52,7 @@ export async function updateChild(childId: string, formData: FormData) {
     .eq('id', childId)
     .eq('parent_id', user.id)
 
-  if (error) return { error: error.message }
+  if (error) throw new Error(error.message)
   redirect('/select-profile')
 }
 

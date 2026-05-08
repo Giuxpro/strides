@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { Json } from '@strides/db'
+import { GAME_POOL } from '@/components/kids/engine/gamePool'
 
 async function requireAdmin() {
   const supabase = createClient()
@@ -28,18 +29,37 @@ export async function toggleModulePublished(moduleId: string, published: boolean
   revalidatePath('/kids/play')
 }
 
+export async function reorderModules(orders: { id: string; order: number }[]) {
+  const { supabase } = await requireAdmin()
+  await Promise.all(
+    orders.map(({ id, order }) => supabase.from('modules').update({ order }).eq('id', id))
+  )
+  revalidatePath('/admin/content')
+  revalidatePath('/kids/play')
+}
+
+export async function reorderLessons(moduleId: string, orders: { id: string; order: number }[]) {
+  const { supabase } = await requireAdmin()
+  await Promise.all(
+    orders.map(({ id, order }) => supabase.from('lessons').update({ order }).eq('id', id))
+  )
+  revalidatePath(`/admin/content/${moduleId}`)
+}
+
 export async function createModule(formData: FormData) {
   const { supabase } = await requireAdmin()
-  const title_es      = formData.get('title_es') as string
-  const title_en      = formData.get('title_en') as string
-  const slug          = formData.get('slug') as string
-  const description_es = (formData.get('description_es') as string) || null
+  const title_es        = formData.get('title_es') as string
+  const title_en        = formData.get('title_en') as string
+  const slug            = formData.get('slug') as string
+  const description_es  = (formData.get('description_es') as string) || null
+  const cover_image_url = (formData.get('cover_image_url') as string) || null
+  const audio_url       = (formData.get('audio_url') as string) || null
 
   const { count } = await supabase.from('modules').select('*', { count: 'exact', head: true })
 
   const { data: mod } = await supabase
     .from('modules')
-    .insert({ title_es, title_en, slug, description_es, order: (count ?? 0) + 1 })
+    .insert({ title_es, title_en, slug, description_es, cover_image_url, audio_url, order: (count ?? 0) + 1 })
     .select('id')
     .single()
 
@@ -50,16 +70,19 @@ export async function createModule(formData: FormData) {
 export async function updateModule(formData: FormData) {
   const { supabase } = await requireAdmin()
   const moduleId      = formData.get('id') as string
-  const title_es      = formData.get('title_es') as string
-  const title_en      = formData.get('title_en') as string
-  const description_es = (formData.get('description_es') as string) || null
-  const order         = Number(formData.get('order'))
+  const from          = (formData.get('from') as string) || ''
+  const title_es        = formData.get('title_es') as string
+  const title_en        = formData.get('title_en') as string
+  const description_es  = (formData.get('description_es') as string) || null
+  const order           = Number(formData.get('order'))
+  const cover_image_url = (formData.get('cover_image_url') as string) || null
+  const audio_url       = (formData.get('audio_url') as string) || null
 
-  await supabase.from('modules').update({ title_es, title_en, description_es, order }).eq('id', moduleId)
+  await supabase.from('modules').update({ title_es, title_en, description_es, order, cover_image_url, audio_url }).eq('id', moduleId)
 
   revalidatePath('/admin/content')
   revalidatePath(`/admin/content/${moduleId}`)
-  redirect(`/admin/content/${moduleId}`)
+  redirect(from === 'list' ? '/admin/content' : `/admin/content/${moduleId}`)
 }
 
 // ─── Lessons ────────────────────────────────────────────────────────────────
@@ -370,6 +393,12 @@ export async function updateSettings(formData: FormData) {
         lives:      formData.get('modifier_lives') === 'on',
         multiplier: formData.get('modifier_multiplier') === 'on',
       } as Json },
+    { key: 'game_configs', value: Object.fromEntries(
+        GAME_POOL.map(g => [g.id, {
+          minItems: Number(formData.get(`min_${g.id}`)),
+          maxItems: Number(formData.get(`max_${g.id}`)),
+        }])
+      ) as Json },
   ]
 
   await Promise.all(
@@ -401,8 +430,26 @@ export async function updateModuleRetoConfig(formData: FormData) {
     modifiers.push({ type: 'multiplier' })
   }
 
-  const retoPayload = { reto_game_id, reto_modifiers: modifiers.length > 0 ? modifiers : null }
+  const diarioRaw = formData.get('diario_game_id') as string
+  const diario_game_id = diarioRaw === 'auto' ? null : diarioRaw
+
+  const retoPayload = {
+    reto_game_id,
+    reto_modifiers: modifiers.length > 0 ? modifiers : null,
+    diario_game_id,
+  }
   await supabase.from('modules').update(retoPayload).eq('id', moduleId)
 
+  revalidatePath(`/admin/content/${moduleId}`)
+}
+
+// ─── Module Jugar Config ──────────────────────────────────────────────────────
+
+export async function updateModuleJugarConfig(formData: FormData): Promise<void> {
+  const { supabase } = await requireAdmin()
+  const moduleId = formData.get('module_id') as string
+  const checked = formData.getAll('active_game_id') as string[]
+  const active_game_ids: Json = checked.length > 0 ? checked : null
+  await supabase.from('modules').update({ active_game_ids }).eq('id', moduleId)
   revalidatePath(`/admin/content/${moduleId}`)
 }

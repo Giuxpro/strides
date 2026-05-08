@@ -169,6 +169,45 @@ export type Database = {
           },
         ]
       }
+      child_vocab_mastery: {
+        Row: {
+          attempt_count: number
+          child_id: string
+          correct_count: number
+          updated_at: string
+          vocab_id: string
+        }
+        Insert: {
+          attempt_count?: number
+          child_id: string
+          correct_count?: number
+          updated_at?: string
+          vocab_id: string
+        }
+        Update: {
+          attempt_count?: number
+          child_id?: string
+          correct_count?: number
+          updated_at?: string
+          vocab_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "child_vocab_mastery_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "child_vocab_mastery_vocab_id_fkey"
+            columns: ["vocab_id"]
+            isOneToOne: false
+            referencedRelation: "vocabulary_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       child_word_status: {
         Row: {
           child_id: string
@@ -625,45 +664,60 @@ export type Database = {
       }
       modules: {
         Row: {
+          active_game_ids: Json | null
+          audio_url: string | null
           countdown_weekly_limit: number
           cover_image_url: string | null
           created_at: string
           created_by: string | null
           daily_challenge_word_count: number
           description_es: string | null
+          diario_game_id: string | null
           id: string
           is_published: boolean
           order: number
+          reto_game_id: string | null
+          reto_modifiers: Json | null
           slug: string
           title_en: string
           title_es: string
           updated_at: string
         }
         Insert: {
+          active_game_ids?: Json | null
+          audio_url?: string | null
           countdown_weekly_limit?: number
           cover_image_url?: string | null
           created_at?: string
           created_by?: string | null
           daily_challenge_word_count?: number
           description_es?: string | null
+          diario_game_id?: string | null
           id?: string
           is_published?: boolean
           order?: number
+          reto_game_id?: string | null
+          reto_modifiers?: Json | null
           slug: string
           title_en: string
           title_es: string
           updated_at?: string
         }
         Update: {
+          active_game_ids?: Json | null
+          audio_url?: string | null
           countdown_weekly_limit?: number
           cover_image_url?: string | null
           created_at?: string
           created_by?: string | null
           daily_challenge_word_count?: number
           description_es?: string | null
+          diario_game_id?: string | null
           id?: string
           is_published?: boolean
           order?: number
+          reto_game_id?: string | null
+          reto_modifiers?: Json | null
           slug?: string
           title_en?: string
           title_es?: string
@@ -882,6 +936,15 @@ export type Database = {
       has_module_access: {
         Args: { p_module_id: string; p_user_id: string }
         Returns: boolean
+      }
+      increment_vocab_mastery: {
+        Args: {
+          p_attempt?: number
+          p_child_id: string
+          p_correct: number
+          p_vocab_id: string
+        }
+        Returns: undefined
       }
       is_admin: { Args: never; Returns: boolean }
     }

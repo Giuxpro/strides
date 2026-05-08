@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, type ComponentType } from 'react'
 import type { VocabItem } from '../LessonEngine'
 import type { ModuleConfig } from '@/components/kids/moduleConfig'
-import type { ModifierConfig, GameResult, ModifierState } from './types'
+import type { ModifierConfig, GameResult, ModifierState, WordResult } from './types'
 import type { GameProps } from '../gamePool'
 import { GameEventsContext } from './ModifierContext'
 
@@ -29,14 +29,15 @@ export function ModifierStack({ game: Game, items, modifiers, onGameEnd, onBack,
   const livesRef                          = useRef(livesCfg?.count ?? 0)
   const [livesLeft, setLivesLeft]         = useState(livesCfg?.count ?? 0)
   const statsRef                          = useRef({ correct: 0, total: 0 })
+  const wordResultsRef                    = useRef<WordResult[] | undefined>(undefined)
   const endedRef                          = useRef(false)
 
-  function end(result: GameResult) {
+  function end(result: Omit<GameResult, 'wordResults'>) {
     if (endedRef.current) return
     endedRef.current = true
     setIsTerminated(true)
     setEndReason(result.reason)
-    setTimeout(() => onGameEnd(result), 1000)
+    setTimeout(() => onGameEnd({ ...result, wordResults: wordResultsRef.current }), 1000)
   }
 
   // Timer countdown
@@ -72,7 +73,8 @@ export function ModifierStack({ game: Game, items, modifiers, onGameEnd, onBack,
     }
   }
 
-  function handleNaturalComplete(correct: number, total: number) {
+  function handleNaturalComplete(correct: number, total: number, wordResults?: WordResult[]) {
+    wordResultsRef.current = wordResults
     end({ correct, total, reason: 'completed' })
   }
 

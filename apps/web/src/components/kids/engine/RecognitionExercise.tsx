@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react'
 import type { VocabItem } from './LessonEngine'
 import type { ModuleConfig } from '@/components/kids/moduleConfig'
 import { useGameEvents } from './modifiers/ModifierContext'
+import { SPEECH_RATE_NORMAL, SPEECH_RATE_SLOW } from './speechRates'
+import type { WordResult } from './modifiers/types'
 
 interface Props {
   items: VocabItem[]
-  onComplete: (correct: number, total: number) => void
+  onComplete: (correct: number, total: number, wordResults?: WordResult[]) => void
   onBack: () => void
   moduleConfig: ModuleConfig
   progress: { current: number; total: number }
@@ -31,15 +33,6 @@ function getOptions(items: VocabItem[], correctId: string, count: number): Vocab
   return shuffle([...distractors, correct])
 }
 
-function speak(text: string) {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return
-  const utt = new SpeechSynthesisUtterance(text)
-  utt.lang = 'en-US'
-  utt.rate = 0.8
-  window.speechSynthesis.cancel()
-  window.speechSynthesis.speak(utt)
-}
-
 export function RecognitionExercise({ items, onComplete, onBack, moduleConfig, progress }: Props) {
   const { reportCorrect, reportWrong, isTerminated, modifierState } = useGameEvents()
   const [questions] = useState(() => shuffle([...items]))
@@ -51,10 +44,19 @@ export function RecognitionExercise({ items, onComplete, onBack, moduleConfig, p
   const question = questions[currentQ]
   const optionCount = Math.min(modifierState.optionCount, items.length)
 
+  function speakWord(text: string, slow = false) {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return
+    window.speechSynthesis.cancel()
+    const utt = new SpeechSynthesisUtterance(text)
+    utt.lang = 'en-US'
+    utt.rate = slow ? SPEECH_RATE_SLOW : SPEECH_RATE_NORMAL
+    window.speechSynthesis.speak(utt)
+  }
+
   useEffect(() => {
     if (!question) return
     setOptions(getOptions(items, question.id, optionCount))
-    const timer = setTimeout(() => speak(question.text_en), 350)
+    const timer = setTimeout(() => speakWord(question.text_en), 350)
     return () => clearTimeout(timer)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQ])
@@ -74,7 +76,8 @@ export function RecognitionExercise({ items, onComplete, onBack, moduleConfig, p
       if (currentQ < questions.length - 1) {
         setCurrentQ(prev => prev + 1)
       } else {
-        onComplete(newResults.filter(Boolean).length, newResults.length)
+        const wordResults = questions.map((q, i) => ({ vocabId: q.id, correct: newResults[i] ?? false }))
+        onComplete(newResults.filter(Boolean).length, newResults.length, wordResults)
       }
     }, 900)
   }
@@ -120,14 +123,25 @@ export function RecognitionExercise({ items, onComplete, onBack, moduleConfig, p
           <p className="text-sm mb-4" style={{ color: 'var(--kids-text-muted)' }}>
             ¿Cuál es esta palabra?
           </p>
-          <button
-            onClick={() => speak(question.text_en)}
-            className="w-28 h-28 rounded-3xl flex flex-col items-center justify-center gap-2 mx-auto transition-all hover:scale-105 active:scale-95"
-            style={{ background: moduleConfig.gradient, boxShadow: moduleConfig.shadow }}
-          >
-            <span className="text-4xl">🔊</span>
-            <span className="text-white font-extrabold text-sm">{question.text_en}</span>
-          </button>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={() => speakWord(question.text_en, false)}
+              className="w-28 h-28 rounded-3xl flex flex-col items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95"
+              style={{ background: moduleConfig.gradient, boxShadow: moduleConfig.shadow }}
+            >
+              <span className="text-4xl">🔊</span>
+              <span className="text-white font-extrabold text-sm">{question.text_en}</span>
+            </button>
+
+            <button
+              onClick={() => speakWord(question.text_en, true)}
+              title="Reproducir más lento"
+              className="w-11 h-11 rounded-full flex items-center justify-center text-xl transition-all hover:scale-110 active:scale-95"
+              style={{ background: moduleConfig.accentLight }}
+            >
+              🐢
+            </button>
+          </div>
         </div>
 
         {/* Options */}

@@ -4,6 +4,9 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { KidsModuleTabs } from '@/components/kids/KidsModuleTabs'
 import { getModuleConfig } from '@/components/kids/moduleConfig'
+import type { ModifierConfig, } from '@/components/kids/engine/modifiers/types'
+import type { AvailableModifiers } from '@/components/kids/ModifierPickerModal'
+import type { GameConfigs } from '@/components/kids/engine/gamePool'
 
 interface Props {
   params: Promise<{ moduleSlug: string }>
@@ -32,7 +35,7 @@ export default async function ModulePage({ params, searchParams }: Props) {
   const daysToMonday = now.getUTCDay() === 0 ? 6 : now.getUTCDay() - 1
   const weekStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysToMonday))
 
-  const [{ data: lessons }, { data: completions }, { data: vocab }, { data: dailyRow }, { count: countdownCount }] = await Promise.all([
+  const [{ data: lessons }, { data: completions }, { data: vocab }, { data: dailyRow }, { count: countdownCount }, { data: availModRow }, { data: gameConfigsRow }, { data: masteryRows }] = await Promise.all([
     supabase
       .from('lessons')
       .select('*')
@@ -66,11 +69,28 @@ export default async function ModulePage({ params, searchParams }: Props) {
         .eq('module_id', module.id)
         .gte('attempted_at', weekStart.toISOString())
       : Promise.resolve({ count: 0 }),
+    supabase.from('settings').select('value').eq('key', 'available_modifiers').maybeSingle(),
+    supabase.from('settings').select('value').eq('key', 'game_configs').maybeSingle(),
+    selectedChildId
+      ? supabase
+        .from('child_vocab_mastery')
+        .select('vocab_id, correct_count, attempt_count')
+        .eq('child_id', selectedChildId)
+      : Promise.resolve({ data: [] }),
   ])
 
   const config = getModuleConfig(moduleSlug)
+  const availableModifiers = (availModRow?.value as AvailableModifiers | null) ?? null
+  const gameConfigs = (gameConfigsRow?.value as GameConfigs | null) ?? null
   const starsMap = (completions ?? []).reduce<Record<string, number>>((acc, c) => {
     acc[c.lesson_id] = Math.max(acc[c.lesson_id] ?? 0, c.stars)
+    return acc
+  }, {})
+
+  // vocab_id → mastery level 0-3 derived from per-word attempt history
+  const vocabMasteryMap = (masteryRows ?? []).reduce<Record<string, number>>((acc, row) => {
+    const ratio = row.attempt_count > 0 ? row.correct_count / row.attempt_count : 0
+    acc[row.vocab_id] = ratio >= 0.8 ? 3 : ratio >= 0.4 ? 2 : 1
     return acc
   }, {})
 
@@ -159,6 +179,13 @@ export default async function ModulePage({ params, searchParams }: Props) {
             countdownAttemptsThisWeek={countdownCount ?? 0}
             countdownWeeklyLimit={module.countdown_weekly_limit}
             dailyWordCount={module.daily_challenge_word_count}
+            retoGameId={module.reto_game_id ?? null}
+            retoModifiers={(module.reto_modifiers as ModifierConfig[] | null) ?? null}
+            diarioGameId={module.diario_game_id ?? null}
+            availableModifiers={availableModifiers}
+            activeGameIds={(module.active_game_ids as string[] | null) ?? null}
+            gameConfigs={gameConfigs}
+            vocabMasteryMap={vocabMasteryMap}
           />
         ) : (
           <div className="text-center py-16 px-6">

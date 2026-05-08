@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
-export async function updateProfile(formData: FormData) {
+export async function updateProfile(formData: FormData): Promise<void> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -17,6 +17,6 @@ export async function updateProfile(formData: FormData) {
     .update({ display_name: displayName || null, avatar })
     .eq('id', user.id)
 
-  if (error) return { error: error.message }
+  if (error) throw new Error(error.message)
   redirect('/select-profile')
 }

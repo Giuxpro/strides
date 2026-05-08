@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import type { VocabItem } from './LessonEngine'
 import type { ModuleConfig } from '@/components/kids/moduleConfig'
 import { useGameEvents } from './modifiers/ModifierContext'
+import type { WordResult } from './modifiers/types'
 
 interface Card {
   uid: string
@@ -15,7 +16,7 @@ interface Card {
 
 interface Props {
   items: VocabItem[]
-  onComplete: (correct: number, total: number) => void
+  onComplete: (correct: number, total: number, wordResults?: WordResult[]) => void
   onBack: () => void
   moduleConfig: ModuleConfig
   progress: { current: number; total: number }
@@ -182,7 +183,10 @@ export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }
 
         {allMatched && (
           <button
-            onClick={() => onComplete(totalPairs, totalPairs)}
+            onClick={() => {
+              const wordResults = items.map(v => ({ vocabId: v.id, correct: true }))
+              onComplete(totalPairs, totalPairs, wordResults)
+            }}
             className="animate-pop-in text-white font-extrabold text-lg px-10 py-4 rounded-2xl transition-all hover:scale-105 active:scale-95"
             style={{ background: moduleConfig.gradient, boxShadow: moduleConfig.shadow }}
           >

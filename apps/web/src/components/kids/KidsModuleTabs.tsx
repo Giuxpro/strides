@@ -7,7 +7,11 @@ import type { ModuleConfig } from './moduleConfig'
 import { LessonCard } from './LessonCard'
 import { KidsJugarTab } from './KidsJugarTab'
 import { KidsRetosTab } from './KidsRetosTab'
+import { KidsPalabrasTab } from './KidsPalabrasTab'
 import { KidsBottomNav, type TabId } from './KidsBottomNav'
+import type { ModifierConfig, } from './engine/modifiers/types'
+import type { AvailableModifiers } from './ModifierPickerModal'
+import type { GameConfigs } from './engine/gamePool'
 
 interface Props {
   moduleSlug: string
@@ -23,12 +27,20 @@ interface Props {
   countdownAttemptsThisWeek: number
   countdownWeeklyLimit: number
   dailyWordCount: number
+  retoGameId: string | null
+  retoModifiers: ModifierConfig[] | null
+  diarioGameId: string | null
+  availableModifiers: AvailableModifiers | null
+  activeGameIds: string[] | null
+  gameConfigs: GameConfigs | null
+  vocabMasteryMap: Record<string, number>
 }
 
 export function KidsModuleTabs({
   moduleSlug, moduleId, lessons, starsMap, animLessonId, animPrevStars,
   vocab, moduleConfig, selectedChildId, dailyDone, countdownAttemptsThisWeek,
-  countdownWeeklyLimit, dailyWordCount,
+  countdownWeeklyLimit, dailyWordCount, retoGameId, retoModifiers, diarioGameId,
+  availableModifiers, activeGameIds, gameConfigs, vocabMasteryMap,
 }: Props) {
   const [tab, setTab] = useState<TabId>('aprender')
 
@@ -55,7 +67,14 @@ export function KidsModuleTabs({
       )}
 
       {tab === 'jugar' && (
-        <KidsJugarTab vocab={vocab} moduleConfig={moduleConfig} />
+        <KidsJugarTab
+          vocab={vocab}
+          moduleConfig={moduleConfig}
+          selectedChildId={selectedChildId}
+          availableModifiers={availableModifiers}
+          activeGameIds={activeGameIds}
+          gameConfigs={gameConfigs}
+        />
       )}
 
       {tab === 'retos' && (
@@ -68,9 +87,18 @@ export function KidsModuleTabs({
           countdownAttemptsThisWeek={countdownAttemptsThisWeek}
           countdownWeeklyLimit={countdownWeeklyLimit}
           dailyWordCount={dailyWordCount}
+          retoGameId={retoGameId}
+          retoModifiers={retoModifiers}
+          diarioGameId={diarioGameId}
         />
       )}
-      {tab === 'palabras' && <ComingSoon emoji="🎒" label="Tu diccionario personal del módulo" />}
+      {tab === 'palabras' && (
+        <KidsPalabrasTab
+          vocab={vocab}
+          masteryMap={vocabMasteryMap}
+          moduleConfig={moduleConfig}
+        />
+      )}
 
       <KidsBottomNav active={tab} onChange={setTab} />
     </div>

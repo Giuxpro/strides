@@ -4,10 +4,11 @@ import { useState, useEffect, useRef } from 'react'
 import type { VocabItem } from './LessonEngine'
 import type { ModuleConfig } from '@/components/kids/moduleConfig'
 import { useGameEvents } from './modifiers/ModifierContext'
+import type { WordResult } from './modifiers/types'
 
 interface Props {
   items: VocabItem[]
-  onComplete: (correct: number, total: number) => void
+  onComplete: (correct: number, total: number, wordResults?: WordResult[]) => void
   onBack: () => void
   moduleConfig: ModuleConfig
   progress: { current: number; total: number }
@@ -27,7 +28,7 @@ interface RecognitionInstance {
   interimResults: boolean
   maxAlternatives: number
   onresult: ((e: RecognitionEvent) => void) | null
-  onerror: (() => void) | null
+  onerror: ((e: { error: string }) => void) | null
   onend: (() => void) | null
   start(): void
   abort(): void
@@ -88,9 +89,18 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
 
     rec.onresult = (event: RecognitionEvent) => {
       const firstResult = event.results[0]
-      const transcript = Array.from({ length: firstResult ? Object.keys(firstResult).length : 0 })
-        .map((_, i) => firstResult?.[i]?.transcript ?? '')
-        .find(t => normalize(t) === normalize(question.text_en)) ?? (firstResult?.[0]?.transcript ?? '')
+      if (!firstResult) return
+
+      const alternatives: string[] = []
+      for (let i = 0; i < firstResult.length; i++) {
+        const alt = firstResult[i]
+        if (alt) alternatives.push(alt.transcript)
+      }
+
+      const transcript =
+        alternatives.find(t => normalize(t) === normalize(question.text_en)) ??
+        alternatives[0] ??
+        ''
 
       const isCorrect = normalize(transcript) === normalize(question.text_en)
       if (isCorrect) reportCorrect()
@@ -107,12 +117,19 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
         if (currentQ < questions.length - 1) {
           setCurrentQ(prev => prev + 1)
         } else {
-          onComplete(newResults.filter(Boolean).length, newResults.length)
+          const wordResults = questions.map((q, i) => ({ vocabId: q.id, correct: newResults[i] ?? false }))
+          onComplete(newResults.filter(Boolean).length, newResults.length, wordResults)
         }
       }, 1500)
     }
 
-    rec.onerror = () => { setMicState('idle') }
+    rec.onerror = (e: { error: string }) => {
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+        setMicState('unsupported')
+      } else {
+        setMicState('idle')
+      }
+    }
 
     rec.onend = () => { setMicState(prev => prev === 'listening' ? 'idle' : prev) }
 
@@ -128,7 +145,8 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
     if (currentQ < questions.length - 1) {
       setCurrentQ(prev => prev + 1)
     } else {
-      onComplete(newResults.filter(Boolean).length, newResults.length)
+      const wordResults = questions.map((q, i) => ({ vocabId: q.id, correct: newResults[i] ?? false }))
+      onComplete(newResults.filter(Boolean).length, newResults.length, wordResults)
     }
   }
 

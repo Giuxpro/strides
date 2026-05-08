@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createModule } from '@/app/actions/admin'
+import { ImageUploadField } from '@/components/admin/ImageUploadField'
 
 const I = 'w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500'
 const L = 'block text-sm text-gray-400 mb-1.5'
@@ -46,6 +47,19 @@ export default function NewModulePage() {
             placeholder="Aprende los nombres de los animales más comunes"
           />
         </div>
+
+        <ImageUploadField
+          name="cover_image_url"
+          bucket="module-covers"
+          label="Imagen de portada (opcional)"
+        />
+
+        <ImageUploadField
+          name="audio_url"
+          bucket="module-audio"
+          label="Audio del módulo (opcional)"
+          accept="audio/*"
+        />
 
         <div className="flex items-center gap-4 pt-2">
           <button

@@ -5,9 +5,11 @@ import { MemoryGame } from './MemoryGame'
 import { RecognitionExercise } from './RecognitionExercise'
 import { SpeakingExercise } from './SpeakingExercise'
 
+import type { WordResult } from './modifiers/types'
+
 export interface GameProps {
   items: VocabItem[]
-  onComplete: (correct: number, total: number) => void
+  onComplete: (correct: number, total: number, wordResults: WordResult[]) => void
   onBack: () => void
   moduleConfig: ModuleConfig
   progress?: { current: number; total: number }
@@ -52,6 +54,8 @@ export const GAME_POOL: PoolEntry[] = [
     component: SpeakingExercise as ComponentType<GameProps>,
   },
 ]
+
+export type GameConfigs = Record<string, { minItems?: number; maxItems?: number }>
 
 export function getGameById(id: string): PoolEntry | undefined {
   return GAME_POOL.find(g => g.id === id)

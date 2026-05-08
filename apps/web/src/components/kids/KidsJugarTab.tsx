@@ -3,12 +3,14 @@
 import { useState } from 'react'
 import type { VocabItem } from './engine/LessonEngine'
 import type { ModuleConfig } from './moduleConfig'
-import { GAME_POOL, type PoolEntry } from './engine/gamePool'
+import { GAME_POOL, type PoolEntry, type GameConfigs } from './engine/gamePool'
 import { ModifierStack } from './engine/modifiers/ModifierStack'
 import type { GameResult } from './engine/modifiers/types'
+import { recordVocabMastery } from '@/app/actions/lessons'
 import {
   ModifierPickerModal,
   type ModifierSelection,
+  type AvailableModifiers,
   DEFAULT_MODIFIER_SELECTION,
   toModifierConfigs,
   modifierLabel,
@@ -17,6 +19,10 @@ import {
 interface Props {
   vocab: VocabItem[]
   moduleConfig: ModuleConfig
+  selectedChildId: string | null
+  availableModifiers?: AvailableModifiers | null
+  activeGameIds?: string[] | null
+  gameConfigs?: GameConfigs | null
 }
 
 type Phase = 'pick' | 'playing' | 'done'
@@ -30,7 +36,7 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-export function KidsJugarTab({ vocab, moduleConfig }: Props) {
+export function KidsJugarTab({ vocab, moduleConfig, selectedChildId, availableModifiers, activeGameIds, gameConfigs }: Props) {
   const [phase, setPhase]               = useState<Phase>('pick')
   const [activeGame, setActiveGame]     = useState<PoolEntry | null>(null)
   const [gameVocab, setGameVocab]       = useState<VocabItem[]>([])
@@ -38,7 +44,20 @@ export function KidsJugarTab({ vocab, moduleConfig }: Props) {
   const [modSel, setModSel]             = useState<ModifierSelection>(DEFAULT_MODIFIER_SELECTION)
   const [showModModal, setShowModModal] = useState(false)
 
-  const activeModifiers = toModifierConfigs(modSel)
+  // Mask out modifiers disabled by admin
+  const effectiveModSel: ModifierSelection = {
+    timer:      (!availableModifiers || availableModifiers.timer      !== false) ? modSel.timer      : null,
+    lives:      (!availableModifiers || availableModifiers.lives      !== false) ? modSel.lives      : null,
+    multiplier: (!availableModifiers || availableModifiers.multiplier !== false) ? modSel.multiplier : false,
+  }
+  const effectivePool = GAME_POOL
+    .filter(g => !activeGameIds || activeGameIds.includes(g.id))
+    .map(g => {
+      const cfg = gameConfigs?.[g.id]
+      return cfg ? { ...g, minItems: cfg.minItems ?? g.minItems, maxItems: cfg.maxItems ?? g.maxItems } : g
+    })
+
+  const activeModifiers = toModifierConfigs(effectiveModSel)
   const hasModifiers    = activeModifiers.length > 0
 
   function startGame(game: PoolEntry) {
@@ -50,6 +69,9 @@ export function KidsJugarTab({ vocab, moduleConfig }: Props) {
 
   function handleGameEnd(result: GameResult) {
     setLastResult(result)
+    if (selectedChildId && result.wordResults?.length) {
+      recordVocabMastery(selectedChildId, result.wordResults).catch(() => {})
+    }
     setPhase('done')
   }
 
@@ -97,7 +119,7 @@ export function KidsJugarTab({ vocab, moduleConfig }: Props) {
         )}
         {hasModifiers && (
           <p className="text-xs font-semibold" style={{ color: 'var(--kids-text-muted)' }}>
-            {modifierLabel(modSel)}
+            {modifierLabel(effectiveModSel)}
           </p>
         )}
         <div className="flex gap-3 mt-3">
@@ -125,28 +147,28 @@ export function KidsJugarTab({ vocab, moduleConfig }: Props) {
     <>
       <div className="px-6 pt-4">
 
-        {/* Header con botón de modo */}
-        <div className="flex items-center justify-between mb-6">
+        {/* Header */}
+        <div className="flex flex-col items-center gap-3 mb-6">
           <h2 className="font-extrabold text-lg" style={{ color: 'var(--kids-text)' }}>
             ¿A qué jugamos?
           </h2>
           <button
             onClick={() => setShowModModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl font-bold text-sm transition-all hover:scale-105 active:scale-95"
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-2xl font-bold text-sm transition-all hover:scale-105 active:scale-95"
             style={{
               background: hasModifiers ? moduleConfig.gradient : 'rgba(0,0,0,0.07)',
               color: hasModifiers ? '#fff' : 'var(--kids-text-muted)',
               boxShadow: hasModifiers ? moduleConfig.shadow : 'none',
             }}
           >
-            {hasModifiers ? modifierLabel(modSel) : '⚡ Normal'}
+            {hasModifiers ? modifierLabel(effectiveModSel) : '⚙️ Opciones de juego'}
             <span style={{ fontSize: '0.65rem', opacity: 0.7 }}>▾</span>
           </button>
         </div>
 
         {/* Game cards */}
         <div className="flex flex-wrap gap-5 justify-center">
-          {GAME_POOL.map(game => {
+          {effectivePool.map(game => {
             const enough = vocab.length >= game.minItems
             return (
               <button
@@ -183,10 +205,11 @@ export function KidsJugarTab({ vocab, moduleConfig }: Props) {
 
       {showModModal && (
         <ModifierPickerModal
-          value={modSel}
+          value={effectiveModSel}
           onChange={setModSel}
           onClose={() => setShowModModal(false)}
           moduleConfig={moduleConfig}
+          availableModifiers={availableModifiers}
         />
       )}
     </>

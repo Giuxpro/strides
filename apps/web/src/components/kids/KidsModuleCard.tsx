@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import type { Module } from '@strides/db'
 import { getModuleConfig } from './moduleConfig'
@@ -7,55 +9,61 @@ interface Props {
   index: number
 }
 
+// Each island levitates at a different phase so they don't all move in sync
+const LEVITATE_DELAYS = ['0s', '0.7s', '1.4s', '2.1s', '0.35s', '1.05s', '1.75s', '2.45s']
+
 export function KidsModuleCard({ module, index }: Props) {
-  const config = getModuleConfig(module.slug)
-  const delay = `${index * 100}ms`
+  const config       = getModuleConfig(module.slug)
+  const popDelay     = `${index * 120}ms`
+  const levDelay     = LEVITATE_DELAYS[index % LEVITATE_DELAYS.length] ?? '0s'
 
   return (
-    <Link href={`/kids/play/${module.slug}`} className="block group">
+    <Link href={`/kids/play/${module.slug}`} className="block select-none group">
       <div
-        className="animate-pop-in relative overflow-hidden rounded-3xl cursor-pointer transition-all duration-300 ease-out group-hover:scale-[1.02] group-hover:-translate-y-1 active:scale-95"
-        style={{ background: config.gradient, boxShadow: config.shadow, animationDelay: delay }}
+        className="animate-pop-in flex flex-col items-center gap-3"
+        style={{ animationDelay: popDelay }}
       >
-        {/* Stop number badge */}
-        <div className="absolute top-4 left-4 w-8 h-8 rounded-full bg-black/25 flex items-center justify-center z-10">
-          <span className="text-white font-black text-sm">{index + 1}</span>
-        </div>
-
-        {/* Decorative orbs */}
+        {/*
+         * Two nested divs to avoid transform conflict:
+         *   outer → CSS animation (translateY levitation)
+         *   inner → Tailwind hover (scale), won't clash with outer's transform
+         */}
         <div
-          className="absolute -top-8 -right-8 w-44 h-44 rounded-full opacity-20 pointer-events-none"
-          style={{ background: 'rgba(255,255,255,0.4)' }}
-        />
-        <div
-          className="absolute -bottom-10 -left-6 w-32 h-32 rounded-full opacity-10 pointer-events-none"
-          style={{ background: 'rgba(255,255,255,0.5)' }}
-        />
-
-        <div className="relative z-10 flex items-center gap-5 px-6 py-5 pl-16">
-          {/* Emoji */}
-          <span
-            className="animate-float text-7xl leading-none flex-shrink-0"
-            style={{ animationDelay: delay }}
-          >
-            {config.emoji}
-          </span>
-
-          {/* Text */}
-          <div className="flex-1 min-w-0">
-            <h3 className="text-white font-extrabold text-2xl leading-tight drop-shadow-sm">
-              {module.title_es}
-            </h3>
-            <p className="text-white/70 text-sm font-semibold uppercase tracking-wide mt-0.5">
-              {module.title_en}
-            </p>
-          </div>
-
-          {/* Arrow */}
-          <div className="w-10 h-10 rounded-full bg-white/25 flex items-center justify-center group-hover:bg-white/40 transition-colors flex-shrink-0">
-            <span className="text-white text-xl">→</span>
+          className="animate-levitate w-full aspect-square"
+          style={{ animationDelay: levDelay }}
+        >
+          <div className="w-full h-full transition-transform duration-300 ease-out group-hover:scale-110 active:scale-95">
+            {module.cover_image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={module.cover_image_url}
+                alt={module.title_es}
+                className="w-full h-full object-contain"
+                style={{ filter: 'drop-shadow(0 20px 36px rgba(80,20,160,0.30)) drop-shadow(0 6px 12px rgba(0,0,0,0.18))' }}
+                draggable={false}
+              />
+            ) : (
+              <div
+                className="w-full h-full rounded-full flex items-center justify-center"
+                style={{ background: config.gradient, boxShadow: config.shadow }}
+              >
+                <span style={{ fontSize: '5rem', lineHeight: 1 }}>{config.emoji}</span>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Title */}
+        <h3
+          className="text-center font-extrabold text-lg sm:text-xl leading-snug px-2"
+          style={{
+            color: '#fff',
+            textShadow:
+              '-2px -2px 0 rgba(80,20,160,0.7), 2px -2px 0 rgba(80,20,160,0.7), -2px 2px 0 rgba(80,20,160,0.7), 2px 2px 0 rgba(80,20,160,0.7), 0 4px 14px rgba(80,20,160,0.5)',
+          }}
+        >
+          {module.title_es}
+        </h3>
       </div>
     </Link>
   )

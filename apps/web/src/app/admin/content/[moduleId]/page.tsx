@@ -1,9 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { toggleLessonPublished, deleteLesson, deleteVocabItem } from '@/app/actions/admin'
+import { deleteVocabItem } from '@/app/actions/admin'
 import { VocabUsagePopover } from '@/components/admin/VocabUsagePopover'
 import { RetoConfigForm } from '@/components/admin/RetoConfigForm'
+import { ModuleJugarConfigForm } from '@/components/admin/ModuleJugarConfigForm'
+import { SortableLessonList } from '@/components/admin/SortableLessonList'
 import type { ModifierConfig } from '@/components/kids/engine/modifiers/types'
 
 interface Props {
@@ -22,13 +24,18 @@ const TB = 'px-4 py-1.5 rounded-lg text-sm font-medium transition-colors'
 
 export default async function AdminModuleDetailPage({ params, searchParams }: Props) {
   const supabase = createClient()
-  const tab = searchParams.tab === 'lessons' ? 'lessons' : searchParams.tab === 'retos' ? 'retos' : 'vocab'
+  const tab = searchParams.tab === 'lessons' ? 'lessons'
+    : searchParams.tab === 'retos'  ? 'retos'
+    : searchParams.tab === 'juegos' ? 'juegos'
+    : 'vocab'
 
-  const [{ data: mod }, { data: modReto }, { data: lessons }, { data: vocab }, { data: exercisesRaw }] = await Promise.all([
+  const [{ data: mod }, { data: modGame }, { data: lessons }, { data: vocab }, { data: exercisesRaw }] = await Promise.all([
     supabase.from('modules').select('id, title_es, title_en, slug').eq('id', params.moduleId).single(),
-    supabase.from('modules').select('reto_game_id, reto_modifiers').eq('id', params.moduleId).single() as unknown as
-      Promise<{ data: { reto_game_id: string | null; reto_modifiers: ModifierConfig[] | null } | null }>,
-    supabase.from('lessons').select('id, title_es, title_en, order, is_published').eq('module_id', params.moduleId).order('order'),
+    supabase.from('modules')
+      .select('reto_game_id, reto_modifiers, diario_game_id, active_game_ids')
+      .eq('id', params.moduleId).single() as unknown as
+      Promise<{ data: { reto_game_id: string | null; reto_modifiers: ModifierConfig[] | null; diario_game_id: string | null; active_game_ids: string[] | null } | null }>,
+    supabase.from('lessons').select('id, title_es, title_en, order, is_published, cover_url').eq('module_id', params.moduleId).order('order'),
     supabase.from('vocabulary_items').select('id, text_es, text_en, image_url, type, order').eq('module_id', params.moduleId).order('order'),
     supabase.from('exercises').select('lesson_id, lessons(id, title_es), exercise_items(vocabulary_item_id)').eq('module_id', params.moduleId) as unknown as Promise<{ data: ExerciseRow[] | null }>,
   ])
@@ -83,6 +90,12 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
           Lecciones ({lessons?.length ?? 0})
         </Link>
         <Link
+          href="?tab=juegos"
+          className={`${TB} ${tab === 'juegos' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
+        >
+          Juegos
+        </Link>
+        <Link
           href="?tab=retos"
           className={`${TB} ${tab === 'retos' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
         >
@@ -103,74 +116,7 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
             </Link>
           </div>
 
-          <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
-                  <th className="text-left px-5 py-3 w-10">#</th>
-                  <th className="text-left px-5 py-3">Lección</th>
-                  <th className="text-center px-5 py-3">Estado</th>
-                  <th className="px-5 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {(lessons ?? []).map(lesson => (
-                  <tr key={lesson.id} className="border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors">
-                    <td className="px-5 py-3 text-gray-600 text-xs">{lesson.order}</td>
-                    <td className="px-5 py-3">
-                      <p className="font-medium text-white">{lesson.title_es}</p>
-                      <p className="text-xs text-gray-500">{lesson.title_en}</p>
-                    </td>
-                    <td className="px-5 py-3 text-center">
-                      <form action={async () => {
-                        'use server'
-                        await toggleLessonPublished(lesson.id, !lesson.is_published)
-                      }}>
-                        <button
-                          type="submit"
-                          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                            lesson.is_published
-                              ? 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25'
-                              : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                          }`}
-                        >
-                          {lesson.is_published ? 'Publicada' : 'Borrador'}
-                        </button>
-                      </form>
-                    </td>
-                    <td className="px-5 py-3">
-                      <div className="flex items-center justify-end gap-3">
-                        <Link
-                          href={`/admin/content/${params.moduleId}/lessons/${lesson.id}/edit`}
-                          className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
-                        >
-                          Editar
-                        </Link>
-                        <form action={deleteLesson}>
-                          <input type="hidden" name="lesson_id" value={lesson.id} />
-                          <input type="hidden" name="module_id" value={params.moduleId} />
-                          <button type="submit" className="text-xs text-red-800 hover:text-red-500 transition-colors">
-                            Eliminar
-                          </button>
-                        </form>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-
-                {(!lessons || lessons.length === 0) && (
-                  <tr>
-                    <td colSpan={4} className="px-5 py-8 text-center text-gray-600">
-                      Sin lecciones.{' '}
-                      <Link href={`/admin/content/${params.moduleId}/lessons/new`} className="text-violet-400 hover:text-violet-300">
-                        Crear la primera →
-                      </Link>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <SortableLessonList moduleId={params.moduleId} lessons={lessons ?? []} />
         </section>
       )}
 
@@ -180,14 +126,29 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
           <div className="mb-5">
             <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Configuración de retos</h2>
             <p className="text-xs text-gray-600">
-              Ajusta el juego y los modificadores del contrarreloj para este módulo.
-              Si no se configura, se usan los valores por defecto del registro.
+              Juego y modificadores de cada reto para este módulo. Si se deja en &quot;Auto&quot;, se usan los valores por defecto.
             </p>
           </div>
           <RetoConfigForm
             moduleId={params.moduleId}
-            initialGameId={modReto?.reto_game_id ?? null}
-            initialModifiers={modReto?.reto_modifiers ?? null}
+            initialGameId={modGame?.reto_game_id ?? null}
+            initialModifiers={modGame?.reto_modifiers ?? null}
+            initialDiarioGameId={modGame?.diario_game_id ?? null}
+          />
+        </section>
+      )}
+
+      {tab === 'juegos' && (
+        <section>
+          <div className="mb-5">
+            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Juegos disponibles</h2>
+            <p className="text-xs text-gray-600">
+              Controla qué juegos aparecen en el tab Jugar para este módulo.
+            </p>
+          </div>
+          <ModuleJugarConfigForm
+            moduleId={params.moduleId}
+            initialActiveGameIds={modGame?.active_game_ids ?? null}
           />
         </section>
       )}

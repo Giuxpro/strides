@@ -1,13 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { toggleModulePublished } from '@/app/actions/admin'
+import { SortableModuleList } from '@/components/admin/SortableModuleList'
 
 export default async function AdminContentPage() {
   const supabase = createClient()
 
   const { data: modules } = await supabase
     .from('modules')
-    .select('id, title_es, title_en, slug, is_published, order')
+    .select('id, title_es, title_en, slug, is_published, order, cover_image_url')
     .order('order')
 
   const { data: lessonCounts } = await supabase
@@ -34,67 +34,16 @@ export default async function AdminContentPage() {
         </Link>
       </div>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
-              <th className="text-left px-5 py-3">Módulo</th>
-              <th className="text-left px-5 py-3">Slug</th>
-              <th className="text-center px-5 py-3">Lecciones</th>
-              <th className="text-center px-5 py-3">Estado</th>
-              <th className="px-5 py-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {(modules ?? []).map(mod => (
-              <tr key={mod.id} className="border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors">
-                <td className="px-5 py-3">
-                  <p className="font-medium text-white">{mod.title_es}</p>
-                  <p className="text-xs text-gray-500">{mod.title_en}</p>
-                </td>
-                <td className="px-5 py-3 text-gray-400 font-mono text-xs">{mod.slug}</td>
-                <td className="px-5 py-3 text-center text-gray-300">{countByModule[mod.id] ?? 0}</td>
-                <td className="px-5 py-3 text-center">
-                  <form action={async () => {
-                    'use server'
-                    await toggleModulePublished(mod.id, !mod.is_published)
-                  }}>
-                    <button
-                      type="submit"
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                        mod.is_published
-                          ? 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25'
-                          : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                      }`}
-                    >
-                      {mod.is_published ? 'Publicado' : 'Borrador'}
-                    </button>
-                  </form>
-                </td>
-                <td className="px-5 py-3 text-right">
-                  <Link
-                    href={`/admin/content/${mod.id}`}
-                    className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
-                  >
-                    Ver →
-                  </Link>
-                </td>
-              </tr>
-            ))}
-
-            {(!modules || modules.length === 0) && (
-              <tr>
-                <td colSpan={5} className="px-5 py-10 text-center text-gray-600">
-                  Sin módulos aún.{' '}
-                  <Link href="/admin/content/new" className="text-violet-400 hover:text-violet-300">
-                    Crear el primero →
-                  </Link>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {modules && modules.length > 0 ? (
+        <SortableModuleList modules={modules} lessonCounts={countByModule} />
+      ) : (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-10 text-center text-gray-600">
+          Sin módulos aún.{' '}
+          <Link href="/admin/content/new" className="text-violet-400 hover:text-violet-300">
+            Crear el primero →
+          </Link>
+        </div>
+      )}
     </div>
   )
 }

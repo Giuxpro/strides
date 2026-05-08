@@ -6,8 +6,9 @@ import type { ModuleConfig } from './moduleConfig'
 import { RETO_REGISTRY, type RetoId, type RetoConfig, type RetoState } from './engine/retoRegistry'
 import { getGameById } from './engine/gamePool'
 import { ModifierStack } from './engine/modifiers/ModifierStack'
-import type { GameResult } from './engine/modifiers/types'
+import type { GameResult, ModifierConfig } from './engine/modifiers/types'
 import { completeDailyChallenge, recordCountdownAttempt } from '@/app/actions/challenges'
+import { recordVocabMastery } from '@/app/actions/lessons'
 
 // Seeded PRNG — misma selección cada día para el mismo módulo
 function seededNext(s: number): number {
@@ -38,11 +39,15 @@ interface Props {
   countdownAttemptsThisWeek: number
   countdownWeeklyLimit: number
   dailyWordCount: number
+  retoGameId?: string | null
+  retoModifiers?: ModifierConfig[] | null
+  diarioGameId?: string | null
 }
 
 export function KidsRetosTab({
   vocab, moduleConfig, moduleId, selectedChildId, dailyDone,
   countdownAttemptsThisWeek, countdownWeeklyLimit, dailyWordCount,
+  retoGameId, retoModifiers, diarioGameId,
 }: Props) {
   const today = new Date().toISOString().split('T')[0] ?? ''
   const [dailyItems] = useState(() => getDailyVocab(vocab, moduleId, today, dailyWordCount))
@@ -73,6 +78,9 @@ export function KidsRetosTab({
 
   function handleGameEnd(result: GameResult) {
     setLastResult(result)
+    if (selectedChildId && result.wordResults?.length) {
+      recordVocabMastery(selectedChildId, result.wordResults).catch(() => {})
+    }
     if (activeRetoId === 'diario' && selectedChildId && !completedDaily) {
       const stars = Math.round((result.total > 0 ? result.correct / result.total : 1) * 3)
       completeDailyChallenge(selectedChildId, moduleId, today, stars)
@@ -90,14 +98,21 @@ export function KidsRetosTab({
   /* ── Playing ── */
   if (phase === 'playing' && activeRetoId) {
     const entry = RETO_REGISTRY.find(r => r.id === activeRetoId)
-    const game = entry?.gameId ? getGameById(entry.gameId) : undefined
+    const isCountdown = activeRetoId === 'contrarreloj'
+    const isDiario    = activeRetoId === 'diario'
+    const effectiveGameId =
+      (isDiario    && diarioGameId)         ? diarioGameId :
+      (isCountdown && retoGameId)           ? retoGameId   :
+      entry?.gameId
+    const effectiveModifiers = (isCountdown && retoModifiers?.length) ? retoModifiers : entry?.modifiers ?? []
+    const game = effectiveGameId ? getGameById(effectiveGameId) : undefined
     if (entry && game) {
       return (
         <div className="fixed inset-0 z-[60]" style={{ background: 'var(--kids-bg)' }}>
           <ModifierStack
             game={game.component}
             items={entry.getItems(vocab, dailyItems)}
-            modifiers={entry.modifiers}
+            modifiers={effectiveModifiers}
             onGameEnd={handleGameEnd}
             onBack={backToPick}
             moduleConfig={moduleConfig}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import type { ModuleConfig } from '@/components/kids/moduleConfig'
+import { SPEECH_RATE_NORMAL, SPEECH_RATE_SLOW } from './speechRates'
 
 interface Props {
   title: string | null
@@ -14,20 +15,18 @@ interface Props {
 
 export function SlideStep({ title, config, onComplete, onBack, moduleConfig, progress }: Props) {
   const [speaking, setSpeaking] = useState(false)
-  const [slow, setSlow] = useState(false)
 
-  function speak(useSlow: boolean) {
+  function speak(slow: boolean) {
     if (!('speechSynthesis' in window)) return
     window.speechSynthesis.cancel()
     const utt = new SpeechSynthesisUtterance(config.text_en)
     utt.lang  = 'en-US'
-    utt.rate  = useSlow ? 0.55 : 0.85
+    utt.rate  = slow ? SPEECH_RATE_SLOW : SPEECH_RATE_NORMAL
     utt.onend = () => setSpeaking(false)
     setSpeaking(true)
     window.speechSynthesis.speak(utt)
   }
 
-  // Auto-play after a brief pause so the page is fully settled
   useEffect(() => {
     const timer = setTimeout(() => speak(false), 700)
     return () => {
@@ -38,14 +37,11 @@ export function SlideStep({ title, config, onComplete, onBack, moduleConfig, pro
   }, [])
 
   function handleSpeaker() {
-    if (speaking) { window.speechSynthesis.cancel(); setSpeaking(false); return }
-    speak(slow)
+    speak(false)
   }
 
   function handleTurtle() {
-    const next = !slow
-    setSlow(next)
-    speak(next)
+    speak(true)
   }
 
   return (
@@ -109,9 +105,7 @@ export function SlideStep({ title, config, onComplete, onBack, moduleConfig, pro
               <button
                 onClick={handleTurtle}
                 className="w-11 h-11 rounded-full flex items-center justify-center text-xl transition-all hover:scale-110 active:scale-95"
-                style={{
-                  background: slow ? moduleConfig.accent : moduleConfig.accentLight,
-                }}
+                style={{ background: moduleConfig.accentLight }}
                 aria-label="Reproducir más lento"
                 title="Más lento"
               >

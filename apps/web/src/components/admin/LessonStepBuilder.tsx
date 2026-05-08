@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { addLessonStep, updateLessonStep, deleteLessonStep, reorderLessonSteps } from '@/app/actions/admin'
 import { VocabPicker, type VocabItemWithUsage } from './VocabPicker'
+import { GAME_POOL } from '@/components/kids/engine/gamePool'
 
 type StepType = 'video' | 'slide' | 'exercise'
 
@@ -14,7 +15,7 @@ interface AdminStep {
   config: Record<string, string>
   exercise: {
     id: string
-    type: 'memory' | 'recognition' | 'speaking'
+    type: string
     phase: 'practice' | 'evaluation'
     vocabIds: string[]
   } | null
@@ -37,9 +38,10 @@ function stepSummary(step: AdminStep): string {
   if (step.step_type === 'video') return step.config.caption ?? step.config.url ?? '—'
   if (step.step_type === 'slide') return step.config.text_en ?? '—'
   if (step.step_type === 'exercise' && step.exercise) {
-    const t = { memory: 'Memorama', recognition: 'Reconocimiento', speaking: 'Pronunciación' }[step.exercise.type]
+    const game = GAME_POOL.find(g => g.id === step.exercise!.type)
+    const label = game ? game.title : step.exercise.type
     const words = step.exercise.vocabIds.length
-    return `${t} · ${step.exercise.phase === 'evaluation' ? 'Evaluación' : 'Práctica'} · ${words} palabras`
+    return `${label} · ${step.exercise.phase === 'evaluation' ? 'Evaluación' : 'Práctica'} · ${words} palabras`
   }
   return '—'
 }
@@ -126,9 +128,9 @@ function StepEditForm({
               <div>
                 <label className={L}>Tipo <span className="text-red-500">*</span></label>
                 <select name="exercise_type" defaultValue={step.exercise.type} className={I}>
-                  <option value="memory">Memorama</option>
-                  <option value="recognition">Reconocimiento</option>
-                  <option value="speaking">Pronunciación</option>
+                  {GAME_POOL.map(g => (
+                    <option key={g.id} value={g.id}>{g.emoji} {g.title}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -459,9 +461,9 @@ export function LessonStepBuilder({ lessonId, moduleId, steps, vocabItems }: Pro
                   <div>
                     <label className={L}>Tipo <span className="text-red-500">*</span></label>
                     <select name="exercise_type" className={I}>
-                      <option value="memory">Memorama</option>
-                      <option value="recognition">Reconocimiento</option>
-                      <option value="speaking">Pronunciación</option>
+                      {GAME_POOL.map(g => (
+                        <option key={g.id} value={g.id}>{g.emoji} {g.title}</option>
+                      ))}
                     </select>
                   </div>
                   <div>

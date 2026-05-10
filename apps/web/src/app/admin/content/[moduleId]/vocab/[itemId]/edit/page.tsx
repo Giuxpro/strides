@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { updateVocabItem } from '@/app/actions/admin'
+import { updateVocabItem } from '@/app/admin/_actions'
 import { ImageUploadField } from '@/components/admin/ImageUploadField'
+import { SubmitButton } from '@/components/admin/SubmitButton'
 
 const I = 'w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500'
 const L = 'block text-sm text-gray-400 mb-1.5'
@@ -74,12 +75,7 @@ export default async function EditVocabPage({ params }: Props) {
         </div>
 
         <div className="flex items-center gap-4 pt-2">
-          <button
-            type="submit"
-            className="bg-violet-600 hover:bg-violet-700 text-white font-medium text-sm px-5 py-2.5 rounded-lg transition-colors"
-          >
-            Guardar cambios
-          </button>
+          <SubmitButton label="Guardar cambios" />
           <Link href={`/admin/content/${params.moduleId}`} className="text-sm text-gray-500 hover:text-gray-300 transition-colors">
             Cancelar
           </Link>

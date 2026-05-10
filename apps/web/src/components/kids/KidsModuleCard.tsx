@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import type { Module } from '@strides/db'
-import { getModuleConfig } from './moduleConfig'
+import { getModuleConfig } from '@strides/core/kids'
 
 interface Props {
   module: Module

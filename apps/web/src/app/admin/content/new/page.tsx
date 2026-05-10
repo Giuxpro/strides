@@ -1,6 +1,7 @@
 import Link from 'next/link'
-import { createModule } from '@/app/actions/admin'
+import { createModule } from '@/app/admin/_actions'
 import { ImageUploadField } from '@/components/admin/ImageUploadField'
+import { SubmitButton } from '@/components/admin/SubmitButton'
 
 const I = 'w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500'
 const L = 'block text-sm text-gray-400 mb-1.5'
@@ -62,12 +63,7 @@ export default function NewModulePage() {
         />
 
         <div className="flex items-center gap-4 pt-2">
-          <button
-            type="submit"
-            className="bg-violet-600 hover:bg-violet-700 text-white font-medium text-sm px-5 py-2.5 rounded-lg transition-colors"
-          >
-            Crear módulo
-          </button>
+          <SubmitButton label="Crear módulo" pendingLabel="Creando…" />
           <Link href="/admin/content" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">
             Cancelar
           </Link>

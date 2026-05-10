@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { selectChild, selectSelf, deleteChild } from '@/app/actions/children'
+import { selectChild, selectSelf, deleteChild } from '@/app/account/_actions'
 import { logout } from '@/app/actions/auth'
 import type { Database } from '@strides/db'
 

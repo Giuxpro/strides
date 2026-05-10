@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { toggleModulePublished, reorderModules } from '@/app/actions/admin'
+import { toggleModulePublished, reorderModules } from '@/app/admin/_actions'
 
 interface ModuleRow {
   id: string

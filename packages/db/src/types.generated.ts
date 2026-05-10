@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      onboarding_screens: {
+        Row: {
+          id: string
+          slug: string
+          title: string
+          content: Json
+          order: number
+          is_published: boolean
+          flow: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          slug: string
+          title: string
+          content?: Json
+          order?: number
+          is_published?: boolean
+          flow?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          slug?: string
+          title?: string
+          content?: Json
+          order?: number
+          is_published?: boolean
+          flow?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       child_countdown_attempts: {
         Row: {
           attempted_at: string

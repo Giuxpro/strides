@@ -2,13 +2,11 @@
 
 import { useState } from 'react'
 import type { VocabItem } from './engine/LessonEngine'
-import type { ModuleConfig } from './moduleConfig'
-import { RETO_REGISTRY, type RetoId, type RetoConfig, type RetoState } from './engine/retoRegistry'
+import type { ModuleConfig, ModifierConfig, GameResult, RetoId, RetoConfig, RetoState } from '@strides/core/kids'
+import { RETO_REGISTRY } from '@strides/core/kids'
 import { getGameById } from './engine/gamePool'
 import { ModifierStack } from './engine/modifiers/ModifierStack'
-import type { GameResult, ModifierConfig } from './engine/modifiers/types'
-import { completeDailyChallenge, recordCountdownAttempt } from '@/app/actions/challenges'
-import { recordVocabMastery } from '@/app/actions/lessons'
+import { completeDailyChallenge, recordCountdownAttempt, recordVocabMastery } from '@/app/kids/play/_actions'
 
 // Seeded PRNG — misma selección cada día para el mismo módulo
 function seededNext(s: number): number {

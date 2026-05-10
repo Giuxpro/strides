@@ -2,11 +2,10 @@
 
 import { useState } from 'react'
 import type { VocabItem } from './engine/LessonEngine'
-import type { ModuleConfig } from './moduleConfig'
+import type { ModuleConfig, GameResult } from '@strides/core/kids'
 import { GAME_POOL, type PoolEntry, type GameConfigs } from './engine/gamePool'
 import { ModifierStack } from './engine/modifiers/ModifierStack'
-import type { GameResult } from './engine/modifiers/types'
-import { recordVocabMastery } from '@/app/actions/lessons'
+import { recordVocabMastery } from '@/app/kids/play/_actions'
 import {
   ModifierPickerModal,
   type ModifierSelection,

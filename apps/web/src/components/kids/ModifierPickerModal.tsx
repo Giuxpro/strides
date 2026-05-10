@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import type { ModuleConfig } from './moduleConfig'
-import type { ModifierConfig } from './engine/modifiers/types'
+import type { ModuleConfig, ModifierConfig } from '@strides/core/kids'
 
 export interface ModifierSelection {
   timer: number | null    // null = off; 30 | 60 | 120 segundos

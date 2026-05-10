@@ -245,3 +245,23 @@
   -webkit-text-stroke: 4px white;
   paint-order: stroke fill;
 }
+
+/* Scroll-driven reveal — progressive enhancement (Chrome 115+) */
+@supports (animation-timeline: view()) {
+  .reveal {
+    opacity: 0;
+    animation: slide-up 0.7s ease-out forwards;
+    animation-timeline: view();
+    animation-range: entry 0% entry 32%;
+  }
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(200%); }
+}

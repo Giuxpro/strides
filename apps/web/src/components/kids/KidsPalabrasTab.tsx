@@ -1,8 +1,8 @@
 'use client'
 
 import type { VocabItem } from './engine/LessonEngine'
-import type { ModuleConfig } from './moduleConfig'
-import { SPEECH_RATE_NORMAL } from './engine/speechRates'
+import type { ModuleConfig } from '@strides/core/kids'
+import { useSpeak } from './VoicePresetProvider'
 
 interface Props {
   vocab: VocabItem[]
@@ -31,25 +31,17 @@ function masteryDot(stars: number): string {
   return '#22c55e'
 }
 
-function speakWord(item: VocabItem) {
-  if (item.audio_url) {
-    const audio = new Audio(item.audio_url)
-    audio.play().catch(() => fallbackSpeak(item.text_en))
-    return
-  }
-  fallbackSpeak(item.text_en)
-}
-
-function fallbackSpeak(text: string) {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return
-  window.speechSynthesis.cancel()
-  const utt = new SpeechSynthesisUtterance(text)
-  utt.lang = 'en-US'
-  utt.rate = SPEECH_RATE_NORMAL
-  window.speechSynthesis.speak(utt)
-}
-
 export function KidsPalabrasTab({ vocab, masteryMap, moduleConfig }: Props) {
+  const speak = useSpeak()
+
+  function handleSpeakItem(item: VocabItem) {
+    if (item.audio_url) {
+      const audio = new Audio(item.audio_url)
+      audio.play().catch(() => speak(item.text_en))
+      return
+    }
+    speak(item.text_en)
+  }
   if (vocab.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[55vh] gap-3 px-8 text-center">
@@ -90,7 +82,7 @@ export function KidsPalabrasTab({ vocab, masteryMap, moduleConfig }: Props) {
           return (
             <button
               key={item.id}
-              onClick={() => speakWord(item)}
+              onClick={() => handleSpeakItem(item)}
               className="flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-left transition-all hover:scale-[1.03] active:scale-95"
               style={{
                 background: masteryBg(stars),

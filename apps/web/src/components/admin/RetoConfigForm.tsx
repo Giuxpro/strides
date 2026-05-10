@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { updateModuleRetoConfig } from '@/app/actions/admin'
-import type { ModifierConfig } from '@/components/kids/engine/modifiers/types'
-import { GAME_POOL } from '@/components/kids/engine/gamePool'
+import { updateModuleRetoConfig } from '@/app/admin/_actions'
+import type { ModifierConfig } from '@strides/core/kids'
+import { GAME_REGISTRY as GAME_POOL } from '@strides/core/kids'
+import { SubmitButton } from './SubmitButton'
 
 interface Props {
   moduleId: string
@@ -125,12 +126,7 @@ export function RetoConfigForm({ moduleId, initialGameId, initialModifiers, init
         </div>
       </div>
 
-      <button
-        type="submit"
-        className="bg-violet-600 hover:bg-violet-700 text-white font-semibold text-sm px-6 py-2.5 rounded-lg transition-colors"
-      >
-        Guardar configuración
-      </button>
+      <SubmitButton label="Guardar configuración" />
     </form>
   )
 }

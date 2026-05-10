@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext } from 'react'
-import type { ModifierState } from './types'
+import type { ModifierState } from '@strides/core/kids'
 
 export interface GameEventsValue {
   reportCorrect: () => void

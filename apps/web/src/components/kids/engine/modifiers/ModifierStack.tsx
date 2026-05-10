@@ -1,9 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, type ComponentType } from 'react'
-import type { VocabItem } from '../LessonEngine'
-import type { ModuleConfig } from '@/components/kids/moduleConfig'
-import type { ModifierConfig, GameResult, ModifierState, WordResult } from './types'
+import type { VocabItem, ModuleConfig, ModifierConfig, GameResult, ModifierState, WordResult } from '@strides/core/kids'
 import type { GameProps } from '../gamePool'
 import { GameEventsContext } from './ModifierContext'
 

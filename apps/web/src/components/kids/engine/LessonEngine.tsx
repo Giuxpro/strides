@@ -2,29 +2,14 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { ModuleConfig } from '@/components/kids/moduleConfig'
+import type { ModuleConfig, ModifierConfig, WordResult, VocabItem, ExerciseData } from '@strides/core/kids'
 import { getGameById } from './gamePool'
 import { ModifierStack } from './modifiers/ModifierStack'
-import type { ModifierConfig, WordResult } from './modifiers/types'
-import { VideoStep } from './VideoStep'
-import { SlideStep } from './SlideStep'
-import { completeLesson } from '@/app/actions/lessons'
+import { VideoStep } from './steps/VideoStep'
+import { SlideStep } from './steps/SlideStep'
+import { completeLesson } from '@/app/kids/play/_actions'
 
-export type VocabItem = {
-  id: string
-  text_en: string
-  text_es: string
-  image_url: string | null
-  audio_url: string | null
-}
-
-export type ExerciseData = {
-  id: string
-  type: string
-  phase: 'practice' | 'evaluation'
-  order: number
-  items: VocabItem[]
-}
+export type { VocabItem, ExerciseData }
 
 type VideoStepData = {
   id: string
@@ -58,6 +43,7 @@ interface Props {
   moduleSlug: string
   steps: LessonStep[]
   moduleConfig: ModuleConfig
+  previewMode?: boolean
 }
 
 // ── 3D kids-style arrow button ────────────────────────────────────────────────
@@ -96,7 +82,7 @@ function NavArrow({
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig }: Props) {
+export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, previewMode = false }: Props) {
   const router = useRouter()
   const [stage, setStage]               = useState<'playing' | 'results'>('playing')
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -184,20 +170,30 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig }: Props)
             </p>
           )}
 
-          <form action={completeLesson}>
-            <input type="hidden" name="lessonId"    value={lesson.id} />
-            <input type="hidden" name="moduleSlug"  value={moduleSlug} />
-            <input type="hidden" name="score"       value={String(scorePercent)} />
-            <input type="hidden" name="stars"       value={String(starCount)} />
-            <input type="hidden" name="wordResults" value={JSON.stringify(allWordResults)} />
+          {previewMode ? (
             <button
-              type="submit"
+              onClick={() => router.back()}
               className="w-full text-white font-extrabold text-lg px-8 py-4 rounded-2xl transition-all hover:scale-105 active:scale-95"
               style={{ background: moduleConfig.gradient, boxShadow: moduleConfig.shadow }}
             >
-              Volver al módulo ✨
+              ← Volver al admin
             </button>
-          </form>
+          ) : (
+            <form action={completeLesson}>
+              <input type="hidden" name="lessonId"    value={lesson.id} />
+              <input type="hidden" name="moduleSlug"  value={moduleSlug} />
+              <input type="hidden" name="score"       value={String(scorePercent)} />
+              <input type="hidden" name="stars"       value={String(starCount)} />
+              <input type="hidden" name="wordResults" value={JSON.stringify(allWordResults)} />
+              <button
+                type="submit"
+                className="w-full text-white font-extrabold text-lg px-8 py-4 rounded-2xl transition-all hover:scale-105 active:scale-95"
+                style={{ background: moduleConfig.gradient, boxShadow: moduleConfig.shadow }}
+              >
+                Volver al módulo ✨
+              </button>
+            </form>
+          )}
         </div>
       </div>
     )
@@ -293,6 +289,7 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig }: Props)
       return (
         <>
           <ModifierStack
+            key={step.id}
             game={game.component}
             items={exercise.items}
             modifiers={step.config.modifiers ?? []}

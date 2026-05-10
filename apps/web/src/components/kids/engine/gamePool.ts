@@ -1,11 +1,13 @@
 import type { ComponentType } from 'react'
-import type { VocabItem } from './LessonEngine'
-import type { ModuleConfig } from '@/components/kids/moduleConfig'
-import { MemoryGame } from './MemoryGame'
-import { RecognitionExercise } from './RecognitionExercise'
-import { SpeakingExercise } from './SpeakingExercise'
+import type { VocabItem } from '@strides/core/kids'
+import type { ModuleConfig } from '@strides/core/kids'
+import { GAME_REGISTRY } from '@strides/core/kids'
+import { MemoryGame } from './games/MemoryGame'
+import { RecognitionExercise } from './games/RecognitionExercise'
+import { SpeakingExercise } from './games/SpeakingExercise'
+import type { WordResult } from '@strides/core/kids'
 
-import type { WordResult } from './modifiers/types'
+export type { GameConfigs } from '@strides/core/kids'
 
 export interface GameProps {
   items: VocabItem[]
@@ -25,37 +27,16 @@ export interface PoolEntry {
   component: ComponentType<GameProps>
 }
 
-export const GAME_POOL: PoolEntry[] = [
-  {
-    id: 'memory',
-    emoji: '🃏',
-    title: 'Memoria',
-    description: 'Encuentra las parejas de palabras',
-    minItems: 3,
-    maxItems: 6,
-    component: MemoryGame as ComponentType<GameProps>,
-  },
-  {
-    id: 'recognition',
-    emoji: '👁️',
-    title: 'Reconocimiento',
-    description: '¿Cuál es la imagen correcta?',
-    minItems: 4,
-    maxItems: 12,
-    component: RecognitionExercise as ComponentType<GameProps>,
-  },
-  {
-    id: 'speaking',
-    emoji: '🎤',
-    title: 'Pronunciación',
-    description: 'Di la palabra en inglés',
-    minItems: 1,
-    maxItems: 12,
-    component: SpeakingExercise as ComponentType<GameProps>,
-  },
-]
+const COMPONENT_MAP: Record<string, ComponentType<GameProps>> = {
+  memory:      MemoryGame as ComponentType<GameProps>,
+  recognition: RecognitionExercise as ComponentType<GameProps>,
+  speaking:    SpeakingExercise as ComponentType<GameProps>,
+}
 
-export type GameConfigs = Record<string, { minItems?: number; maxItems?: number }>
+export const GAME_POOL: PoolEntry[] = GAME_REGISTRY.map(g => ({
+  ...g,
+  component: COMPONENT_MAP[g.id] as ComponentType<GameProps>,
+}))
 
 export function getGameById(id: string): PoolEntry | undefined {
   return GAME_POOL.find(g => g.id === id)

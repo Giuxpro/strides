@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { KIDS_THEMES, type KidsTheme } from '@/lib/kids-theme'
+import { KIDS_THEMES, type KidsTheme } from '@strides/core/kids'
 
 interface Props {
   currentTheme: string

@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { LessonEngine, type LessonStep, type ExerciseData, type VocabItem } from '@/components/kids/engine/LessonEngine'
-import { getModuleConfig } from '@/components/kids/moduleConfig'
+import { getModuleConfig } from '@strides/core/kids'
 
 interface Props {
   params: Promise<{ moduleSlug: string; lessonSlug: string }>

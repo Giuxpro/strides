@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { addLessonStep, updateLessonStep, deleteLessonStep, reorderLessonSteps } from '@/app/actions/admin'
+import { addLessonStep, updateLessonStep, deleteLessonStep, reorderLessonSteps } from '@/app/admin/_actions'
 import { VocabPicker, type VocabItemWithUsage } from './VocabPicker'
-import { GAME_POOL } from '@/components/kids/engine/gamePool'
+import { GAME_REGISTRY as GAME_POOL } from '@strides/core/kids'
+import { SubmitButton } from './SubmitButton'
 
 type StepType = 'video' | 'slide' | 'exercise'
 
@@ -153,12 +154,7 @@ function StepEditForm({
         )}
 
         <div className="flex items-center gap-3 pt-1">
-          <button
-            type="submit"
-            className="bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-          >
-            Guardar cambios
-          </button>
+          <SubmitButton label="Guardar cambios" />
           <button type="button" onClick={onClose} className="text-sm text-gray-500 hover:text-gray-300 transition-colors">
             Cancelar
           </button>
@@ -486,12 +482,7 @@ export function LessonStepBuilder({ lessonId, moduleId, steps, vocabItems }: Pro
             )}
 
             <div className="flex items-center gap-3 pt-1">
-              <button
-                type="submit"
-                className="bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-              >
-                Añadir paso
-              </button>
+              <SubmitButton label="Añadir paso" pendingLabel="Añadiendo…" />
               <button
                 type="button"
                 onClick={() => setAdding(null)}

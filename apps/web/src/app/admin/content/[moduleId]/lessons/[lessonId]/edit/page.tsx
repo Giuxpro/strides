@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { updateLesson } from '@/app/actions/admin'
+import { updateLesson } from '@/app/admin/_actions'
 import { LessonStepBuilder } from '@/components/admin/LessonStepBuilder'
 import { ImageUploadField } from '@/components/admin/ImageUploadField'
+import { SubmitButton } from '@/components/admin/SubmitButton'
 
 const I = 'w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500'
 const L = 'block text-sm text-gray-400 mb-1.5'
@@ -89,7 +90,16 @@ export default async function EditLessonPage({ params }: Props) {
         >
           ← {mod.title_es}
         </Link>
-        <h1 className="text-xl font-bold text-white mt-2">Editar lección</h1>
+        <div className="flex items-center justify-between mt-2">
+          <h1 className="text-xl font-bold text-white">Editar lección</h1>
+          <Link
+            href={`/admin/content/${params.moduleId}/lessons/${params.lessonId}/preview`}
+            className="text-xs text-violet-400 hover:text-violet-300 border border-violet-800 hover:border-violet-600 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+            target="_blank"
+          >
+            👁 Vista previa
+          </Link>
+        </div>
       </div>
 
       {/* Basic info */}
@@ -145,12 +155,7 @@ export default async function EditLessonPage({ params }: Props) {
         />
 
         <div className="flex items-center gap-4 pt-2">
-          <button
-            type="submit"
-            className="bg-violet-600 hover:bg-violet-700 text-white font-medium text-sm px-5 py-2.5 rounded-lg transition-colors"
-          >
-            Guardar cambios
-          </button>
+          <SubmitButton label="Guardar cambios" />
           <Link href={`/admin/content/${params.moduleId}`} className="text-sm text-gray-500 hover:text-gray-300 transition-colors">
             Cancelar
           </Link>

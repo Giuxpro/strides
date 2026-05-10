@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
-import { updateChild } from '@/app/actions/children'
+import { updateChild } from '@/app/account/_actions'
 import { AvatarPicker } from '@/components/profile/AvatarPicker'
 import Link from 'next/link'
 

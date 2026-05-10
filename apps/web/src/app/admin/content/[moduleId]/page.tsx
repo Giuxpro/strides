@@ -1,12 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { deleteVocabItem } from '@/app/actions/admin'
+import { deleteVocabItem } from '@/app/admin/_actions'
 import { VocabUsagePopover } from '@/components/admin/VocabUsagePopover'
 import { RetoConfigForm } from '@/components/admin/RetoConfigForm'
 import { ModuleJugarConfigForm } from '@/components/admin/ModuleJugarConfigForm'
 import { SortableLessonList } from '@/components/admin/SortableLessonList'
-import type { ModifierConfig } from '@/components/kids/engine/modifiers/types'
+import type { ModifierConfig } from '@strides/core/kids'
 
 interface Props {
   params: { moduleId: string }

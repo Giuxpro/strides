@@ -5,11 +5,30 @@ import { useState } from 'react'
 interface AuthFormProps {
   action: (formData: FormData) => Promise<{ error: string } | void>
   submitLabel: string
+  dark?: boolean
 }
 
-export function AuthForm({ action, submitLabel }: AuthFormProps) {
+export function AuthForm({ action, submitLabel, dark = false }: AuthFormProps) {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  const t = dark ? {
+    label:       'rgba(255,255,255,0.55)',
+    inputBg:     'rgba(255,255,255,0.06)',
+    inputBorder: 'rgba(255,255,255,0.1)',
+    inputText:   '#fff',
+    focusBorder: 'rgba(124,58,237,0.8)',
+    errBg:       'rgba(239,68,68,0.12)',
+    errText:     '#fca5a5',
+  } : {
+    label:       '#6D28D9',
+    inputBg:     '#FAFAFF',
+    inputBorder: '#DDD6FE',
+    inputText:   '#1E1B4B',
+    focusBorder: '#7C3AED',
+    errBg:       '#FEF2F2',
+    errText:     '#B91C1C',
+  }
 
   async function handleSubmit(formData: FormData) {
     setError(null)
@@ -27,7 +46,7 @@ export function AuthForm({ action, submitLabel }: AuthFormProps) {
         <label
           htmlFor="email"
           className="block mb-1.5 font-medium"
-          style={{ fontSize: 12, color: '#6D28D9', letterSpacing: '0.02em' }}
+          style={{ fontSize: 12, color: t.label, letterSpacing: '0.02em' }}
         >
           Correo electrónico
         </label>
@@ -38,14 +57,9 @@ export function AuthForm({ action, submitLabel }: AuthFormProps) {
           required
           autoComplete="email"
           className="w-full px-4 py-3 rounded-xl outline-none transition-all"
-          style={{
-            background: '#FAFAFF',
-            border: '1.5px solid #DDD6FE',
-            color: '#1E1B4B',
-            fontSize: 14,
-          }}
-          onFocus={e => (e.currentTarget.style.borderColor = '#7C3AED')}
-          onBlur={e => (e.currentTarget.style.borderColor = '#DDD6FE')}
+          style={{ background: t.inputBg, border: `1.5px solid ${t.inputBorder}`, color: t.inputText, fontSize: 14 }}
+          onFocus={e => (e.currentTarget.style.borderColor = t.focusBorder)}
+          onBlur={e => (e.currentTarget.style.borderColor = t.inputBorder)}
         />
       </div>
 
@@ -53,7 +67,7 @@ export function AuthForm({ action, submitLabel }: AuthFormProps) {
         <label
           htmlFor="password"
           className="block mb-1.5 font-medium"
-          style={{ fontSize: 12, color: '#6D28D9', letterSpacing: '0.02em' }}
+          style={{ fontSize: 12, color: t.label, letterSpacing: '0.02em' }}
         >
           Contraseña
         </label>
@@ -65,22 +79,14 @@ export function AuthForm({ action, submitLabel }: AuthFormProps) {
           autoComplete="current-password"
           minLength={6}
           className="w-full px-4 py-3 rounded-xl outline-none transition-all"
-          style={{
-            background: '#FAFAFF',
-            border: '1.5px solid #DDD6FE',
-            color: '#1E1B4B',
-            fontSize: 14,
-          }}
-          onFocus={e => (e.currentTarget.style.borderColor = '#7C3AED')}
-          onBlur={e => (e.currentTarget.style.borderColor = '#DDD6FE')}
+          style={{ background: t.inputBg, border: `1.5px solid ${t.inputBorder}`, color: t.inputText, fontSize: 14 }}
+          onFocus={e => (e.currentTarget.style.borderColor = t.focusBorder)}
+          onBlur={e => (e.currentTarget.style.borderColor = t.inputBorder)}
         />
       </div>
 
       {error && (
-        <p
-          className="px-4 py-3 rounded-xl text-sm"
-          style={{ background: '#FEF2F2', color: '#B91C1C', fontSize: 13 }}
-        >
+        <p className="px-4 py-3 rounded-xl text-sm" style={{ background: t.errBg, color: t.errText, fontSize: 13 }}>
           {error}
         </p>
       )}

@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@strides/db": "workspace:*"
+    "@strides/db": "workspace:*",
+    "openai": "^6.37.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",

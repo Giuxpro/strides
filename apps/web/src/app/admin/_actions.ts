@@ -386,6 +386,7 @@ export async function updateSettings(formData: FormData) {
   const entries: Array<{ key: string; value: Json }> = [
     { key: 'ai_provider',     value: formData.get('ai_provider') as string },
     { key: 'ai_model',        value: formData.get('ai_model') as string },
+    { key: 'speech_provider', value: formData.get('speech_provider') as string },
     { key: 'onboarding_flow', value: formData.get('onboarding_flow') as string },
     { key: 'trial_days',      value: Number(formData.get('trial_days')) },
     { key: 'voice_preset',    value: formData.get('voice_preset') as string },

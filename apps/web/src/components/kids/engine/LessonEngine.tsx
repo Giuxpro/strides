@@ -8,6 +8,8 @@ import { ModifierStack } from './modifiers/ModifierStack'
 import { VideoStep } from './steps/VideoStep'
 import { SlideStep } from './steps/SlideStep'
 import { completeLesson } from '@/app/kids/play/_actions'
+import { SpeechConfigProvider } from './SpeechConfigContext'
+import type { SpeechProvider } from '@strides/core/kids'
 
 export type { VocabItem, ExerciseData }
 
@@ -43,6 +45,7 @@ interface Props {
   moduleSlug: string
   steps: LessonStep[]
   moduleConfig: ModuleConfig
+  speechProvider?: SpeechProvider
   previewMode?: boolean
 }
 
@@ -82,7 +85,7 @@ function NavArrow({
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, previewMode = false }: Props) {
+export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, speechProvider = 'web-speech', previewMode = false }: Props) {
   const router = useRouter()
   const [stage, setStage]               = useState<'playing' | 'results'>('playing')
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -287,19 +290,21 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, previewM
     const game = getGameById(exercise.type)
     if (game) {
       return (
-        <>
-          <ModifierStack
-            key={step.id}
-            game={game.component}
-            items={exercise.items}
-            modifiers={step.config.modifiers ?? []}
-            onGameEnd={({ correct, wordResults }) => markDone(correct, wordResults)}
-            onBack={handleBack}
-            moduleConfig={moduleConfig}
-            progress={progress}
-          />
-          {navOverlay}
-        </>
+        <SpeechConfigProvider provider={speechProvider}>
+          <>
+            <ModifierStack
+              key={step.id}
+              game={game.component}
+              items={exercise.items}
+              modifiers={step.config.modifiers ?? []}
+              onGameEnd={({ correct, wordResults }) => markDone(correct, wordResults)}
+              onBack={handleBack}
+              moduleConfig={moduleConfig}
+              progress={progress}
+            />
+            {navOverlay}
+          </>
+        </SpeechConfigProvider>
       )
     }
   }

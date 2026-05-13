@@ -5,6 +5,8 @@ export type { ModifierConfig, WordResult, GameResult, ModifierState } from './mo
 export { SPEECH_RATE_NORMAL, SPEECH_RATE_SLOW } from './speech/rates'
 export type { VoicePreset, VoicePresetConfig } from './speech/voicePresets'
 export { VOICE_PRESET_CONFIGS, DEFAULT_VOICE_PRESET, isVoicePreset } from './speech/voicePresets'
+export type { SpeechProvider, SpeechProviderMeta } from './speech/providers'
+export { SPEECH_PROVIDERS, DEFAULT_SPEECH_PROVIDER, isSpeechProvider } from './speech/providers'
 export type { KidsTheme } from './theme'
 export { KIDS_THEMES, DEFAULT_THEME_ID, resolveThemeId } from './theme'
 export type { GameMeta, GameConfigs } from './games/registry'

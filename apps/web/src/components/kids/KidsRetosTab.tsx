@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import type { VocabItem } from './engine/LessonEngine'
 import type { ModuleConfig, ModifierConfig, GameResult, RetoId, RetoConfig, RetoState } from '@strides/core/kids'
 import { RETO_REGISTRY } from '@strides/core/kids'
@@ -47,6 +48,7 @@ export function KidsRetosTab({
   countdownAttemptsThisWeek, countdownWeeklyLimit, dailyWordCount,
   retoGameId, retoModifiers, diarioGameId,
 }: Props) {
+  const router = useRouter()
   const today = new Date().toISOString().split('T')[0] ?? ''
   const [dailyItems] = useState(() => getDailyVocab(vocab, moduleId, today, dailyWordCount))
 
@@ -77,7 +79,9 @@ export function KidsRetosTab({
   function handleGameEnd(result: GameResult) {
     setLastResult(result)
     if (selectedChildId && result.wordResults?.length) {
-      recordVocabMastery(selectedChildId, result.wordResults).catch(() => {})
+      recordVocabMastery(selectedChildId, result.wordResults)
+        .then(() => router.refresh())
+        .catch(() => {})
     }
     if (activeRetoId === 'diario' && selectedChildId && !completedDaily) {
       const stars = Math.round((result.total > 0 ? result.correct / result.total : 1) * 3)

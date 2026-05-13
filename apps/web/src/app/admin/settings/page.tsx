@@ -1,8 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { updateSettings } from '@/app/admin/_actions'
 import { AIModelSelector } from '@/components/admin/AIModelSelector'
+import { SpeechProviderSelector } from '@/components/admin/SpeechProviderSelector'
 import { SubmitButton } from '@/components/admin/SubmitButton'
-import { GAME_REGISTRY, VOICE_PRESET_CONFIGS, isVoicePreset, DEFAULT_VOICE_PRESET } from '@strides/core/kids'
+import { GAME_REGISTRY, VOICE_PRESET_CONFIGS, isVoicePreset, DEFAULT_VOICE_PRESET, isSpeechProvider, DEFAULT_SPEECH_PROVIDER } from '@strides/core/kids'
 
 export default async function AdminSettingsPage() {
   const supabase = createClient()
@@ -18,6 +19,7 @@ export default async function AdminSettingsPage() {
     { timer: true, lives: true, multiplier: true }
   const gameConfigs = (s['game_configs'] as Record<string, { minItems?: number; maxItems?: number }>) ?? {}
   const voicePreset = isVoicePreset(s['voice_preset']) ? s['voice_preset'] : DEFAULT_VOICE_PRESET
+  const speechProvider = isSpeechProvider(s['speech_provider']) ? s['speech_provider'] : DEFAULT_SPEECH_PROVIDER
 
   return (
     <div className="p-8 max-w-5xl">
@@ -34,6 +36,12 @@ export default async function AdminSettingsPage() {
             <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-5">
               <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Inteligencia Artificial</h2>
               <AIModelSelector initialProvider={aiProvider} initialModel={aiModel} />
+            </section>
+
+            {/* Reconocimiento de voz */}
+            <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-5">
+              <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Reconocimiento de voz</h2>
+              <SpeechProviderSelector initialProvider={speechProvider} />
             </section>
 
             {/* Onboarding */}

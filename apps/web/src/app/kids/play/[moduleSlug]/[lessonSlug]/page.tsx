@@ -1,13 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { LessonEngine, type LessonStep, type ExerciseData, type VocabItem } from '@/components/kids/engine/LessonEngine'
-import { getModuleConfig } from '@strides/core/kids'
+import { getModuleConfig, isSpeechProvider, DEFAULT_SPEECH_PROVIDER } from '@strides/core/kids'
 
 interface Props {
   params: Promise<{ moduleSlug: string; lessonSlug: string }>
 }
 
-// Shape of a lesson_steps row with joined exercise data from Supabase
 type RawStep = {
   id: string
   position: number
@@ -29,14 +28,23 @@ export default async function LessonPage({ params }: Props) {
   const { moduleSlug, lessonSlug } = await params
   const supabase = createClient()
 
-  const { data: lesson } = await supabase
-    .from('lessons')
-    .select('id, title_es, title_en')
-    .eq('slug', lessonSlug)
-    .eq('is_published', true)
-    .single()
+  const [{ data: lesson }, { data: speechRow }] = await Promise.all([
+    supabase
+      .from('lessons')
+      .select('id, title_es, title_en')
+      .eq('slug', lessonSlug)
+      .eq('is_published', true)
+      .single(),
+    supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'speech_provider')
+      .maybeSingle(),
+  ])
 
   if (!lesson) notFound()
+
+  const speechProvider = isSpeechProvider(speechRow?.value) ? speechRow.value : DEFAULT_SPEECH_PROVIDER
 
   const { data: rawSteps } = await supabase
     .from('lesson_steps')
@@ -84,6 +92,7 @@ export default async function LessonPage({ params }: Props) {
       moduleSlug={moduleSlug}
       steps={steps}
       moduleConfig={getModuleConfig(moduleSlug)}
+      speechProvider={speechProvider}
     />
   )
 }

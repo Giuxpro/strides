@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import type { VocabItem } from './engine/LessonEngine'
 import type { ModuleConfig, GameResult } from '@strides/core/kids'
 import { GAME_POOL, type PoolEntry, type GameConfigs } from './engine/gamePool'
@@ -36,6 +37,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export function KidsJugarTab({ vocab, moduleConfig, selectedChildId, availableModifiers, activeGameIds, gameConfigs }: Props) {
+  const router = useRouter()
   const [phase, setPhase]               = useState<Phase>('pick')
   const [activeGame, setActiveGame]     = useState<PoolEntry | null>(null)
   const [gameVocab, setGameVocab]       = useState<VocabItem[]>([])
@@ -69,7 +71,9 @@ export function KidsJugarTab({ vocab, moduleConfig, selectedChildId, availableMo
   function handleGameEnd(result: GameResult) {
     setLastResult(result)
     if (selectedChildId && result.wordResults?.length) {
-      recordVocabMastery(selectedChildId, result.wordResults).catch(() => {})
+      recordVocabMastery(selectedChildId, result.wordResults)
+        .then(() => router.refresh())
+        .catch(() => {})
     }
     setPhase('done')
   }

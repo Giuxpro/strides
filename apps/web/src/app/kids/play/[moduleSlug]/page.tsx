@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { KidsModuleTabs } from '@/components/kids/KidsModuleTabs'
-import { getModuleConfig } from '@strides/core/kids'
+import { getModuleConfig, isSpeechProvider, DEFAULT_SPEECH_PROVIDER } from '@strides/core/kids'
 import type { ModifierConfig } from '@strides/core/kids'
 import type { AvailableModifiers } from '@/components/kids/ModifierPickerModal'
 import type { GameConfigs } from '@/components/kids/engine/gamePool'
@@ -35,7 +35,7 @@ export default async function ModulePage({ params, searchParams }: Props) {
   const daysToMonday = now.getUTCDay() === 0 ? 6 : now.getUTCDay() - 1
   const weekStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysToMonday))
 
-  const [{ data: lessons }, { data: completions }, { data: vocab }, { data: dailyRow }, { count: countdownCount }, { data: availModRow }, { data: gameConfigsRow }, { data: masteryRows }] = await Promise.all([
+  const [{ data: lessons }, { data: completions }, { data: vocab }, { data: dailyRow }, { count: countdownCount }, { data: availModRow }, { data: gameConfigsRow }, { data: speechRow }, { data: masteryRows }] = await Promise.all([
     supabase
       .from('lessons')
       .select('*')
@@ -71,6 +71,7 @@ export default async function ModulePage({ params, searchParams }: Props) {
       : Promise.resolve({ count: 0 }),
     supabase.from('settings').select('value').eq('key', 'available_modifiers').maybeSingle(),
     supabase.from('settings').select('value').eq('key', 'game_configs').maybeSingle(),
+    supabase.from('settings').select('value').eq('key', 'speech_provider').maybeSingle(),
     selectedChildId
       ? supabase
         .from('child_vocab_mastery')
@@ -82,6 +83,7 @@ export default async function ModulePage({ params, searchParams }: Props) {
   const config = getModuleConfig(moduleSlug)
   const availableModifiers = (availModRow?.value as AvailableModifiers | null) ?? null
   const gameConfigs = (gameConfigsRow?.value as GameConfigs | null) ?? null
+  const speechProvider = isSpeechProvider(speechRow?.value) ? speechRow.value : DEFAULT_SPEECH_PROVIDER
   const starsMap = (completions ?? []).reduce<Record<string, number>>((acc, c) => {
     acc[c.lesson_id] = Math.max(acc[c.lesson_id] ?? 0, c.stars)
     return acc
@@ -186,6 +188,7 @@ export default async function ModulePage({ params, searchParams }: Props) {
             activeGameIds={(module.active_game_ids as string[] | null) ?? null}
             gameConfigs={gameConfigs}
             vocabMasteryMap={vocabMasteryMap}
+            speechProvider={speechProvider}
           />
         ) : (
           <div className="text-center py-16 px-6">

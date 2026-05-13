@@ -11,6 +11,8 @@ import { KidsPalabrasTab } from './KidsPalabrasTab'
 import { KidsBottomNav, type TabId } from './KidsBottomNav'
 import type { AvailableModifiers } from './ModifierPickerModal'
 import type { GameConfigs } from './engine/gamePool'
+import { SpeechConfigProvider } from './engine/SpeechConfigContext'
+import type { SpeechProvider } from '@strides/core/kids'
 
 interface Props {
   moduleSlug: string
@@ -33,6 +35,7 @@ interface Props {
   activeGameIds: string[] | null
   gameConfigs: GameConfigs | null
   vocabMasteryMap: Record<string, number>
+  speechProvider?: SpeechProvider
 }
 
 export function KidsModuleTabs({
@@ -40,10 +43,12 @@ export function KidsModuleTabs({
   vocab, moduleConfig, selectedChildId, dailyDone, countdownAttemptsThisWeek,
   countdownWeeklyLimit, dailyWordCount, retoGameId, retoModifiers, diarioGameId,
   availableModifiers, activeGameIds, gameConfigs, vocabMasteryMap,
+  speechProvider = 'web-speech',
 }: Props) {
   const [tab, setTab] = useState<TabId>('aprender')
 
   return (
+    <SpeechConfigProvider provider={speechProvider}>
     <div className="pb-36">
 
       {tab === 'aprender' && (
@@ -101,6 +106,7 @@ export function KidsModuleTabs({
 
       <KidsBottomNav active={tab} onChange={setTab} />
     </div>
+    </SpeechConfigProvider>
   )
 }
 

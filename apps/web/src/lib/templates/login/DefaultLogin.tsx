@@ -11,7 +11,7 @@ const FLOATERS = [
   { e: '✨', top: '82%', left: '9%', sz: '1.7rem', d: '0.7s', t: '5.1s' },
   { e: '⭐', top: '18%', left: '40%', sz: '1.5rem', d: '1.9s', t: '4.5s' },
   { e: '🏆', bottom: '5%', left: '14%', sz: '2.3rem', d: '1s', t: '4.8s' },
-  { e: '🦁', top: '55%', left: '30%', sz: '1.9rem', d: '2.4s', t: '5.5s' },
+  { e: '🦁', top: '55%', left: '35%', sz: '1.9rem', d: '2.4s', t: '5.5s' },
   { e: '🚀', top: '6%', left: '22%', sz: '2rem', d: '0.5s', t: '4.9s' },
 ]
 
@@ -36,7 +36,7 @@ export default function DefaultLogin() {
       <div className="relative z-10 flex min-h-screen">
 
         {/* ── LEFT PANEL (desktop only) ── */}
-        <div className="hidden lg:flex flex-col justify-center flex-1 relative overflow-hidden px-16 xl:px-24">
+        <div className="hidden lg:flex flex-col justify-center flex-1 relative overflow-hidden px-16 xl:px-40">
           {/* Gradient orbs */}
           <div className="pointer-events-none absolute inset-0">
             <div style={{ position: 'absolute', top: '-10%', left: '-5%', width: '55vw', height: '55vw', background: 'radial-gradient(circle, rgba(124,58,237,0.25) 0%, transparent 65%)', filter: 'blur(50px)' }} />

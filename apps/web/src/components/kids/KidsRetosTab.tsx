@@ -66,8 +66,8 @@ export function KidsRetosTab({
   }
 
   function startReto(id: RetoId) {
-    if (id === 'contrarreloj' && selectedChildId) {
-      recordCountdownAttempt(selectedChildId, moduleId)
+    if (id === 'contrarreloj') {
+      recordCountdownAttempt(moduleId)
         .then(() => setCountdownUsed(n => n + 1))
         .catch(() => {})
     }
@@ -78,14 +78,14 @@ export function KidsRetosTab({
 
   function handleGameEnd(result: GameResult) {
     setLastResult(result)
-    if (selectedChildId && result.wordResults?.length) {
-      recordVocabMastery(selectedChildId, result.wordResults)
+    if (result.wordResults?.length) {
+      recordVocabMastery(result.wordResults)
         .then(() => router.refresh())
         .catch(() => {})
     }
-    if (activeRetoId === 'diario' && selectedChildId && !completedDaily) {
+    if (activeRetoId === 'diario' && !completedDaily) {
       const stars = Math.round((result.total > 0 ? result.correct / result.total : 1) * 3)
-      completeDailyChallenge(selectedChildId, moduleId, today, stars)
+      completeDailyChallenge(moduleId, today, stars)
         .then(() => setCompletedDaily(true))
         .catch(() => {})
     }

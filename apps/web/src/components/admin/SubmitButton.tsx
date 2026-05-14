@@ -6,12 +6,13 @@ interface Props {
   label: string
   pendingLabel?: string
   className?: string
-  variant?: 'primary' | 'danger'
+  variant?: 'primary' | 'danger' | 'secondary'
 }
 
 const VARIANTS = {
-  primary: 'bg-violet-600 hover:bg-violet-700 text-white',
-  danger:  'bg-red-700 hover:bg-red-600 text-white',
+  primary:   'bg-violet-600 hover:bg-violet-700 text-white',
+  danger:    'bg-red-700 hover:bg-red-600 text-white',
+  secondary: 'bg-gray-700 hover:bg-gray-600 text-gray-200',
 }
 
 export function SubmitButton({ label, pendingLabel = 'Guardando…', className, variant = 'primary' }: Props) {

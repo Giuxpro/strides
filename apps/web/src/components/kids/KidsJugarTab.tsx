@@ -15,6 +15,8 @@ import {
   toModifierConfigs,
   modifierLabel,
 } from './ModifierPickerModal'
+import { PronunciationResultPanel } from './engine/PronunciationResultPanel'
+import { useMusicContext } from './MusicProvider'
 
 interface Props {
   vocab: VocabItem[]
@@ -38,6 +40,7 @@ function shuffle<T>(arr: T[]): T[] {
 
 export function KidsJugarTab({ vocab, moduleConfig, selectedChildId, availableModifiers, activeGameIds, gameConfigs }: Props) {
   const router = useRouter()
+  const { setMusicContext } = useMusicContext()
   const [phase, setPhase]               = useState<Phase>('pick')
   const [activeGame, setActiveGame]     = useState<PoolEntry | null>(null)
   const [gameVocab, setGameVocab]       = useState<VocabItem[]>([])
@@ -66,12 +69,13 @@ export function KidsJugarTab({ vocab, moduleConfig, selectedChildId, availableMo
     setGameVocab(shuffle(vocab).slice(0, game.maxItems))
     setLastResult(null)
     setPhase('playing')
+    setMusicContext('game')
   }
 
   function handleGameEnd(result: GameResult) {
     setLastResult(result)
-    if (selectedChildId && result.wordResults?.length) {
-      recordVocabMastery(selectedChildId, result.wordResults)
+    if (result.wordResults?.length) {
+      recordVocabMastery(result.wordResults)
         .then(() => router.refresh())
         .catch(() => {})
     }
@@ -81,6 +85,7 @@ export function KidsJugarTab({ vocab, moduleConfig, selectedChildId, availableMo
   function backToPick() {
     setPhase('pick')
     setActiveGame(null)
+    setMusicContext('navigation')
   }
 
   /* ── Playing ── */
@@ -104,42 +109,66 @@ export function KidsJugarTab({ vocab, moduleConfig, selectedChildId, availableMo
   if (phase === 'done' && activeGame && lastResult) {
     const pct    = lastResult.total > 0 ? Math.round((lastResult.correct / lastResult.total) * 100) : 100
     const passed = pct >= 70
+    const wordResults = lastResult.wordResults ?? []
+    const hasSpeaking = wordResults.some(r => r.expected !== undefined)
+    const vocabMap = vocab.reduce<Record<string, typeof vocab[number]>>((acc, v) => { acc[v.id] = v; return acc }, {})
+
+    const buttons = (
+      <div className="flex gap-3 mt-3">
+        <button
+          onClick={() => startGame(activeGame)}
+          className="font-extrabold text-white px-6 py-3 rounded-2xl transition-all hover:scale-105 active:scale-95"
+          style={{ background: moduleConfig.gradient, boxShadow: moduleConfig.shadow }}
+        >
+          Jugar de nuevo
+        </button>
+        <button
+          onClick={backToPick}
+          className="font-bold px-6 py-3 rounded-2xl transition-all hover:scale-105 active:scale-95"
+          style={{ background: moduleConfig.accentLight, color: moduleConfig.accent }}
+        >
+          Elegir juego
+        </button>
+      </div>
+    )
+
     return (
       <div
-        className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-4 px-8 text-center"
+        className="fixed inset-0 z-[60] flex items-center justify-center p-6 overflow-y-auto"
         style={{ background: 'var(--kids-bg)' }}
       >
-        <span style={{ fontSize: '4rem', lineHeight: 1 }}>
-          {lastResult.reason === 'timeout' ? '⏰' : lastResult.reason === 'no-lives' ? '💔' : passed ? '🏆' : '💪'}
-        </span>
-        <p className="font-extrabold text-2xl" style={{ color: 'var(--kids-text)' }}>
-          {passed ? '¡Excelente!' : '¡Buen intento!'}
-        </p>
-        {lastResult.total > 0 && (
-          <p style={{ color: 'var(--kids-text-muted)' }}>
-            {lastResult.correct} de {lastResult.total} correctas
-          </p>
-        )}
-        {hasModifiers && (
-          <p className="text-xs font-semibold" style={{ color: 'var(--kids-text-muted)' }}>
-            {modifierLabel(effectiveModSel)}
-          </p>
-        )}
-        <div className="flex gap-3 mt-3">
-          <button
-            onClick={() => startGame(activeGame)}
-            className="font-extrabold text-white px-6 py-3 rounded-2xl transition-all hover:scale-105 active:scale-95"
-            style={{ background: moduleConfig.gradient, boxShadow: moduleConfig.shadow }}
-          >
-            Jugar de nuevo
-          </button>
-          <button
-            onClick={backToPick}
-            className="font-bold px-6 py-3 rounded-2xl transition-all hover:scale-105 active:scale-95"
-            style={{ background: moduleConfig.accentLight, color: moduleConfig.accent }}
-          >
-            Elegir juego
-          </button>
+        <div className={`w-full ${hasSpeaking ? 'max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 items-center' : 'max-w-sm flex flex-col items-center text-center'}`}>
+
+          {/* Score summary */}
+          <div className="flex flex-col items-center text-center gap-3">
+            <span style={{ fontSize: '4rem', lineHeight: 1 }}>
+              {lastResult.reason === 'timeout' ? '⏰' : lastResult.reason === 'no-lives' ? '💔' : passed ? '🏆' : '💪'}
+            </span>
+            <p className="font-extrabold text-2xl" style={{ color: 'var(--kids-text)' }}>
+              {passed ? '¡Excelente!' : '¡Buen intento!'}
+            </p>
+            {lastResult.total > 0 && (
+              <p style={{ color: 'var(--kids-text-muted)' }}>
+                {lastResult.correct} de {lastResult.total} correctas
+              </p>
+            )}
+            {hasModifiers && (
+              <p className="text-xs font-semibold" style={{ color: 'var(--kids-text-muted)' }}>
+                {modifierLabel(effectiveModSel)}
+              </p>
+            )}
+            {buttons}
+          </div>
+
+          {/* Panel de pronunciación */}
+          {hasSpeaking && (
+            <PronunciationResultPanel
+              wordResults={wordResults}
+              vocabMap={vocabMap}
+              moduleConfig={moduleConfig}
+            />
+          )}
+
         </div>
       </div>
     )

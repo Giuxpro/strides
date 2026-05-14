@@ -5,6 +5,19 @@ import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 
 export async function selectChild(childId: string) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: child } = await supabase
+    .from('children')
+    .select('id')
+    .eq('id', childId)
+    .eq('parent_id', user.id)
+    .maybeSingle()
+
+  if (!child) redirect('/select-profile')
+
   cookies().set('selected_child_id', childId, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -17,6 +30,24 @@ export async function selectChild(childId: string) {
 export async function selectSelf() {
   cookies().delete('selected_child_id')
   redirect('/adult')
+}
+
+export async function createChildSetup(formData: FormData): Promise<void> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { error } = await supabase
+    .from('children')
+    .insert({
+      parent_id: user.id,
+      name: formData.get('name') as string,
+      age: parseInt(formData.get('age') as string),
+      avatar_url: (formData.get('avatar_url') as string) || null,
+    })
+
+  if (error) throw new Error(error.message)
+  redirect('/setup/plan')
 }
 
 export async function createChild(formData: FormData): Promise<void> {

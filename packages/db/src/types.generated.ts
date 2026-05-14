@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      onboarding_flows: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       onboarding_screens: {
         Row: {
           id: string
@@ -22,7 +43,7 @@ export type Database = {
           content: Json
           order: number
           is_published: boolean
-          flow: string
+          flow_id: string | null
           created_at: string
           updated_at: string
         }
@@ -33,7 +54,7 @@ export type Database = {
           content?: Json
           order?: number
           is_published?: boolean
-          flow?: string
+          flow_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -44,11 +65,19 @@ export type Database = {
           content?: Json
           order?: number
           is_published?: boolean
-          flow?: string
+          flow_id?: string | null
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_screens_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_flows"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       child_countdown_attempts: {
         Row: {
@@ -210,6 +239,7 @@ export type Database = {
           attempt_count: number
           child_id: string
           correct_count: number
+          skill_type: string
           updated_at: string
           vocab_id: string
         }
@@ -217,6 +247,7 @@ export type Database = {
           attempt_count?: number
           child_id: string
           correct_count?: number
+          skill_type?: string
           updated_at?: string
           vocab_id: string
         }
@@ -224,6 +255,7 @@ export type Database = {
           attempt_count?: number
           child_id?: string
           correct_count?: number
+          skill_type?: string
           updated_at?: string
           vocab_id?: string
         }
@@ -777,6 +809,7 @@ export type Database = {
           email: string
           id: string
           role: Database["public"]["Enums"]["user_role"]
+          trial_ends_at: string | null
           updated_at: string
         }
         Insert: {
@@ -786,6 +819,7 @@ export type Database = {
           email: string
           id: string
           role?: Database["public"]["Enums"]["user_role"]
+          trial_ends_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -795,6 +829,7 @@ export type Database = {
           email?: string
           id?: string
           role?: Database["public"]["Enums"]["user_role"]
+          trial_ends_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -979,10 +1014,12 @@ export type Database = {
           p_child_id: string
           p_correct: number
           p_vocab_id: string
+          p_skill_type?: string
         }
         Returns: undefined
       }
       is_admin: { Args: never; Returns: boolean }
+      update_child_streak: { Args: { p_child_id: string }; Returns: undefined }
     }
     Enums: {
       access_type: "free" | "purchased" | "subscription"

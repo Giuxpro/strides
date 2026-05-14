@@ -16,8 +16,8 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const result = await evaluateSpeech(audio, expected)
-    return NextResponse.json(result)
+    const { transcript, correct, noSpeech, lowConfidence } = await evaluateSpeech(audio, expected)
+    return NextResponse.json({ transcript, correct, noSpeech, lowConfidence })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[speech/evaluate]', message)

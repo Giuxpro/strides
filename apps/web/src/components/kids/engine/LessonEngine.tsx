@@ -9,6 +9,8 @@ import { VideoStep } from './steps/VideoStep'
 import { SlideStep } from './steps/SlideStep'
 import { completeLesson } from '@/app/kids/play/_actions'
 import { SpeechConfigProvider } from './SpeechConfigContext'
+import { PronunciationResultPanel } from './PronunciationResultPanel'
+import { useMusicContext } from '@/components/kids/MusicProvider'
 import type { SpeechProvider } from '@strides/core/kids'
 
 export type { VocabItem, ExerciseData }
@@ -87,6 +89,7 @@ function NavArrow({
 
 export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, speechProvider = 'web-speech', previewMode = false }: Props) {
   const router = useRouter()
+  const { setMusicContext } = useMusicContext()
   const [stage, setStage]               = useState<'playing' | 'results'>('playing')
   const [currentIndex, setCurrentIndex] = useState(0)
   const [completedSet, setCompletedSet] = useState<Set<number>>(new Set())
@@ -143,60 +146,86 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, speechPr
     const scorePercent = Math.round(ratio * 100)
     const starCount    = Math.round(ratio * 3)
 
+    const vocabMap = steps.reduce<Record<string, VocabItem>>((acc, step) => {
+      if (step.step_type === 'exercise') {
+        step.exercise.items.forEach(item => { acc[item.id] = item })
+      }
+      return acc
+    }, {})
+
+    const speakingResults = allWordResults.filter(r => r.expected !== undefined)
+    const wrongWords      = speakingResults.filter(r => !r.correct)
+    const speakingPercent = speakingResults.length > 0
+      ? Math.round((speakingResults.filter(r => r.correct).length / speakingResults.length) * 100)
+      : null
+
+    const actionBtn = previewMode ? (
+      <button
+        onClick={() => router.back()}
+        className="w-full text-white font-extrabold text-lg px-8 py-4 rounded-2xl transition-all hover:scale-105 active:scale-95"
+        style={{ background: moduleConfig.gradient, boxShadow: moduleConfig.shadow }}
+      >
+        ← Volver al admin
+      </button>
+    ) : (
+      <form action={completeLesson}>
+        <input type="hidden" name="lessonId"    value={lesson.id} />
+        <input type="hidden" name="moduleSlug"  value={moduleSlug} />
+        <input type="hidden" name="score"       value={String(scorePercent)} />
+        <input type="hidden" name="stars"       value={String(starCount)} />
+        <input type="hidden" name="wordResults" value={JSON.stringify(allWordResults)} />
+        <button
+          type="submit"
+          className="w-full text-white font-extrabold text-lg px-8 py-4 rounded-2xl transition-all hover:scale-105 active:scale-95"
+          style={{ background: moduleConfig.gradient, boxShadow: moduleConfig.shadow }}
+        >
+          Volver al módulo ✨
+        </button>
+      </form>
+    )
+
     return (
-      <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
+      <div className="relative min-h-screen flex items-center justify-center overflow-hidden p-6">
         <div
           className="absolute top-[-20%] left-[-20%] w-[600px] h-[600px] rounded-full opacity-25 blur-[120px] pointer-events-none"
           style={{ background: `radial-gradient(circle, ${moduleConfig.gradientFrom}, transparent)` }}
         />
 
-        <div className="relative z-10 text-center px-8 animate-slide-up max-w-sm w-full">
-          <span className="text-7xl block mb-4 animate-float leading-none">
-            {passed ? '🏆' : '💪'}
-          </span>
-          <h2 className="text-3xl font-extrabold mb-2" style={{ color: 'var(--kids-text)' }}>
-            {passed ? '¡Excelente!' : '¡Buen intento!'}
-          </h2>
-          {evalTotal > 0 && (
-            <>
-              <p className="mb-3" style={{ color: 'var(--kids-text-muted)' }}>
-                {evalCorrect} de {evalTotal} correctas
-              </p>
-              <p className="text-2xl mb-8 tracking-wider">
-                {'⭐'.repeat(starCount)}{'☆'.repeat(3 - starCount)}
-              </p>
-            </>
-          )}
-          {evalTotal === 0 && (
-            <p className="mb-8" style={{ color: 'var(--kids-text-muted)' }}>
-              Práctica completada
-            </p>
+        <div className={`relative z-10 animate-slide-up w-full ${speakingPercent !== null ? 'max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 items-center' : 'max-w-sm flex flex-col items-center text-center'}`}>
+
+          {/* Score summary */}
+          <div className="flex flex-col items-center text-center gap-3">
+            <span className="text-7xl block animate-float leading-none">
+              {passed ? '🏆' : '💪'}
+            </span>
+            <h2 className="text-3xl font-extrabold" style={{ color: 'var(--kids-text)' }}>
+              {passed ? '¡Excelente!' : '¡Buen intento!'}
+            </h2>
+            {evalTotal > 0 && (
+              <>
+                <p style={{ color: 'var(--kids-text-muted)' }}>
+                  {evalCorrect} de {evalTotal} correctas
+                </p>
+                <p className="text-2xl tracking-wider">
+                  {'⭐'.repeat(starCount)}{'☆'.repeat(3 - starCount)}
+                </p>
+              </>
+            )}
+            {evalTotal === 0 && (
+              <p style={{ color: 'var(--kids-text-muted)' }}>Práctica completada</p>
+            )}
+            <div className="w-full mt-2">{actionBtn}</div>
+          </div>
+
+          {/* Panel de pronunciación (solo si hubo ejercicio speaking) */}
+          {speakingPercent !== null && (
+            <PronunciationResultPanel
+              wordResults={allWordResults}
+              vocabMap={vocabMap}
+              moduleConfig={moduleConfig}
+            />
           )}
 
-          {previewMode ? (
-            <button
-              onClick={() => router.back()}
-              className="w-full text-white font-extrabold text-lg px-8 py-4 rounded-2xl transition-all hover:scale-105 active:scale-95"
-              style={{ background: moduleConfig.gradient, boxShadow: moduleConfig.shadow }}
-            >
-              ← Volver al admin
-            </button>
-          ) : (
-            <form action={completeLesson}>
-              <input type="hidden" name="lessonId"    value={lesson.id} />
-              <input type="hidden" name="moduleSlug"  value={moduleSlug} />
-              <input type="hidden" name="score"       value={String(scorePercent)} />
-              <input type="hidden" name="stars"       value={String(starCount)} />
-              <input type="hidden" name="wordResults" value={JSON.stringify(allWordResults)} />
-              <button
-                type="submit"
-                className="w-full text-white font-extrabold text-lg px-8 py-4 rounded-2xl transition-all hover:scale-105 active:scale-95"
-                style={{ background: moduleConfig.gradient, boxShadow: moduleConfig.shadow }}
-              >
-                Volver al módulo ✨
-              </button>
-            </form>
-          )}
         </div>
       </div>
     )
@@ -289,6 +318,7 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, speechPr
     const { exercise } = step
     const game = getGameById(exercise.type)
     if (game) {
+      setMusicContext('game')
       return (
         <SpeechConfigProvider provider={speechProvider}>
           <>
@@ -297,8 +327,8 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, speechPr
               game={game.component}
               items={exercise.items}
               modifiers={step.config.modifiers ?? []}
-              onGameEnd={({ correct, wordResults }) => markDone(correct, wordResults)}
-              onBack={handleBack}
+              onGameEnd={({ correct, wordResults }) => { setMusicContext('navigation'); markDone(correct, wordResults) }}
+              onBack={() => { setMusicContext('navigation'); handleBack() }}
               moduleConfig={moduleConfig}
               progress={progress}
             />

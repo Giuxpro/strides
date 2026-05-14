@@ -403,12 +403,79 @@ export async function updateSettings(formData: FormData) {
       ) as Json },
   ]
 
+  // Actualizar volumen sin pisar los tracks existentes
+  const { data: audioRow } = await supabase.from('settings').select('value').eq('key', 'audio_config').maybeSingle()
+  const currentAudio = (audioRow?.value ?? { navigation_tracks: [], game_tracks: [], volume: 0.3 }) as {
+    navigation_tracks: string[]; game_tracks: string[]; volume: number
+  }
+  entries.push({
+    key: 'audio_config',
+    value: { ...currentAudio, volume: Math.min(1, Math.max(0, Number(formData.get('audio_volume') ?? 0.3))) } as Json,
+  })
+
   await Promise.all(
     entries.map(({ key, value }) =>
       supabase.from('settings').upsert({ key, value, updated_by: userId })
     )
   )
 
+  revalidatePath('/admin/settings')
+}
+
+// ─── Audio Config ─────────────────────────────────────────────────────────────
+
+const MUSIC_BASE = 'https://ievftgzxiwtjocxnrmgv.supabase.co/storage/v1/object/public/background-music'
+
+async function rebuildAudioConfigFromBucket(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  volume: number,
+) {
+  const [{ data: navFiles }, { data: gameFiles }] = await Promise.all([
+    supabase.storage.from('background-music').list('navigation'),
+    supabase.storage.from('background-music').list('game'),
+  ])
+  const navUrls  = (navFiles  ?? []).map(f => `${MUSIC_BASE}/navigation/${f.name}`)
+  const gameUrls = (gameFiles ?? []).map(f => `${MUSIC_BASE}/game/${f.name}`)
+  await supabase.from('settings').upsert({
+    key: 'audio_config',
+    value: { navigation_tracks: navUrls, game_tracks: gameUrls, volume } as Json,
+    updated_by: userId,
+  })
+}
+
+export async function uploadMusicTrack(formData: FormData) {
+  const { supabase, userId } = await requireAdmin()
+  const file    = formData.get('file') as File
+  const context = formData.get('context') as 'navigation' | 'game'
+
+  // Nombre original, sin caracteres problemáticos
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const filename = `${context}/${safeName}`
+
+  const { error: upErr } = await supabase.storage
+    .from('background-music')
+    .upload(filename, file, { contentType: file.type, upsert: true })
+
+  if (upErr) throw new Error(upErr.message)
+
+  const { data: row } = await supabase.from('settings').select('value').eq('key', 'audio_config').maybeSingle()
+  const volume = ((row?.value as { volume?: number } | null)?.volume) ?? 0.3
+
+  await rebuildAudioConfigFromBucket(supabase, userId, volume)
+  revalidatePath('/admin/settings')
+}
+
+export async function removeMusicTrack(url: string) {
+  const { supabase, userId } = await requireAdmin()
+
+  const path = url.replace(`${MUSIC_BASE}/`, '')
+  await supabase.storage.from('background-music').remove([path])
+
+  const { data: row } = await supabase.from('settings').select('value').eq('key', 'audio_config').maybeSingle()
+  const volume = ((row?.value as { volume?: number } | null)?.volume) ?? 0.3
+
+  await rebuildAudioConfigFromBucket(supabase, userId, volume)
   revalidatePath('/admin/settings')
 }
 

@@ -36,9 +36,11 @@ export function ImageUploadField({ name, bucket, defaultValue = '', label = 'Ima
         }
       }
 
-      const { error: uploadErr } = await supabase.storage.from(bucket).upload(file.name, file, { upsert: true })
+      const ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin'
+      const uniqueName = `${crypto.randomUUID()}.${ext}`
+      const { error: uploadErr } = await supabase.storage.from(bucket).upload(uniqueName, file, { upsert: false })
       if (uploadErr) throw uploadErr
-      const { data } = supabase.storage.from(bucket).getPublicUrl(file.name)
+      const { data } = supabase.storage.from(bucket).getPublicUrl(uniqueName)
       setUrl(data.publicUrl)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al subir')

@@ -47,7 +47,9 @@ export function ModuleJugarConfigForm({ moduleId, initialActiveGameIds }: Props)
         })}
       </div>
 
-      <SubmitButton label="Guardar" />
+      <div className="flex items-center gap-4 pt-2">
+        <SubmitButton label="Guardar cambios" pendingLabel="Guardando…" />
+      </div>
     </form>
   )
 }

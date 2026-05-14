@@ -3,13 +3,17 @@ import { updateSettings } from '@/app/admin/_actions'
 import { AIModelSelector } from '@/components/admin/AIModelSelector'
 import { SpeechProviderSelector } from '@/components/admin/SpeechProviderSelector'
 import { SubmitButton } from '@/components/admin/SubmitButton'
-import { GAME_REGISTRY, VOICE_PRESET_CONFIGS, isVoicePreset, DEFAULT_VOICE_PRESET, isSpeechProvider, DEFAULT_SPEECH_PROVIDER } from '@strides/core/kids'
+import { GAME_REGISTRY, VOICE_PRESET_CONFIGS, isVoicePreset, DEFAULT_VOICE_PRESET, isSpeechProvider, DEFAULT_SPEECH_PROVIDER, isAudioConfig, DEFAULT_AUDIO_CONFIG } from '@strides/core/kids'
+import { MusicUploaderPanel } from '@/components/admin/MusicUploaderPanel'
+import { getAllFlows } from '@strides/db'
 
 export default async function AdminSettingsPage() {
   const supabase = createClient()
 
   const { data: rows } = await supabase.from('settings').select('key, value')
   const s = Object.fromEntries((rows ?? []).map(r => [r.key, r.value]))
+
+  const { data: allFlows } = await getAllFlows(supabase)
 
   const aiProvider = (s['ai_provider'] as string) ?? 'anthropic'
   const aiModel = (s['ai_model'] as string) ?? 'claude-haiku-4-5'
@@ -18,8 +22,21 @@ export default async function AdminSettingsPage() {
   const availMods = (s['available_modifiers'] as { timer?: boolean; lives?: boolean; multiplier?: boolean }) ??
     { timer: true, lives: true, multiplier: true }
   const gameConfigs = (s['game_configs'] as Record<string, { minItems?: number; maxItems?: number }>) ?? {}
-  const voicePreset = isVoicePreset(s['voice_preset']) ? s['voice_preset'] : DEFAULT_VOICE_PRESET
+  const voicePreset    = isVoicePreset(s['voice_preset']) ? s['voice_preset'] : DEFAULT_VOICE_PRESET
   const speechProvider = isSpeechProvider(s['speech_provider']) ? s['speech_provider'] : DEFAULT_SPEECH_PROVIDER
+  const audioVolume    = isAudioConfig(s['audio_config']) ? s['audio_config'].volume : DEFAULT_AUDIO_CONFIG.volume
+
+  // Fuente de verdad: bucket real (no la config cacheada)
+  const MUSIC_BASE = 'https://ievftgzxiwtjocxnrmgv.supabase.co/storage/v1/object/public/background-music'
+  const [{ data: navFiles }, { data: gameFiles }] = await Promise.all([
+    supabase.storage.from('background-music').list('navigation'),
+    supabase.storage.from('background-music').list('game'),
+  ])
+  const bucketAudioConfig = {
+    navigation_tracks: (navFiles ?? []).map(f => `${MUSIC_BASE}/navigation/${f.name}`),
+    game_tracks:       (gameFiles ?? []).map(f => `${MUSIC_BASE}/game/${f.name}`),
+    volume: audioVolume,
+  }
 
   return (
     <div className="p-8 max-w-5xl">
@@ -46,43 +63,47 @@ export default async function AdminSettingsPage() {
 
             {/* Onboarding */}
             <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-5 flex-1">
-              <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Onboarding</h2>
-
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Flujo de registro</label>
-                <div className="flex flex-col gap-2">
-                  <label className="flex items-start gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="onboarding_flow"
-                      value="a"
-                      defaultChecked={onboardingFlow === 'a'}
-                      className="accent-violet-500 mt-0.5"
-                    />
-                    <span>
-                      <span className="text-sm text-gray-300">Flujo A</span>
-                      <span className="block text-xs text-gray-600">Onboarding → Pago → App</span>
-                    </span>
-                  </label>
-                  <label className="flex items-start gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="onboarding_flow"
-                      value="b"
-                      defaultChecked={onboardingFlow === 'b'}
-                      className="accent-violet-500 mt-0.5"
-                    />
-                    <span>
-                      <span className="text-sm text-gray-300">Flujo B</span>
-                      <span className="block text-xs text-gray-600">Onboarding → Trial → App → Pago al vencer</span>
-                    </span>
-                  </label>
-                </div>
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Onboarding</h2>
+                <a href="/admin/onboarding" className="text-xs text-violet-400 hover:text-violet-300 transition-colors">
+                  Gestionar pantallas →
+                </a>
               </div>
 
               <div>
-                <label htmlFor="trial_days" className="block text-sm text-gray-400 mb-2">
-                  Días de trial <span className="text-gray-600">(Flujo B)</span>
+                <label htmlFor="onboarding_flow" className="block text-sm text-gray-400 mb-1.5">
+                  Flujo activo
+                </label>
+                {(!allFlows || allFlows.length === 0) ? (
+                  <p className="text-xs text-gray-600">
+                    Sin flujos creados.{' '}
+                    <a href="/admin/onboarding/new" className="text-violet-400 hover:text-violet-300">
+                      Crear flujo →
+                    </a>
+                  </p>
+                ) : (
+                  <select
+                    id="onboarding_flow"
+                    name="onboarding_flow"
+                    defaultValue={onboardingFlow}
+                    className="w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                  >
+                    {allFlows.map(flow => (
+                      <option key={flow.id} value={flow.id}>{flow.name}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+            </section>
+
+            {/* Trial */}
+            <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-3">
+              <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Trial gratuito</h2>
+              <p className="text-xs text-gray-600">Días de acceso gratuito desde el registro. Al vencer, el usuario es redirigido a la pantalla de pago (Stripe pendiente de integrar).</p>
+              <div>
+                <label htmlFor="trial_days" className="block text-sm text-gray-400 mb-1.5">
+                  Días de trial
                 </label>
                 <input
                   id="trial_days"
@@ -192,6 +213,30 @@ export default async function AdminSettingsPage() {
 
           </div>
         </div>
+
+        {/* ── Audio de fondo ── */}
+        <section className="mt-6 bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-6">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-1">Música de fondo</h2>
+            <p className="text-xs text-gray-600">Un URL por línea. Se reproducen en bucle con orden aleatorio.</p>
+          </div>
+
+          <MusicUploaderPanel config={bucketAudioConfig} />
+
+          <div className="flex items-center gap-4 border-t border-gray-800 pt-5">
+            <label className="text-sm text-gray-400 shrink-0">Volumen</label>
+            <input
+              type="range"
+              name="audio_volume"
+              min={0}
+              max={1}
+              step={0.05}
+              defaultValue={audioVolume}
+              className="flex-1 accent-violet-500"
+            />
+            <span className="text-xs text-gray-500 w-10 text-right">{Math.round(audioVolume * 100)}%</span>
+          </div>
+        </section>
 
         <div className="mt-6">
           <SubmitButton label="Guardar cambios" />

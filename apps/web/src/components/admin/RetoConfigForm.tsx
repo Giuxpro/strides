@@ -126,7 +126,9 @@ export function RetoConfigForm({ moduleId, initialGameId, initialModifiers, init
         </div>
       </div>
 
-      <SubmitButton label="Guardar configuración" />
+      <div className="flex items-center gap-4 pt-2">
+        <SubmitButton label="Guardar cambios" pendingLabel="Guardando…" />
+      </div>
     </form>
   )
 }

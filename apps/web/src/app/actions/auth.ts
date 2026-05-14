@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
+import { getSetting } from '@strides/db'
 
 export async function login(formData: FormData) {
   const supabase = createClient()
@@ -20,14 +21,25 @@ export async function login(formData: FormData) {
 export async function signup(formData: FormData) {
   const supabase = createClient()
 
-  const { error } = await supabase.auth.signUp({
+  const { data: authData, error } = await supabase.auth.signUp({
     email: formData.get('email') as string,
     password: formData.get('password') as string,
   })
 
   if (error) return { error: error.message }
 
-  redirect('/select-profile')
+  if (authData.user) {
+    const { data: trialRow } = await getSetting(supabase, 'trial_days')
+    const trialDays = (trialRow?.value as number) ?? 7
+    const trialEndsAt = new Date()
+    trialEndsAt.setDate(trialEndsAt.getDate() + trialDays)
+    await supabase
+      .from('profiles')
+      .update({ trial_ends_at: trialEndsAt.toISOString() })
+      .eq('id', authData.user.id)
+  }
+
+  redirect('/setup/child')
 }
 
 export async function logout() {

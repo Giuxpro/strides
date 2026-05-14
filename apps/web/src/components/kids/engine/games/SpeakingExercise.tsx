@@ -260,9 +260,11 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
   const [micState, setMicState] = useState<MicState>('idle')
   const [heard, setHeard] = useState<string | null>(null)
   const [results, setResults] = useState<boolean[]>([])
+  const [heardList, setHeardList] = useState<(string | null)[]>([])
   const recognitionRef = useRef<RecognitionInstance | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const sessionRef = useRef(0)
+  const lowConfListRef = useRef<(boolean | undefined)[]>([])
 
   const question = questions[currentQ]
 
@@ -275,8 +277,10 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function advanceWith(newResults: boolean[], isCorrect: boolean, sessionGuard?: number) {
+  function advanceWith(newResults: boolean[], isCorrect: boolean, heardTranscript: string | null, sessionGuard?: number) {
+    const newHeardList = [...heardList, heardTranscript]
     setResults(newResults)
+    setHeardList(newHeardList)
     setTimeout(() => {
       if (sessionGuard !== undefined && sessionGuard !== sessionRef.current) return
       setMicState('idle')
@@ -284,7 +288,14 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
       if (currentQ < questions.length - 1) {
         setCurrentQ(prev => prev + 1)
       } else {
-        const wordResults = questions.map((q, i) => ({ vocabId: q.id, correct: newResults[i] ?? false }))
+        const wordResults = questions.map((q, i) => ({
+          vocabId: q.id,
+          correct: newResults[i] ?? false,
+          skillType: 'pronunciation' as const,
+          heard: newHeardList[i] ?? undefined,
+          expected: q.text_en,
+          lowConfidence: lowConfListRef.current[i],
+        }))
         onComplete(newResults.filter(Boolean).length, newResults.length, wordResults)
       }
     }, isCorrect ? 2200 : 2800)
@@ -316,11 +327,17 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
       try {
         const res = await fetch('/api/speech/evaluate', { method: 'POST', body })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data = (await res.json()) as { transcript: string; correct: boolean }
+        const data = (await res.json()) as { transcript: string; correct: boolean; noSpeech: boolean; lowConfidence: boolean }
+        if (data.noSpeech) {
+          setMicState('no-speech')
+          setTimeout(() => setMicState('idle'), 1400)
+          return
+        }
         setHeard(data.transcript)
         if (data.correct) reportCorrect(); else reportWrong()
         setMicState(data.correct ? 'correct' : 'wrong')
-        advanceWith([...results, data.correct], data.correct)
+        lowConfListRef.current = [...lowConfListRef.current, data.lowConfidence]
+        advanceWith([...results, data.correct], data.correct, data.transcript)
       } catch { setMicState('idle') }
     }
     recorder.start()
@@ -371,13 +388,15 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
         if (isCorrect) reportCorrect(); else reportWrong()
         setHeard(transcript)
         setMicState(isCorrect ? 'correct' : 'wrong')
-        advanceWith([...results, isCorrect], isCorrect, session)
+        lowConfListRef.current = [...lowConfListRef.current, false]
+        advanceWith([...results, isCorrect], isCorrect, transcript, session)
       }
       rec.onnomatch = () => {
         if (session !== sessionRef.current) return
         gotResult = true; handled = true; clearTimeout(safetyTimer)
         reportWrong(); setMicState('wrong')
-        advanceWith([...results, false], false, session)
+        lowConfListRef.current = [...lowConfListRef.current, false]
+        advanceWith([...results, false], false, null, session)
       }
       rec.onerror = (e: { error: string }) => {
         if (session !== sessionRef.current) return
@@ -417,12 +436,20 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
     try { recognitionRef.current?.abort() } catch { /* ignore */ }
     try { mediaRecorderRef.current?.stop() } catch { /* ignore */ }
     sessionRef.current++
-    const newResults = [...results, false]
-    setResults(newResults); setMicState('idle'); setHeard(null)
+    const newResults  = [...results, false]
+    const newHeardList = [...heardList, null]
+    lowConfListRef.current = [...lowConfListRef.current, undefined]
+    setResults(newResults); setHeardList(newHeardList); setMicState('idle'); setHeard(null)
     if (currentQ < questions.length - 1) {
       setCurrentQ(prev => prev + 1)
     } else {
-      const wordResults = questions.map((q, i) => ({ vocabId: q.id, correct: newResults[i] ?? false }))
+      const wordResults = questions.map((q, i) => ({
+        vocabId: q.id,
+        correct: newResults[i] ?? false,
+        heard: newHeardList[i] ?? undefined,
+        expected: q.text_en,
+        lowConfidence: lowConfListRef.current[i],
+      }))
       onComplete(newResults.filter(Boolean).length, newResults.length, wordResults)
     }
   }

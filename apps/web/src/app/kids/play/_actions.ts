@@ -3,24 +3,28 @@
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import type { WordResult } from '@strides/core/kids'
 
 async function saveVocabMastery(childId: string, wordResults: WordResult[]) {
   if (wordResults.length === 0) return
   const supabase = createClient()
   await Promise.all(
-    wordResults.map(({ vocabId, correct }) =>
+    wordResults.map(({ vocabId, correct, skillType }) =>
       supabase.rpc('increment_vocab_mastery', {
-        p_child_id: childId,
-        p_vocab_id: vocabId,
-        p_correct: correct ? 1 : 0,
-        p_attempt: 1,
+        p_child_id:   childId,
+        p_vocab_id:   vocabId,
+        p_correct:    correct ? 1 : 0,
+        p_attempt:    1,
+        p_skill_type: skillType ?? 'recognition',
       })
     )
   )
 }
 
-export async function recordVocabMastery(childId: string, wordResults: WordResult[]) {
+export async function recordVocabMastery(wordResults: WordResult[]) {
+  const childId = cookies().get('selected_child_id')?.value
+  if (!childId) return
   await saveVocabMastery(childId, wordResults)
 }
 
@@ -49,6 +53,7 @@ export async function completeLesson(formData: FormData) {
       score,
       stars: Math.max(stars, existing?.stars ?? 0),
     }, { onConflict: 'child_id,lesson_id' }),
+    supabase.rpc('update_child_streak', { p_child_id: selectedChildId }),
     wordResultsRaw
       ? saveVocabMastery(selectedChildId, JSON.parse(wordResultsRaw) as WordResult[])
       : Promise.resolve(),
@@ -56,11 +61,15 @@ export async function completeLesson(formData: FormData) {
 
   if (error) throw new Error(`completeLesson: ${error.message}`)
 
+  revalidatePath('/kids/play')
+
   const prev = existing?.stars ?? 0
   redirect(`/kids/play/${moduleSlug}?anim=${lessonId}:${prev}`)
 }
 
-export async function recordCountdownAttempt(childId: string, moduleId: string) {
+export async function recordCountdownAttempt(moduleId: string) {
+  const childId = cookies().get('selected_child_id')?.value
+  if (!childId) return
   const supabase = createClient()
   await supabase
     .from('child_countdown_attempts')
@@ -68,11 +77,12 @@ export async function recordCountdownAttempt(childId: string, moduleId: string) 
 }
 
 export async function completeDailyChallenge(
-  childId: string,
   moduleId: string,
   date: string,
   stars: number,
 ) {
+  const childId = cookies().get('selected_child_id')?.value
+  if (!childId) return
   const supabase = createClient()
   await supabase
     .from('child_daily_challenges')

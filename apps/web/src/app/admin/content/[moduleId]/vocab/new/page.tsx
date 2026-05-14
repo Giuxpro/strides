@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createVocabItem } from '@/app/admin/_actions'
 import { SubmitButton } from '@/components/admin/SubmitButton'
+import { ImageUploadField } from '@/components/admin/ImageUploadField'
 
 const I = 'w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500'
 const L = 'block text-sm text-gray-400 mb-1.5'
@@ -35,23 +36,18 @@ export default async function NewVocabPage({ params }: Props) {
           </div>
         </div>
 
-        <div>
-          <label className={L}>URL de imagen</label>
-          <input
-            name="image_url"
-            type="url"
-            className={I}
-            placeholder="https://openmoji.org/data/color/svg/1F437.svg"
-          />
-          <p className="text-xs text-gray-600 mt-1">
-            Usa <a href="https://openmoji.org" target="_blank" rel="noreferrer" className="text-violet-400 hover:text-violet-300">openmoji.org</a> para ilustraciones SVG gratuitas de emojis.
-          </p>
-        </div>
+        <ImageUploadField
+          name="image_url"
+          bucket="vocabulary-images"
+          label="Imagen"
+        />
 
-        <div>
-          <label className={L}>URL de audio (opcional)</label>
-          <input name="audio_url" type="url" className={I} placeholder="https://..." />
-        </div>
+        <ImageUploadField
+          name="audio_url"
+          bucket="vocabulary-audio"
+          label="Audio"
+          accept="audio/*"
+        />
 
         <div className="grid grid-cols-2 gap-4">
           <div>

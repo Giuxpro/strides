@@ -75,7 +75,7 @@ export default async function ModulePage({ params, searchParams }: Props) {
     selectedChildId
       ? supabase
         .from('child_vocab_mastery')
-        .select('vocab_id, correct_count, attempt_count')
+        .select('vocab_id, skill_type, correct_count, attempt_count')
         .eq('child_id', selectedChildId)
       : Promise.resolve({ data: [] }),
   ])
@@ -89,12 +89,19 @@ export default async function ModulePage({ params, searchParams }: Props) {
     return acc
   }, {})
 
-  // vocab_id → mastery level 0-3 derived from per-word attempt history
-  const vocabMasteryMap = (masteryRows ?? []).reduce<Record<string, number>>((acc, row) => {
+  // vocab_id → mastery level 0-3
+  // Agrupa por vocab+skill, calcula ratio por skill, toma el mínimo entre skills
+  // Una palabra es verde solo si TODAS las habilidades practicadas superan el umbral
+  const skillsByVocab = (masteryRows ?? []).reduce<Record<string, number[]>>((acc, row) => {
     const ratio = row.attempt_count > 0 ? row.correct_count / row.attempt_count : 0
-    acc[row.vocab_id] = ratio >= 0.8 ? 3 : ratio >= 0.4 ? 2 : 1
+    const level = ratio >= 0.8 ? 3 : ratio >= 0.4 ? 2 : 1
+    if (!acc[row.vocab_id]) acc[row.vocab_id] = []
+    acc[row.vocab_id]!.push(level)
     return acc
   }, {})
+  const vocabMasteryMap = Object.fromEntries(
+    Object.entries(skillsByVocab).map(([vocabId, levels]) => [vocabId, Math.min(...levels)])
+  )
 
   // Parse animation info: "lessonId:previousStars"
   let animLessonId: string | null = null

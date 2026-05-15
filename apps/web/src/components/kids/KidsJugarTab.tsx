@@ -6,7 +6,7 @@ import type { VocabItem } from './engine/LessonEngine'
 import type { ModuleConfig, GameResult } from '@strides/core/kids'
 import { GAME_POOL, type PoolEntry, type GameConfigs } from './engine/gamePool'
 import { ModifierStack } from './engine/modifiers/ModifierStack'
-import { recordVocabMastery } from '@/app/kids/play/_actions'
+import { recordVocabMastery, recordGamePlay } from '@/app/kids/play/_actions'
 import {
   ModifierPickerModal,
   type ModifierSelection,
@@ -17,6 +17,7 @@ import {
 } from './ModifierPickerModal'
 import { PronunciationResultPanel } from './engine/PronunciationResultPanel'
 import { useMusicContext } from './MusicProvider'
+import { NpsPrompt } from '@/components/feedback/NpsPrompt'
 
 interface Props {
   vocab: VocabItem[]
@@ -47,6 +48,7 @@ export function KidsJugarTab({ vocab, moduleConfig, selectedChildId, availableMo
   const [lastResult, setLastResult]     = useState<GameResult | null>(null)
   const [modSel, setModSel]             = useState<ModifierSelection>(DEFAULT_MODIFIER_SELECTION)
   const [showModModal, setShowModModal] = useState(false)
+  const [showNps, setShowNps]           = useState(false)
 
   // Mask out modifiers disabled by admin
   const effectiveModSel: ModifierSelection = {
@@ -74,12 +76,18 @@ export function KidsJugarTab({ vocab, moduleConfig, selectedChildId, availableMo
 
   function handleGameEnd(result: GameResult) {
     setLastResult(result)
-    if (result.wordResults?.length) {
-      recordVocabMastery(result.wordResults)
-        .then(() => router.refresh())
-        .catch(() => {})
-    }
     setPhase('done')
+
+    recordGamePlay(activeGame?.id ?? '', result.correct ?? 0, result.total ?? 0)
+      .then((nps) => {
+        if (nps) setShowNps(true)
+        router.refresh()
+      })
+      .catch(() => {})
+
+    if (result.wordResults?.length) {
+      recordVocabMastery(result.wordResults).catch(() => {})
+    }
   }
 
   function backToPick() {
@@ -244,6 +252,8 @@ export function KidsJugarTab({ vocab, moduleConfig, selectedChildId, availableMo
           availableModifiers={availableModifiers}
         />
       )}
+
+      {showNps && <NpsPrompt onClose={() => setShowNps(false)} />}
     </>
   )
 }

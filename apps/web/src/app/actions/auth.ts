@@ -29,14 +29,30 @@ export async function signup(formData: FormData) {
   if (error) return { error: error.message }
 
   if (authData.user) {
-    const { data: trialRow } = await getSetting(supabase, 'trial_days')
-    const trialDays = (trialRow?.value as number) ?? 7
-    const trialEndsAt = new Date()
-    trialEndsAt.setDate(trialEndsAt.getDate() + trialDays)
-    await supabase
-      .from('profiles')
-      .update({ trial_ends_at: trialEndsAt.toISOString() })
-      .eq('id', authData.user.id)
+    const [{ data: variantRow }, { data: trialRow }] = await Promise.all([
+      getSetting(supabase, 'landing_variant'),
+      getSetting(supabase, 'trial_days'),
+    ])
+    const isTrial = (variantRow?.value as string) === 'b'
+
+    if (isTrial) {
+      const trialDays = (trialRow?.value as number) ?? 7
+      const trialEndsAt = new Date()
+      trialEndsAt.setDate(trialEndsAt.getDate() + trialDays)
+      await supabase.from('subscriptions').insert({
+        user_id: authData.user.id,
+        acquisition_type: 'trial',
+        status: 'active',
+        trial_ends_at: trialEndsAt.toISOString(),
+      })
+    } else {
+      await supabase.from('subscriptions').insert({
+        user_id: authData.user.id,
+        acquisition_type: 'prepaid',
+        status: 'pending_payment',
+        trial_ends_at: null,
+      })
+    }
   }
 
   redirect('/setup/child')

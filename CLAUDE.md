@@ -55,6 +55,19 @@ El prefijo `_` excluye el archivo del router de Next.js. Nunca usar `app/actions
 - UX kids: nunca texto solo — siempre imagen + audio + texto escrito juntos.
 - `GAME_REGISTRY` (de `@strides/core/kids`) es metadata pura sin React. `gamePool.ts` (en web) lo extiende con componentes React. Admin importa de core; engine importa de gamePool.
 
+## Anti-patrones — regla obligatoria
+
+Antes de proponer o implementar cualquier solución, evaluar si es un anti-patrón. Si yo o el usuario proponemos uno, debo:
+1. Detenerme y explicar por qué es un anti-patrón
+2. Describir los problemas concretos que causaría a futuro (rendimiento, costo, mantenibilidad, UX)
+3. Proponer la alternativa correcta
+
+Ejemplos de anti-patrones frecuentes en este proyecto:
+- **Polling con setInterval/setTimeout** para datos en tiempo real → usar Supabase Realtime (WebSockets)
+- **Queries Supabase inline** en páginas o componentes → usar `packages/db/queries/`
+- **Lógica de negocio en componentes** → va en `packages/core`
+- **Hardcodear valores de configuración** (precios, días de trial, modelos IA) → siempre desde BD
+
 ## Lo que NO hacer
 
 - No llamar a APIs de IA desde el cliente — solo desde server actions o API routes.

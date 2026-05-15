@@ -14,69 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
-      onboarding_flows: {
+      access_codes: {
         Row: {
-          id: string
-          name: string
-          description: string | null
+          access_type: string
+          code: string
           created_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          description?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          description?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
-      onboarding_screens: {
-        Row: {
+          created_by: string
+          discount_duration_months: number | null
+          discount_percent: number | null
           id: string
-          slug: string
-          title: string
-          content: Json
-          order: number
-          is_published: boolean
-          flow_id: string | null
-          created_at: string
+          is_active: boolean
+          label: string
+          max_uses: number | null
+          trial_days: number | null
           updated_at: string
+          used_count: number
+          valid_from: string | null
+          valid_until: string | null
         }
         Insert: {
-          id?: string
-          slug: string
-          title: string
-          content?: Json
-          order?: number
-          is_published?: boolean
-          flow_id?: string | null
+          access_type: string
+          code: string
           created_at?: string
+          created_by: string
+          discount_duration_months?: number | null
+          discount_percent?: number | null
+          id?: string
+          is_active?: boolean
+          label: string
+          max_uses?: number | null
+          trial_days?: number | null
           updated_at?: string
+          used_count?: number
+          valid_from?: string | null
+          valid_until?: string | null
         }
         Update: {
-          id?: string
-          slug?: string
-          title?: string
-          content?: Json
-          order?: number
-          is_published?: boolean
-          flow_id?: string | null
+          access_type?: string
+          code?: string
           created_at?: string
+          created_by?: string
+          discount_duration_months?: number | null
+          discount_percent?: number | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          max_uses?: number | null
+          trial_days?: number | null
           updated_at?: string
+          used_count?: number
+          valid_from?: string | null
+          valid_until?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "onboarding_screens_flow_id_fkey"
-            columns: ["flow_id"]
+            foreignKeyName: "access_codes_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: "onboarding_flows"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       child_countdown_attempts: {
@@ -153,6 +150,41 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      child_game_plays: {
+        Row: {
+          child_id: string
+          correct: number
+          game_id: string
+          id: string
+          played_at: string | null
+          total: number
+        }
+        Insert: {
+          child_id: string
+          correct?: number
+          game_id: string
+          id?: string
+          played_at?: string | null
+          total?: number
+        }
+        Update: {
+          child_id?: string
+          correct?: number
+          game_id?: string
+          id?: string
+          played_at?: string | null
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "child_game_plays_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
             referencedColumns: ["id"]
           },
         ]
@@ -353,6 +385,51 @@ export type Database = {
           },
         ]
       }
+      code_redemptions: {
+        Row: {
+          code_id: string
+          context: string
+          effect_applied: Json
+          id: string
+          redeemed_at: string
+          snapshot: Json
+          user_id: string
+        }
+        Insert: {
+          code_id: string
+          context: string
+          effect_applied: Json
+          id?: string
+          redeemed_at?: string
+          snapshot: Json
+          user_id: string
+        }
+        Update: {
+          code_id?: string
+          context?: string
+          effect_applied?: Json
+          id?: string
+          redeemed_at?: string
+          snapshot?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "code_redemptions_code_id_fkey"
+            columns: ["code_id"]
+            isOneToOne: false
+            referencedRelation: "access_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "code_redemptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content_generation_jobs: {
         Row: {
           created_at: string
@@ -535,6 +612,47 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feedback: {
+        Row: {
+          context_url: string | null
+          created_at: string
+          id: string
+          message: string | null
+          stars: number | null
+          status: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          context_url?: string | null
+          created_at?: string
+          id?: string
+          message?: string | null
+          stars?: number | null
+          status?: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          context_url?: string | null
+          created_at?: string
+          id?: string
+          message?: string | null
+          stars?: number | null
+          status?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -801,6 +919,71 @@ export type Database = {
           },
         ]
       }
+      onboarding_flows: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      onboarding_screens: {
+        Row: {
+          content: Json
+          created_at: string | null
+          flow_id: string | null
+          id: string
+          is_published: boolean
+          order: number
+          slug: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          content?: Json
+          created_at?: string | null
+          flow_id?: string | null
+          id?: string
+          is_published?: boolean
+          order?: number
+          slug: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: Json
+          created_at?: string | null
+          flow_id?: string | null
+          id?: string
+          is_published?: boolean
+          order?: number
+          slug?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_screens_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_flows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar: string | null
@@ -808,8 +991,8 @@ export type Database = {
           display_name: string | null
           email: string
           id: string
+          nps_prompted_at: string | null
           role: Database["public"]["Enums"]["user_role"]
-          trial_ends_at: string | null
           updated_at: string
         }
         Insert: {
@@ -818,8 +1001,8 @@ export type Database = {
           display_name?: string | null
           email: string
           id: string
+          nps_prompted_at?: string | null
           role?: Database["public"]["Enums"]["user_role"]
-          trial_ends_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -828,8 +1011,8 @@ export type Database = {
           display_name?: string | null
           email?: string
           id?: string
+          nps_prompted_at?: string | null
           role?: Database["public"]["Enums"]["user_role"]
-          trial_ends_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -897,6 +1080,66 @@ export type Database = {
             foreignKeyName: "settings_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscriptions: {
+        Row: {
+          acquisition_type: string
+          created_at: string
+          id: string
+          pending_discount_months: number | null
+          pending_discount_percent: number | null
+          redeemed_code_id: string | null
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          trial_ends_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          acquisition_type: string
+          created_at?: string
+          id?: string
+          pending_discount_months?: number | null
+          pending_discount_percent?: number | null
+          redeemed_code_id?: string | null
+          status: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          acquisition_type?: string
+          created_at?: string
+          id?: string
+          pending_discount_months?: number | null
+          pending_discount_percent?: number | null
+          redeemed_code_id?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_redeemed_code_id_fkey"
+            columns: ["redeemed_code_id"]
+            isOneToOne: false
+            referencedRelation: "access_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -999,6 +1242,43 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_admin_user_detail: {
+        Args: { p_user_id: string }
+        Returns: {
+          challenges_completed: number
+          child_age: number
+          child_avatar: string
+          child_id: string
+          child_name: string
+          current_streak: number
+          favorite_game: string
+          last_activity: string
+          last_lesson_name: string
+          last_module_name: string
+          total_completions: number
+          total_game_plays: number
+        }[]
+      }
+      get_admin_users_overview: {
+        Args: never
+        Returns: {
+          acquisition_type: string
+          children_count: number
+          display_name: string
+          email: string
+          id: string
+          joined_at: string
+          last_activity: string
+          last_sign_in_at: string
+          pending_discount_months: number
+          pending_discount_percent: number
+          redeemed_code: string
+          status: string
+          sub_created_at: string
+          total_completions: number
+          trial_ends_at: string
+        }[]
+      }
       get_or_create_household: { Args: { p_user_id: string }; Returns: string }
       grant_free_module_access: {
         Args: { p_user_id: string }
@@ -1008,16 +1288,26 @@ export type Database = {
         Args: { p_module_id: string; p_user_id: string }
         Returns: boolean
       }
-      increment_vocab_mastery: {
-        Args: {
-          p_attempt?: number
-          p_child_id: string
-          p_correct: number
-          p_vocab_id: string
-          p_skill_type?: string
-        }
-        Returns: undefined
-      }
+      increment_vocab_mastery:
+        | {
+            Args: {
+              p_attempt?: number
+              p_child_id: string
+              p_correct: number
+              p_vocab_id: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_attempt?: number
+              p_child_id: string
+              p_correct: number
+              p_skill_type?: string
+              p_vocab_id: string
+            }
+            Returns: undefined
+          }
       is_admin: { Args: never; Returns: boolean }
       update_child_streak: { Args: { p_child_id: string }; Returns: undefined }
     }

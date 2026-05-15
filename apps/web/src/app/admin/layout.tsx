@@ -7,6 +7,9 @@ const NAV = [
   { href: '/admin/content',     label: 'Contenido' },
   { href: '/admin/onboarding',  label: 'Onboarding' },
   { href: '/admin/templates',   label: 'Plantillas' },
+  { href: '/admin/users',        label: 'Usuarios' },
+  { href: '/admin/codes',        label: 'Códigos' },
+  { href: '/admin/feedback',     label: 'Feedback' },
   { href: '/admin/settings',    label: 'Configuración' },
 ]
 

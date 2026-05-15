@@ -1,5 +1,6 @@
 'use server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { Json } from '@strides/db'
@@ -388,12 +389,25 @@ export async function updateSettings(formData: FormData) {
     { key: 'ai_model',        value: formData.get('ai_model') as string },
     { key: 'speech_provider', value: formData.get('speech_provider') as string },
     { key: 'onboarding_flow', value: formData.get('onboarding_flow') as string },
-    { key: 'trial_days',      value: Number(formData.get('trial_days')) },
+    { key: 'landing_variant',  value: formData.get('landing_variant') as string },
+    { key: 'trial_days',       value: Number(formData.get('trial_days')) },
+    { key: 'monthly_price',    value: Number(formData.get('monthly_price')) || null },
+    { key: 'global_discount',  value: {
+        enabled:         formData.get('global_discount_enabled') === 'true',
+        percent:         Number(formData.get('global_discount_percent')) || 0,
+        label:           (formData.get('global_discount_label') as string) || '',
+        duration_months: formData.get('global_discount_duration') ? Number(formData.get('global_discount_duration')) : null,
+      } as Json },
     { key: 'voice_preset',    value: formData.get('voice_preset') as string },
     { key: 'available_modifiers', value: {
         timer:      formData.get('modifier_timer') === 'on',
         lives:      formData.get('modifier_lives') === 'on',
         multiplier: formData.get('modifier_multiplier') === 'on',
+      } as Json },
+    { key: 'feedback_prompt_config', value: {
+        enabled:         formData.get('nps_enabled') === 'true',
+        trigger:         (formData.get('nps_trigger') as string) || 'lesson',
+        games_threshold: Number(formData.get('nps_games_threshold')) || 10,
       } as Json },
     { key: 'game_configs', value: Object.fromEntries(
         GAME_REGISTRY.map(g => [g.id, {
@@ -403,14 +417,16 @@ export async function updateSettings(formData: FormData) {
       ) as Json },
   ]
 
-  // Actualizar volumen sin pisar los tracks existentes
+  // Actualizar volúmenes sin pisar tracks ni click_sound_url existentes
   const { data: audioRow } = await supabase.from('settings').select('value').eq('key', 'audio_config').maybeSingle()
-  const currentAudio = (audioRow?.value ?? { navigation_tracks: [], game_tracks: [], volume: 0.3 }) as {
-    navigation_tracks: string[]; game_tracks: string[]; volume: number
-  }
+  const currentAudio = (audioRow?.value ?? { navigation_tracks: [], game_tracks: [], volume: 0.3 }) as Record<string, unknown>
   entries.push({
     key: 'audio_config',
-    value: { ...currentAudio, volume: Math.min(1, Math.max(0, Number(formData.get('audio_volume') ?? 0.3))) } as Json,
+    value: {
+      ...currentAudio,
+      volume:        Math.min(1, Math.max(0, Number(formData.get('audio_volume') ?? 0.3))),
+      click_volume:  Math.min(1, Math.max(0, Number(formData.get('click_volume') ?? currentAudio['click_volume'] ?? currentAudio['volume'] ?? 0.3))),
+    } as Json,
   })
 
   await Promise.all(
@@ -429,7 +445,7 @@ const MUSIC_BASE = 'https://ievftgzxiwtjocxnrmgv.supabase.co/storage/v1/object/p
 async function rebuildAudioConfigFromBucket(
   supabase: ReturnType<typeof createClient>,
   userId: string,
-  volume: number,
+  currentConfig: Record<string, unknown>,
 ) {
   const [{ data: navFiles }, { data: gameFiles }] = await Promise.all([
     supabase.storage.from('background-music').list('navigation'),
@@ -439,7 +455,7 @@ async function rebuildAudioConfigFromBucket(
   const gameUrls = (gameFiles ?? []).map(f => `${MUSIC_BASE}/game/${f.name}`)
   await supabase.from('settings').upsert({
     key: 'audio_config',
-    value: { navigation_tracks: navUrls, game_tracks: gameUrls, volume } as Json,
+    value: { ...currentConfig, navigation_tracks: navUrls, game_tracks: gameUrls } as Json,
     updated_by: userId,
   })
 }
@@ -449,7 +465,6 @@ export async function uploadMusicTrack(formData: FormData) {
   const file    = formData.get('file') as File
   const context = formData.get('context') as 'navigation' | 'game'
 
-  // Nombre original, sin caracteres problemáticos
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
   const filename = `${context}/${safeName}`
 
@@ -460,9 +475,9 @@ export async function uploadMusicTrack(formData: FormData) {
   if (upErr) throw new Error(upErr.message)
 
   const { data: row } = await supabase.from('settings').select('value').eq('key', 'audio_config').maybeSingle()
-  const volume = ((row?.value as { volume?: number } | null)?.volume) ?? 0.3
+  const current = (row?.value as Record<string, unknown> | null) ?? { volume: 0.3 }
 
-  await rebuildAudioConfigFromBucket(supabase, userId, volume)
+  await rebuildAudioConfigFromBucket(supabase, userId, current)
   revalidatePath('/admin/settings')
 }
 
@@ -473,10 +488,62 @@ export async function removeMusicTrack(url: string) {
   await supabase.storage.from('background-music').remove([path])
 
   const { data: row } = await supabase.from('settings').select('value').eq('key', 'audio_config').maybeSingle()
-  const volume = ((row?.value as { volume?: number } | null)?.volume) ?? 0.3
+  const current = (row?.value as Record<string, unknown> | null) ?? { volume: 0.3 }
 
-  await rebuildAudioConfigFromBucket(supabase, userId, volume)
+  await rebuildAudioConfigFromBucket(supabase, userId, current)
   revalidatePath('/admin/settings')
+}
+
+export async function uploadClickSound(formData: FormData) {
+  const { supabase, userId } = await requireAdmin()
+  const adminClient = createAdminClient()
+  const file = formData.get('file') as File
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+  // Service role bypasses storage RLS — necesario porque ui/ no tiene política configurada
+  const { error } = await adminClient.storage
+    .from('background-music')
+    .upload(`ui/${safeName}`, file, { contentType: file.type, upsert: true })
+
+  if (error) throw new Error(error.message)
+
+  const publicUrl = `${MUSIC_BASE}/ui/${safeName}`
+  const { data: row } = await supabase.from('settings').select('value').eq('key', 'audio_config').maybeSingle()
+  const current = (row?.value as Record<string, unknown> | null) ?? { volume: 0.3 }
+
+  await supabase.from('settings').upsert({
+    key: 'audio_config',
+    value: { ...current, click_sound_url: publicUrl } as Json,
+    updated_by: userId,
+  })
+  revalidatePath('/admin/settings')
+}
+
+export async function removeClickSound() {
+  const { supabase, userId } = await requireAdmin()
+  const adminClient = createAdminClient()
+  const { data: row } = await supabase.from('settings').select('value').eq('key', 'audio_config').maybeSingle()
+  const current = (row?.value as Record<string, unknown> | null) ?? { volume: 0.3 }
+
+  if (current['click_sound_url']) {
+    const path = (current['click_sound_url'] as string).replace(`${MUSIC_BASE}/`, '')
+    await adminClient.storage.from('background-music').remove([path])
+  }
+
+  await supabase.from('settings').upsert({
+    key: 'audio_config',
+    value: { ...current, click_sound_url: null } as Json,
+    updated_by: userId,
+  })
+  revalidatePath('/admin/settings')
+}
+
+// ─── Feedback ────────────────────────────────────────────────────────────────
+
+export async function updateFeedbackStatus(id: string, status: string) {
+  const { supabase } = await requireAdmin()
+  await supabase.from('feedback').update({ status }).eq('id', id)
+  revalidatePath('/admin/feedback')
 }
 
 // ─── Module Reto Config ──────────────────────────────────────────────────────

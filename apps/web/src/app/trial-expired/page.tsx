@@ -6,14 +6,13 @@ export default async function TrialExpiredPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('trial_ends_at, display_name')
-    .eq('id', user.id)
-    .single()
+  const [{ data: profile }, { data: subscription }] = await Promise.all([
+    supabase.from('profiles').select('display_name').eq('id', user.id).single(),
+    supabase.from('subscriptions').select('trial_ends_at').eq('user_id', user.id).maybeSingle(),
+  ])
 
-  const expiredAt = profile?.trial_ends_at
-    ? new Date(profile.trial_ends_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
+  const expiredAt = subscription?.trial_ends_at
+    ? new Date(subscription.trial_ends_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
     : null
 
   return (
@@ -33,13 +32,11 @@ export default async function TrialExpiredPage() {
         )}
 
         <p className="text-gray-500 text-sm mb-8 leading-relaxed">
-          Tu periodo de prueba gratuito ha finalizado. Pronto podrás continuar con una suscripción para que{' '}
+          Tu periodo de prueba gratuito ha finalizado. Suscríbete para que{' '}
           {profile?.display_name ? <strong>{profile.display_name}</strong> : 'tu hijo'} siga aprendiendo inglés.
         </p>
 
-        <div
-          className="bg-white rounded-3xl border border-violet-200 p-5 mb-6 text-left shadow-sm"
-        >
+        <div className="bg-white rounded-3xl border border-violet-200 p-5 mb-6 text-left shadow-sm">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Lo que conseguiste durante el trial</p>
           <ul className="space-y-2 text-sm text-gray-600">
             <li className="flex items-center gap-2"><span className="text-violet-500">✓</span> Acceso a todos los módulos</li>

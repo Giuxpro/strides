@@ -16,6 +16,9 @@ export type EvaluationResult = SupaTables<'evaluation_results'>
 export type Recording = SupaTables<'recordings'>
 export type ContentGenerationJob = SupaTables<'content_generation_jobs'>
 export type Setting = SupaTables<'settings'>
+export type Subscription = SupaTables<'subscriptions'>
+export type AccessCode = SupaTables<'access_codes'>
+export type CodeRedemption = SupaTables<'code_redemptions'>
 
 // Enum aliases
 export type UserRole = Database['public']['Enums']['user_role']

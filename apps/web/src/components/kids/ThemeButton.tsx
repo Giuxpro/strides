@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { KIDS_THEMES, type KidsTheme } from '@strides/core/kids'
+import { useMusicContext } from './MusicProvider'
+import { useClickSoundContext } from './ClickSoundProvider'
 
 interface Props {
   currentTheme: string
@@ -10,6 +12,8 @@ interface Props {
 export function ThemeButton({ currentTheme }: Props) {
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(currentTheme)
+  const { muted: musicMuted, toggleMute: toggleMusic } = useMusicContext()
+  const { muted: soundMuted, toggleMute: toggleSound } = useClickSoundContext()
 
   function applyTheme(themeId: string) {
     setActive(themeId)
@@ -27,7 +31,7 @@ export function ThemeButton({ currentTheme }: Props) {
     <>
       <button
         onClick={() => setOpen(true)}
-        aria-label="Cambiar tema"
+        aria-label="Ajustes"
         className="fixed bottom-6 right-5 z-40 w-10 h-10 rounded-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
         style={{
           background: 'var(--kids-surface-alt)',
@@ -41,32 +45,27 @@ export function ThemeButton({ currentTheme }: Props) {
       {/* Backdrop */}
       {open && (
         <div
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
           onClick={() => setOpen(false)}
         />
       )}
 
-      {/* Bottom sheet */}
+      {/* Drawer */}
       {open && (
         <div
-          className="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto animate-slide-up"
+          className="fixed top-0 right-0 h-full z-50 w-72 flex flex-col animate-slide-right shadow-2xl"
           style={{
             background: 'var(--kids-bg)',
-            borderTop: '1.5px solid var(--kids-border-color)',
+            borderLeft: '1.5px solid var(--kids-border-color)',
           }}
         >
-          {/* Handle */}
+          {/* Header fijo */}
           <div
-            className="w-10 h-1 rounded-full mx-auto mb-5"
-            style={{ background: 'var(--kids-border-color)' }}
-          />
-
-          <div className="flex items-center justify-between mb-6">
-            <h2
-              className="font-extrabold text-xl"
-              style={{ color: 'var(--kids-text)' }}
-            >
-              Elige tu tema
+            className="flex items-center justify-between px-5 pt-6 pb-4 shrink-0"
+            style={{ borderBottom: '1px solid var(--kids-border-color)' }}
+          >
+            <h2 className="font-extrabold text-lg" style={{ color: 'var(--kids-text)' }}>
+              Preferencias
             </h2>
             <button
               onClick={() => setOpen(false)}
@@ -77,12 +76,81 @@ export function ThemeButton({ currentTheme }: Props) {
             </button>
           </div>
 
-          <ThemeSection title="🌌 Temáticos"  themes={tematic} active={active} onSelect={applyTheme} />
-          <ThemeSection title="🍬 Pasteles"   themes={pastel}  active={active} onSelect={applyTheme} />
-          <ThemeSection title="⚡ Básico"     themes={basic}   active={active} onSelect={applyTheme} />
+          {/* Contenido scrollable sin scrollbar */}
+          <div className="flex-1 overflow-y-auto scrollbar-hide px-5 py-5 flex flex-col gap-6">
+
+            {/* Sonido */}
+            <div>
+              <p
+                className="text-xs font-bold uppercase tracking-widest mb-3"
+                style={{ color: 'var(--kids-text-muted)' }}
+              >
+                Sonido
+              </p>
+              <div className="flex flex-col gap-2">
+                <SoundToggle
+                  emoji={musicMuted ? '🔇' : '🎵'}
+                  label="Música"
+                  active={!musicMuted}
+                  onToggle={toggleMusic}
+                />
+                <SoundToggle
+                  emoji={soundMuted ? '🔕' : '🔊'}
+                  label="Sonidos de botones"
+                  active={!soundMuted}
+                  onToggle={toggleSound}
+                />
+              </div>
+            </div>
+
+            {/* Temas */}
+            <div>
+              <p
+                className="text-xs font-bold uppercase tracking-widest mb-3"
+                style={{ color: 'var(--kids-text-muted)' }}
+              >
+                Tema
+              </p>
+              <ThemeSection title="🌌 Temáticos"  themes={tematic} active={active} onSelect={applyTheme} />
+              <ThemeSection title="🍬 Pasteles"   themes={pastel}  active={active} onSelect={applyTheme} />
+              <ThemeSection title="⚡ Básico"     themes={basic}   active={active} onSelect={applyTheme} />
+            </div>
+
+          </div>
         </div>
       )}
     </>
+  )
+}
+
+function SoundToggle({
+  emoji, label, active, onToggle,
+}: {
+  emoji: string
+  label: string
+  active: boolean
+  onToggle: () => void
+}) {
+  return (
+    <div
+      className="flex items-center justify-between px-4 py-3 rounded-2xl"
+      style={{ background: 'var(--kids-surface-alt)' }}
+    >
+      <div className="flex items-center gap-2.5">
+        <span style={{ fontSize: 20 }}>{emoji}</span>
+        <span className="text-sm font-semibold" style={{ color: 'var(--kids-text)' }}>{label}</span>
+      </div>
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${active ? 'bg-violet-500' : 'bg-gray-400'}`}
+        aria-label={active ? 'Silenciar' : 'Activar'}
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${active ? 'translate-x-6' : 'translate-x-1'}`}
+        />
+      </button>
+    </div>
   )
 }
 

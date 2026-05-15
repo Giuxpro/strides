@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { updateProfile } from '@/app/account/_actions'
 import { AvatarPicker } from '@/components/profile/AvatarPicker'
+import { RedeemCodeForm } from '@/components/account/RedeemCodeForm'
+import { FeedbackButton } from '@/components/feedback/FeedbackButton'
 import Link from 'next/link'
 
 export default async function EditProfilePage() {
@@ -64,13 +66,25 @@ export default async function EditProfilePage() {
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-gray-800">
+        <div className="mt-8 pt-6 border-t border-gray-800 space-y-1">
+          <Link
+            href="/account/billing"
+            className="block w-full text-center text-sm text-gray-500 hover:text-violet-400 transition-colors py-2"
+          >
+            Mi plan y facturación →
+          </Link>
           <Link
             href="/account/set-password"
             className="block w-full text-center text-sm text-gray-500 hover:text-violet-400 transition-colors py-2"
           >
             Cambiar contraseña →
           </Link>
+        </div>
+
+        <RedeemCodeForm />
+
+        <div className="mt-4">
+          <FeedbackButton />
         </div>
       </div>
     </main>

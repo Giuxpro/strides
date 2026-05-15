@@ -10,12 +10,12 @@ import type { GameConfigs } from '@/components/kids/engine/gamePool'
 
 interface Props {
   params: Promise<{ moduleSlug: string }>
-  searchParams: Promise<{ anim?: string }>
+  searchParams: Promise<{ anim?: string; nps?: string }>
 }
 
 export default async function ModulePage({ params, searchParams }: Props) {
   const { moduleSlug } = await params
-  const { anim } = await searchParams
+  const { anim, nps } = await searchParams
   const supabase = createClient()
   const selectedChildId = cookies().get('selected_child_id')?.value
 
@@ -35,7 +35,7 @@ export default async function ModulePage({ params, searchParams }: Props) {
   const daysToMonday = now.getUTCDay() === 0 ? 6 : now.getUTCDay() - 1
   const weekStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysToMonday))
 
-  const [{ data: lessons }, { data: completions }, { data: vocab }, { data: dailyRow }, { count: countdownCount }, { data: availModRow }, { data: gameConfigsRow }, { data: speechRow }, { data: masteryRows }] = await Promise.all([
+  const [{ data: lessons }, { data: completions }, { data: vocab }, { data: dailyRow }, { count: countdownCount }, { data: availModRow }, { data: gameConfigsRow }, { data: speechRow }, { data: npsConfigRow }, { data: masteryRows }] = await Promise.all([
     supabase
       .from('lessons')
       .select('*')
@@ -72,6 +72,7 @@ export default async function ModulePage({ params, searchParams }: Props) {
     supabase.from('settings').select('value').eq('key', 'available_modifiers').maybeSingle(),
     supabase.from('settings').select('value').eq('key', 'game_configs').maybeSingle(),
     supabase.from('settings').select('value').eq('key', 'speech_provider').maybeSingle(),
+    supabase.from('settings').select('value').eq('key', 'feedback_prompt_config').maybeSingle(),
     selectedChildId
       ? supabase
         .from('child_vocab_mastery')
@@ -84,6 +85,17 @@ export default async function ModulePage({ params, searchParams }: Props) {
   const availableModifiers = (availModRow?.value as AvailableModifiers | null) ?? null
   const gameConfigs = (gameConfigsRow?.value as GameConfigs | null) ?? null
   const speechProvider = isSpeechProvider(speechRow?.value) ? speechRow.value : DEFAULT_SPEECH_PROVIDER
+  const npsConfig = npsConfigRow?.value as { enabled: boolean; trigger: string; games_threshold: number } | null
+
+  // admin_test: show NPS only to admins immediately on module load
+  let showNps = nps === '1'
+  if (!showNps && npsConfig?.enabled && npsConfig.trigger === 'admin_test') {
+    const { data: { user: authUser } } = await supabase.auth.getUser()
+    if (authUser) {
+      const { data: userProfile } = await supabase.from('profiles').select('role').eq('id', authUser.id).single()
+      if (userProfile?.role === 'admin') showNps = true
+    }
+  }
   const starsMap = (completions ?? []).reduce<Record<string, number>>((acc, c) => {
     acc[c.lesson_id] = Math.max(acc[c.lesson_id] ?? 0, c.stars)
     return acc
@@ -196,6 +208,7 @@ export default async function ModulePage({ params, searchParams }: Props) {
             gameConfigs={gameConfigs}
             vocabMasteryMap={vocabMasteryMap}
             speechProvider={speechProvider}
+            showNps={showNps}
           />
         ) : (
           <div className="text-center py-16 px-6">

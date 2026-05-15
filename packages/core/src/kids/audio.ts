@@ -2,6 +2,8 @@ export interface AudioConfig {
   navigation_tracks: string[]
   game_tracks: string[]
   volume: number
+  click_sound_url?: string | null
+  click_volume?: number
 }
 
 export const DEFAULT_AUDIO_CONFIG: AudioConfig = {

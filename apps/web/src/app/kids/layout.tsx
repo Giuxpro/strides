@@ -6,7 +6,7 @@ import { resolveThemeId, isVoicePreset, DEFAULT_VOICE_PRESET, isAudioConfig, DEF
 import { ThemeButton } from '@/components/kids/ThemeButton'
 import { VoicePresetProvider } from '@/components/kids/VoicePresetProvider'
 import { MusicProvider } from '@/components/kids/MusicProvider'
-import { MusicButton } from '@/components/kids/MusicButton'
+import { ClickSoundProvider } from '@/components/kids/ClickSoundProvider'
 
 const baloo = Baloo_2({
   subsets: ['latin'],
@@ -19,16 +19,22 @@ export default async function KidsLayout({ children }: { children: React.ReactNo
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Verificar trial
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('trial_ends_at, role')
-    .eq('id', user.id)
-    .single()
+  const [{ data: profile }, { data: subscription }] = await Promise.all([
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
+    supabase.from('subscriptions').select('acquisition_type, status, trial_ends_at').eq('user_id', user.id).maybeSingle(),
+  ])
 
   if (profile && profile.role !== 'admin') {
-    if (profile.trial_ends_at && new Date(profile.trial_ends_at) < new Date()) {
-      redirect('/trial-expired')
+    if (!subscription) redirect('/get-access')
+
+    if (subscription.acquisition_type === 'complimentary') {
+      // acceso permanente — sin chequeo adicional
+    } else if (subscription.acquisition_type === 'prepaid') {
+      if (subscription.status !== 'active') redirect('/get-access')
+    } else {
+      // trial
+      const expired = subscription.trial_ends_at && new Date(subscription.trial_ends_at) < new Date()
+      if (expired || subscription.status === 'expired') redirect('/trial-expired')
     }
   }
 
@@ -53,11 +59,15 @@ export default async function KidsLayout({ children }: { children: React.ReactNo
       }}
     >
       <MusicProvider config={audioConfig}>
-        <VoicePresetProvider preset={voicePreset}>
-          {children}
-        </VoicePresetProvider>
-        <ThemeButton currentTheme={themeId} />
-        <MusicButton />
+        <ClickSoundProvider
+          soundUrl={audioConfig.click_sound_url ?? null}
+          volume={audioConfig.click_volume ?? audioConfig.volume}
+        >
+          <VoicePresetProvider preset={voicePreset}>
+            {children}
+          </VoicePresetProvider>
+          <ThemeButton currentTheme={themeId} />
+        </ClickSoundProvider>
       </MusicProvider>
     </div>
   )

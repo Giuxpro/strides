@@ -13,6 +13,7 @@ import type { AvailableModifiers } from './ModifierPickerModal'
 import type { GameConfigs } from './engine/gamePool'
 import { SpeechConfigProvider } from './engine/SpeechConfigContext'
 import type { SpeechProvider } from '@strides/core/kids'
+import { NpsPrompt } from '@/components/feedback/NpsPrompt'
 
 interface Props {
   moduleSlug: string
@@ -36,6 +37,7 @@ interface Props {
   gameConfigs: GameConfigs | null
   vocabMasteryMap: Record<string, number>
   speechProvider?: SpeechProvider
+  showNps?: boolean
 }
 
 export function KidsModuleTabs({
@@ -44,8 +46,10 @@ export function KidsModuleTabs({
   countdownWeeklyLimit, dailyWordCount, retoGameId, retoModifiers, diarioGameId,
   availableModifiers, activeGameIds, gameConfigs, vocabMasteryMap,
   speechProvider = 'web-speech',
+  showNps = false,
 }: Props) {
   const [tab, setTab] = useState<TabId>('aprender')
+  const [npsVisible, setNpsVisible] = useState(showNps)
 
   return (
     <SpeechConfigProvider provider={speechProvider}>
@@ -105,6 +109,8 @@ export function KidsModuleTabs({
       )}
 
       <KidsBottomNav active={tab} onChange={setTab} />
+
+      {npsVisible && <NpsPrompt onClose={() => setNpsVisible(false)} />}
     </div>
     </SpeechConfigProvider>
   )

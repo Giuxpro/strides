@@ -3,25 +3,32 @@ import type {
   HeroBlockProps, FeatureBlockProps, CTABlockProps,
   StatsBlockProps, BenefitsBlockProps, HowItWorksBlockProps,
   TestimonialBlockProps, VideoBlockProps,
+  GamePreviewBlockProps, BeforeAfterBlockProps, SocialProofBlockProps,
 } from '@strides/core/kids'
-import { HeroBlock }      from './blocks/HeroBlock'
-import { FeatureBlock }   from './blocks/FeatureBlock'
-import { CTABlock }       from './blocks/CTABlock'
-import { StatsBlock }     from './blocks/StatsBlock'
-import { BenefitsBlock }  from './blocks/BenefitsBlock'
-import { HowItWorksBlock } from './blocks/HowItWorksBlock'
+import { HeroBlock }        from './blocks/HeroBlock'
+import { FeatureBlock }     from './blocks/FeatureBlock'
+import { CTABlock }         from './blocks/CTABlock'
+import { StatsBlock }       from './blocks/StatsBlock'
+import { BenefitsBlock }    from './blocks/BenefitsBlock'
+import { HowItWorksBlock }  from './blocks/HowItWorksBlock'
 import { TestimonialBlock } from './blocks/TestimonialBlock'
-import { VideoBlock }     from './blocks/VideoBlock'
+import { VideoBlock }       from './blocks/VideoBlock'
+import { GamePreviewBlock } from './blocks/GamePreviewBlock'
+import { BeforeAfterBlock } from './blocks/BeforeAfterBlock'
+import { SocialProofBlock } from './blocks/SocialProofBlock'
 
 type PuckComponents = {
-  Hero:        HeroBlockProps
-  Feature:     FeatureBlockProps
-  CTA:         CTABlockProps
-  Stats:       StatsBlockProps
-  Benefits:    BenefitsBlockProps
-  HowItWorks:  HowItWorksBlockProps
-  Testimonial: TestimonialBlockProps
-  Video:       VideoBlockProps
+  Hero:         HeroBlockProps
+  Feature:      FeatureBlockProps
+  CTA:          CTABlockProps
+  Stats:        StatsBlockProps
+  Benefits:     BenefitsBlockProps
+  HowItWorks:   HowItWorksBlockProps
+  Testimonial:  TestimonialBlockProps
+  Video:        VideoBlockProps
+  GamePreview:  GamePreviewBlockProps
+  BeforeAfter:  BeforeAfterBlockProps
+  SocialProof:  SocialProofBlockProps
 }
 
 export const puckConfig: Config<PuckComponents> = {
@@ -38,11 +45,11 @@ export const puckConfig: Config<PuckComponents> = {
       },
       defaultProps: {
         emoji:      '🚀',
-        title:      '¡Aprende inglés jugando!',
-        subtitle:   'Aventuras interactivas para niños de 4 a 12 años',
-        bgGradient: 'linear-gradient(160deg, #1e1b4b 0%, #4c1d95 50%, #6d28d9 100%)',
+        title:      'El inglés que tu hijo PEDIRÁ aprender',
+        subtitle:   'Aventuras, juegos y retos que hacen que aprender inglés sea lo mejor del día',
+        bgGradient: 'oklch(0.09 0.025 280)',
         showBadge:  true,
-        badgeText:  '✨ Prueba gratis 7 días',
+        badgeText:  '✨ Precio de fundadores — el precio sube al lanzamiento',
       },
       render: HeroBlock,
     },
@@ -52,11 +59,13 @@ export const puckConfig: Config<PuckComponents> = {
         emoji:       { type: 'text',     label: 'Emoji' },
         title:       { type: 'text',     label: 'Título' },
         description: { type: 'textarea', label: 'Descripción' },
+        accentColor: { type: 'text',     label: 'Color acento (oklch o hex)' },
       },
       defaultProps: {
         emoji:       '🎮',
-        title:       'Aprende jugando',
-        description: 'Lecciones interactivas diseñadas para niños de 4 a 12 años.',
+        title:       'Aprenden sin darse cuenta',
+        description: 'Los juegos de Strides están diseñados para que los niños quieran seguir jugando. El inglés llega solo.',
+        accentColor: 'oklch(0.55 0.22 290)',
       },
       render: FeatureBlock,
     },
@@ -69,13 +78,13 @@ export const puckConfig: Config<PuckComponents> = {
           type:    'select',
           label:   'Estilo',
           options: [
-            { label: 'Principal (violeta)',  value: 'primary' },
-            { label: 'Secundario (blanco)',  value: 'secondary' },
+            { label: 'Principal (violeta)', value: 'primary' },
+            { label: 'Secundario (blanco)', value: 'secondary' },
           ],
         },
       },
       defaultProps: {
-        label:   'Empezar gratis',
+        label:   'Empezar ahora →',
         href:    '/signup',
         variant: 'primary' as const,
       },
@@ -84,42 +93,60 @@ export const puckConfig: Config<PuckComponents> = {
 
     Stats: {
       fields: {
-        stat1Number: { type: 'text', label: 'Estadística 1 — número' },
-        stat1Label:  { type: 'text', label: 'Estadística 1 — etiqueta' },
-        stat2Number: { type: 'text', label: 'Estadística 2 — número' },
-        stat2Label:  { type: 'text', label: 'Estadística 2 — etiqueta' },
-        stat3Number: { type: 'text', label: 'Estadística 3 — número' },
-        stat3Label:  { type: 'text', label: 'Estadística 3 — etiqueta' },
-        bgColor:     { type: 'text', label: 'Fondo CSS' },
+        stat1Emoji:  { type: 'text', label: 'Stat 1 — emoji' },
+        stat1Number: { type: 'text', label: 'Stat 1 — número' },
+        stat1Label:  { type: 'text', label: 'Stat 1 — etiqueta' },
+        stat2Emoji:  { type: 'text', label: 'Stat 2 — emoji' },
+        stat2Number: { type: 'text', label: 'Stat 2 — número' },
+        stat2Label:  { type: 'text', label: 'Stat 2 — etiqueta' },
+        stat3Emoji:  { type: 'text', label: 'Stat 3 — emoji' },
+        stat3Number: { type: 'text', label: 'Stat 3 — número' },
+        stat3Label:  { type: 'text', label: 'Stat 3 — etiqueta' },
       },
       defaultProps: {
+        stat1Emoji:  '🎮',
         stat1Number: '500+',
-        stat1Label:  'palabras en inglés',
+        stat1Label:  'palabras que aprenderá tu hijo',
+        stat2Emoji:  '⭐',
         stat2Number: '10',
-        stat2Label:  'juegos interactivos',
-        stat3Number: '4-12',
-        stat3Label:  'años de edad',
-        bgColor:     'linear-gradient(135deg, #7c3aed, #4f46e5)',
+        stat2Label:  'tipos de juegos distintos',
+        stat3Emoji:  '🏆',
+        stat3Number: '4–12',
+        stat3Label:  'años de edad ideal',
       },
       render: StatsBlock,
     },
 
     Benefits: {
       fields: {
-        emoji:    { type: 'text',     label: 'Emoji de sección' },
-        title:    { type: 'textarea', label: 'Título de sección' },
-        benefit1: { type: 'text',     label: 'Beneficio 1' },
-        benefit2: { type: 'text',     label: 'Beneficio 2' },
-        benefit3: { type: 'text',     label: 'Beneficio 3' },
-        benefit4: { type: 'text',     label: 'Beneficio 4' },
+        title:         { type: 'textarea', label: 'Título de sección' },
+        benefit1Emoji: { type: 'text',     label: 'Beneficio 1 — emoji' },
+        benefit1Title: { type: 'text',     label: 'Beneficio 1 — título' },
+        benefit1Sub:   { type: 'textarea', label: 'Beneficio 1 — subtexto' },
+        benefit2Emoji: { type: 'text',     label: 'Beneficio 2 — emoji' },
+        benefit2Title: { type: 'text',     label: 'Beneficio 2 — título' },
+        benefit2Sub:   { type: 'textarea', label: 'Beneficio 2 — subtexto' },
+        benefit3Emoji: { type: 'text',     label: 'Beneficio 3 — emoji' },
+        benefit3Title: { type: 'text',     label: 'Beneficio 3 — título' },
+        benefit3Sub:   { type: 'textarea', label: 'Beneficio 3 — subtexto' },
+        benefit4Emoji: { type: 'text',     label: 'Beneficio 4 — emoji' },
+        benefit4Title: { type: 'text',     label: 'Beneficio 4 — título' },
+        benefit4Sub:   { type: 'textarea', label: 'Beneficio 4 — subtexto' },
       },
       defaultProps: {
-        emoji:    '🎯',
-        title:    '¿Por qué Strides funciona?',
-        benefit1: 'Método basado en juego — el niño aprende sin darse cuenta',
-        benefit2: 'Pronunciación real con reconocimiento de voz',
-        benefit3: 'Progreso visible que motiva a seguir',
-        benefit4: 'Contenido adaptado a su edad y nivel',
+        title:         '¿Por qué Strides funciona?',
+        benefit1Emoji: '🎮',
+        benefit1Title: 'Aprenden jugando',
+        benefit1Sub:   'Sin memorización forzada. El cerebro retiene mejor lo que disfruta.',
+        benefit2Emoji: '🎤',
+        benefit2Title: 'Pronunciación real',
+        benefit2Sub:   'Reconocimiento de voz que entrena el oído desde el primer día.',
+        benefit3Emoji: '⭐',
+        benefit3Title: 'Progreso visible',
+        benefit3Sub:   'Tu hijo ve sus logros. Eso mantiene la motivación encendida.',
+        benefit4Emoji: '🏠',
+        benefit4Title: 'Multiusuario',
+        benefit4Sub:   'Varios hijos en una cuenta. Cada uno con su propio avance.',
       },
       render: BenefitsBlock,
     },
@@ -138,16 +165,16 @@ export const puckConfig: Config<PuckComponents> = {
         step3Desc:  { type: 'textarea', label: 'Paso 3 — descripción' },
       },
       defaultProps: {
-        title:      '¿Cómo funciona?',
+        title:      'Así de simple es comenzar',
         step1Emoji: '📱',
-        step1Title: 'Crea el perfil de tu hijo',
-        step1Desc:  'En menos de un minuto, sin datos innecesarios.',
-        step2Emoji: '🎮',
-        step2Title: 'Elige un módulo',
-        step2Desc:  'Animales, colores, números… cada módulo es un mundo de juegos.',
-        step3Emoji: '📈',
-        step3Title: 'Sigue su progreso',
-        step3Desc:  'Ve qué palabras ya domina y cuáles sigue practicando.',
+        step1Title: 'Crea la cuenta en 2 minutos',
+        step1Desc:  'Sin datos innecesarios. Solo tu email y el perfil de tu hijo.',
+        step2Emoji: '🗺️',
+        step2Title: 'Elige el módulo',
+        step2Desc:  'Animales, colores, familia y más. Tu hijo elige la aventura.',
+        step3Emoji: '🎮',
+        step3Title: '¡A jugar y aprender!',
+        step3Desc:  'Juegos, retos y logros que harán que pida seguir aprendiendo.',
       },
       render: HowItWorksBlock,
     },
@@ -155,17 +182,19 @@ export const puckConfig: Config<PuckComponents> = {
     Testimonial: {
       fields: {
         quote:   { type: 'textarea', label: 'Testimonio' },
-        author:  { type: 'text',     label: 'Nombre del autor' },
-        role:    { type: 'text',     label: 'Rol (ej: Mamá de Sofía, 6 años)' },
+        author:  { type: 'text',     label: 'Nombre' },
+        role:    { type: 'text',     label: 'Rol (ej: Mamá de Lucas, 6 años)' },
         avatar:  { type: 'text',     label: 'Emoji de avatar' },
+        metric:  { type: 'text',     label: 'Métrica (ej: 80 palabras en 3 semanas)' },
         bgColor: { type: 'text',     label: 'Fondo CSS' },
       },
       defaultProps: {
-        quote:   'Mi hija lleva 3 semanas usando Strides y ya sabe más de 50 palabras. Lo mejor es que ella pide jugar sola.',
-        author:  'María González',
-        role:    'Mamá de Sofía, 6 años',
+        quote:   'Mi hijo lleva un mes con Strides y ya reconoce más de 80 palabras. Lo mejor es que él pide jugar solo, yo no tengo que convencerlo.',
+        author:  'Carolina Méndez',
+        role:    'Mamá de Mateo, 6 años',
         avatar:  '👩',
-        bgColor: '#0f0a1a',
+        metric:  '80 palabras en 4 semanas',
+        bgColor: 'oklch(0.09 0.025 280)',
       },
       render: TestimonialBlock,
     },
@@ -181,11 +210,78 @@ export const puckConfig: Config<PuckComponents> = {
         thumbnailEmoji: '🎬',
         title:          'Mira cómo aprenden los niños',
         subtitle:       '2 minutos que muestran por qué Strides es diferente',
-        bgColor:        '#0f0a1a',
+        bgColor:        'oklch(0.09 0.025 280)',
       },
       render: VideoBlock,
     },
 
+    GamePreview: {
+      fields: {
+        heading:   { type: 'text',     label: 'Título de sección' },
+        game1Emoji: { type: 'text',    label: 'Juego 1 — emoji' },
+        game1Name:  { type: 'text',    label: 'Juego 1 — nombre' },
+        game1Desc:  { type: 'textarea',label: 'Juego 1 — descripción' },
+        game2Emoji: { type: 'text',    label: 'Juego 2 — emoji' },
+        game2Name:  { type: 'text',    label: 'Juego 2 — nombre' },
+        game2Desc:  { type: 'textarea',label: 'Juego 2 — descripción' },
+        game3Emoji: { type: 'text',    label: 'Juego 3 — emoji' },
+        game3Name:  { type: 'text',    label: 'Juego 3 — nombre' },
+        game3Desc:  { type: 'textarea',label: 'Juego 3 — descripción' },
+      },
+      defaultProps: {
+        heading:    'Así aprenden jugando',
+        game1Emoji: '🃏',
+        game1Name:  'Vocabulario en acción',
+        game1Desc:  'Asocia imagen, audio y palabra. El cerebro retiene 3x más.',
+        game2Emoji: '🎤',
+        game2Name:  'Pronunciación real',
+        game2Desc:  'Tu hijo habla, Strides escucha y corrige en tiempo real.',
+        game3Emoji: '🧠',
+        game3Name:  'Juego de memoria',
+        game3Desc:  'Parejas de palabras que refuerzan lo aprendido sin aburrirse.',
+      },
+      render: GamePreviewBlock,
+    },
+
+    BeforeAfter: {
+      fields: {
+        heading:      { type: 'text',     label: 'Título (opcional)' },
+        beforeTitle:  { type: 'text',     label: 'Columna izquierda — título' },
+        before1:      { type: 'text',     label: 'Antes — ítem 1' },
+        before2:      { type: 'text',     label: 'Antes — ítem 2' },
+        before3:      { type: 'text',     label: 'Antes — ítem 3' },
+        afterTitle:   { type: 'text',     label: 'Columna derecha — título' },
+        after1:       { type: 'text',     label: 'Con Strides — ítem 1' },
+        after2:       { type: 'text',     label: 'Con Strides — ítem 2' },
+        after3:       { type: 'text',     label: 'Con Strides — ítem 3' },
+      },
+      defaultProps: {
+        heading:     '¿Qué cambia con Strides?',
+        beforeTitle: 'Métodos típicos',
+        before1:     'Repetición mecánica y aburrida',
+        before2:     'Tu hijo no quiere practicar',
+        before3:     'Sin contexto ni motivación',
+        afterTitle:  'Con Strides',
+        after1:      'Juegos que pide repetir',
+        after2:      'Aprende sin darse cuenta',
+        after3:      'Logros que celebrar cada día',
+      },
+      render: BeforeAfterBlock,
+    },
+
+    SocialProof: {
+      fields: {
+        avatars:  { type: 'text',     label: 'Avatares (emojis separados por coma)' },
+        counter:  { type: 'text',     label: 'Número / contador' },
+        subtitle: { type: 'textarea', label: 'Subtexto' },
+      },
+      defaultProps: {
+        avatars:  '👩,👨,👩‍👧,👨‍👧‍👦,👩‍👦,👩‍👧‍👦,👨‍👦',
+        counter:  'Familias aprendiendo juntas',
+        subtitle: 'Padres que ya eligieron que el inglés sea una aventura, no una obligación.',
+      },
+      render: SocialProofBlock,
+    },
+
   },
 }
-

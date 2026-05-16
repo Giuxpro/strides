@@ -69,7 +69,7 @@ export default function DefaultLanding({ copy, stats }: LandingTemplateProps) {
             Iniciar sesión
           </Link>
           <Link
-            href="/signup"
+            href="/onboarding"
             className="text-sm font-bold px-5 py-2 rounded-full transition-all hover:scale-105 active:scale-95"
             style={{ background: 'linear-gradient(135deg, #7c3aed, #5b21b6)', boxShadow: '0 0 24px rgba(124,58,237,0.45)' }}
           >
@@ -109,14 +109,10 @@ export default function DefaultLanding({ copy, stats }: LandingTemplateProps) {
           Aventuras interactivas, juegos y retos diseñados para niños de 4 a 12 años. Sin memorización forzada — solo diversión real.
         </p>
         <div className="flex flex-wrap gap-4 justify-center mt-10 animate-slide-up" style={{ animationDelay: '0.46s' }}>
-          <Link href="/signup" className="flex items-center gap-2 px-9 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-105 active:scale-95" style={{ fontFamily: F, letterSpacing: '-0.01em', background: 'linear-gradient(135deg, #7c3aed, #5b21b6)', boxShadow: '0 4px 32px rgba(124,58,237,0.55), 0 0 0 1px rgba(124,58,237,0.3)' }}>
+          <Link href="/onboarding" className="flex items-center gap-2 px-9 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-105 active:scale-95" style={{ fontFamily: F, letterSpacing: '-0.01em', background: 'linear-gradient(135deg, #7c3aed, #5b21b6)', boxShadow: '0 4px 32px rgba(124,58,237,0.55), 0 0 0 1px rgba(124,58,237,0.3)' }}>
             {copy.ctaLabel}
           </Link>
-          <Link href="/onboarding/welcome" className="flex items-center gap-2 px-8 py-4 rounded-2xl font-semibold text-base transition-all hover:scale-105 active:scale-95" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.13)', color: 'rgba(255,255,255,0.8)' }}>
-            Ver demo
-          </Link>
         </div>
-        <p className="mt-7 text-xs animate-slide-up" style={{ color: 'rgba(255,255,255,0.35)', animationDelay: '0.6s' }}>{copy.ctaSub}</p>
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-float" style={{ animationDelay: '1.2s', animationDuration: '2.4s' }}>
           <span className="text-[10px] tracking-[0.22em] uppercase" style={{ color: 'rgba(255,255,255,0.25)' }}>Descubrir</span>
           <svg width="18" height="28" viewBox="0 0 18 28" fill="none" className="opacity-30">
@@ -206,7 +202,7 @@ export default function DefaultLanding({ copy, stats }: LandingTemplateProps) {
           <p style={{ color: 'rgba(255,255,255,0.52)', fontSize: '1.05rem', marginBottom: '2.5rem', lineHeight: 1.65 }}>
             Crea tu cuenta y descubre por qué aprender inglés puede ser la mejor parte del día de tu hijo.
           </p>
-          <Link href="/signup" className="inline-flex items-center gap-2 px-10 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-105 active:scale-95" style={{ fontFamily: F, letterSpacing: '-0.01em', background: 'linear-gradient(135deg, #7c3aed, #5b21b6)', boxShadow: '0 8px 48px rgba(124,58,237,0.55), 0 0 0 1px rgba(124,58,237,0.3)' }}>
+          <Link href="/onboarding" className="inline-flex items-center gap-2 px-10 py-4 rounded-2xl font-bold text-lg transition-all hover:scale-105 active:scale-95" style={{ fontFamily: F, letterSpacing: '-0.01em', background: 'linear-gradient(135deg, #7c3aed, #5b21b6)', boxShadow: '0 8px 48px rgba(124,58,237,0.55), 0 0 0 1px rgba(124,58,237,0.3)' }}>
             {copy.finalCta} →
           </Link>
           <p className="mt-7 text-xs" style={{ color: 'rgba(255,255,255,0.22)' }}>{copy.finalSub}</p>

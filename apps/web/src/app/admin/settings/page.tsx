@@ -129,6 +129,7 @@ export default async function AdminSettingsPage() {
                     defaultValue={onboardingFlow}
                     className="w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
                   >
+                    <option value="">— Sin flujo (ir directo a registro) —</option>
                     {allFlows.map(flow => (
                       <option key={flow.id} value={flow.id}>{flow.name}</option>
                     ))}

@@ -18,6 +18,7 @@ export type {
   HeroBlockProps, FeatureBlockProps, CTABlockProps,
   StatsBlockProps, BenefitsBlockProps, HowItWorksBlockProps,
   TestimonialBlockProps, VideoBlockProps,
+  GamePreviewBlockProps, BeforeAfterBlockProps, SocialProofBlockProps,
   OnboardingBlockType,
 } from './onboarding/types'
 export type { AudioConfig } from './audio'

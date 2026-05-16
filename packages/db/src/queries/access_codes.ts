@@ -5,11 +5,18 @@ type DB = SupabaseClient<Database>
 
 // ── Admin queries ──────────────────────────────────────────────────────────────
 
-export function getAllAccessCodes(db: DB) {
-  return db
+export function getAllAccessCodes(
+  db: DB,
+  opts: { search?: string; limit?: number; offset?: number } = {}
+) {
+  const { search, limit = 25, offset = 0 } = opts
+  let query = db
     .from('access_codes')
-    .select('id, code, label, access_type, trial_days, discount_percent, discount_duration_months, max_uses, used_count, valid_from, valid_until, is_active, created_at')
+    .select('id, code, label, access_type, trial_days, discount_percent, discount_duration_months, max_uses, used_count, valid_from, valid_until, is_active, created_at', { count: 'exact' })
     .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1)
+  if (search) query = query.or(`code.ilike.%${search}%,label.ilike.%${search}%`)
+  return query
 }
 
 export function getAccessCodeById(db: DB, id: string) {
@@ -88,4 +95,27 @@ export function getUserRedemptions(db: DB, userId: string) {
     .select('id, redeemed_at, context, effect_applied, access_codes(code, label, access_type)')
     .eq('user_id', userId)
     .order('redeemed_at', { ascending: false })
+}
+
+export async function getAllRedemptions(db: DB, search?: string) {
+  let userIds: string[] | null = null
+
+  if (search && search.trim()) {
+    const { data: users } = await db
+      .from('profiles')
+      .select('id')
+      .or(`email.ilike.%${search.trim()}%,display_name.ilike.%${search.trim()}%`)
+    userIds = (users ?? []).map(u => u.id)
+    if (userIds.length === 0) return { data: [] as never[], error: null }
+  }
+
+  let q = db
+    .from('code_redemptions')
+    .select('id, user_id, code_id, context, redeemed_at, access_codes(id, code, label, access_type), profiles(email, display_name)')
+    .order('redeemed_at', { ascending: false })
+    .limit(300)
+
+  if (userIds !== null) q = q.in('user_id', userIds)
+
+  return q
 }

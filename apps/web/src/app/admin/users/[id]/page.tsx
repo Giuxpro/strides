@@ -38,7 +38,7 @@ function monthsSince(date: string | null) {
   return (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth())
 }
 
-export default async function AdminUserDetailPage({ params }: { params: { id: string } }) {
+export default async function AdminUserDetailPage({ params, searchParams }: { params: { id: string }; searchParams: { from?: string } }) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -52,6 +52,7 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
     { data: children },
     { data: redemptions },
     { data: priceRow },
+    { data: profileRow },
   ] = await Promise.all([
     admin.rpc('get_admin_users_overview'),
     admin.rpc('get_admin_user_detail', { p_user_id: params.id }),
@@ -60,12 +61,14 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
       .eq('user_id', params.id)
       .order('redeemed_at', { ascending: false }),
     admin.from('settings').select('value').eq('key', 'monthly_price').maybeSingle(),
+    admin.from('profiles').select('avatar').eq('id', params.id).maybeSingle(),
   ])
 
   const u = usersData?.find(x => x.id === params.id)
   if (!u) notFound()
 
   const monthlyPrice = (priceRow?.value as number) ?? null
+  const avatar = (profileRow?.avatar as string | null) ?? null
   const discountPct  = u.pending_discount_percent ?? 0
   const pricePaying  = monthlyPrice ? monthlyPrice * (1 - discountPct / 100) : null
   const daysInApp    = daysSince(u.joined_at)
@@ -77,16 +80,24 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
 
   return (
     <div className="p-8 max-w-5xl">
-      <Link href="/admin/users" className="text-sm text-gray-500 hover:text-gray-300 mb-6 inline-block transition-colors">
-        ← Volver a usuarios
+      <Link
+        href={searchParams.from ?? '/admin/users'}
+        className="text-sm text-gray-500 hover:text-gray-300 mb-6 inline-block transition-colors"
+      >
+        ← Volver a {searchParams.from?.includes('/redemptions') ? 'canjes' : 'usuarios'}
       </Link>
 
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-white mb-0.5">{u.display_name ?? u.email}</h1>
-          {u.display_name && <p className="text-sm text-gray-500">{u.email}</p>}
-          <p className="text-xs text-gray-600 mt-1">Se unió el {fmt(u.joined_at)} · {daysInApp} días en la plataforma</p>
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-gray-800 flex items-center justify-center text-2xl shrink-0">
+            {avatar ?? '👤'}
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white mb-0.5">{u.display_name ?? u.email}</h1>
+            {u.display_name && <p className="text-sm text-gray-500">{u.email}</p>}
+            <p className="text-xs text-gray-600 mt-1">Se unió el {fmt(u.joined_at)} · {daysInApp} días en la plataforma</p>
+          </div>
         </div>
         {u.acquisition_type && (
           <span className={`text-xs font-semibold px-3 py-1.5 rounded-full ${PLAN_COLORS[u.acquisition_type] ?? ''}`}>

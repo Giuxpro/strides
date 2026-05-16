@@ -6,11 +6,12 @@ import { VocabUsagePopover } from '@/components/admin/VocabUsagePopover'
 import { RetoConfigForm } from '@/components/admin/RetoConfigForm'
 import { ModuleJugarConfigForm } from '@/components/admin/ModuleJugarConfigForm'
 import { SortableLessonList } from '@/components/admin/SortableLessonList'
+import { AdminSearch } from '@/components/admin/AdminSearch'
 import type { ModifierConfig } from '@strides/core/kids'
 
 interface Props {
   params: { moduleId: string }
-  searchParams: { tab?: string }
+  searchParams: { tab?: string; q?: string }
 }
 
 type LessonRef = { id: string; title_es: string }
@@ -28,6 +29,7 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
     : searchParams.tab === 'retos'  ? 'retos'
     : searchParams.tab === 'juegos' ? 'juegos'
     : 'vocab'
+  const q = searchParams.q?.toLowerCase().trim() ?? ''
 
   const [{ data: mod }, { data: modGame }, { data: lessons }, { data: vocab }, { data: exercisesRaw }] = await Promise.all([
     supabase.from('modules').select('id, title_es, title_en, slug').eq('id', params.moduleId).single(),
@@ -41,6 +43,13 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
   ])
 
   if (!mod) notFound()
+
+  const filteredVocab = (tab === 'vocab' && q)
+    ? (vocab ?? []).filter(v => v.text_es.toLowerCase().includes(q) || v.text_en.toLowerCase().includes(q))
+    : vocab ?? []
+  const filteredLessons = (tab === 'lessons' && q)
+    ? (lessons ?? []).filter(l => l.title_es.toLowerCase().includes(q) || l.title_en.toLowerCase().includes(q))
+    : lessons ?? []
 
   // Build usage map: vocabId → unique lessons that use it
   const usageMap: Record<string, LessonRef[]> = {}
@@ -62,7 +71,7 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
       <div className="flex items-start justify-between">
         <div>
           <Link href="/admin/content" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
-            ← Contenido
+            ← Volver a módulos
           </Link>
           <h1 className="text-xl font-bold text-white mt-2">{mod.title_es}</h1>
           <p className="text-sm text-gray-500">{mod.title_en} · <span className="font-mono">{mod.slug}</span></p>
@@ -115,8 +124,10 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
               + Nueva lección
             </Link>
           </div>
-
-          <SortableLessonList moduleId={params.moduleId} lessons={lessons ?? []} />
+          <div className="mb-3">
+            <AdminSearch initialValue={searchParams.q ?? ''} placeholder="Buscar lección..." extraParams={{ tab: 'lessons' }} />
+          </div>
+          <SortableLessonList moduleId={params.moduleId} lessons={filteredLessons} searchActive={!!q} />
         </section>
       )}
 
@@ -165,6 +176,9 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
               + Nuevo
             </Link>
           </div>
+          <div className="mb-3">
+            <AdminSearch initialValue={searchParams.q ?? ''} placeholder="Buscar vocabulario..." extraParams={{ tab: 'vocab' }} />
+          </div>
 
           <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
             <table className="w-full text-sm">
@@ -180,7 +194,7 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
                 </tr>
               </thead>
               <tbody>
-                {(vocab ?? []).map(item => {
+                {filteredVocab.map(item => {
                   const usedIn = usageMap[item.id] ?? []
                   return (
                     <tr key={item.id} className="border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors">
@@ -227,13 +241,17 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
                   )
                 })}
 
-                {(!vocab || vocab.length === 0) && (
+                {filteredVocab.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-5 py-8 text-center text-gray-600">
-                      Sin vocabulario.{' '}
-                      <Link href={`/admin/content/${params.moduleId}/vocab/new`} className="text-violet-400 hover:text-violet-300">
-                        Añadir el primero →
-                      </Link>
+                      {q ? `Sin resultados para "${q}".` : (
+                        <>
+                          Sin vocabulario.{' '}
+                          <Link href={`/admin/content/${params.moduleId}/vocab/new`} className="text-violet-400 hover:text-violet-300">
+                            Añadir el primero →
+                          </Link>
+                        </>
+                      )}
                     </td>
                   </tr>
                 )}

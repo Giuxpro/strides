@@ -408,6 +408,7 @@ export async function updateSettings(formData: FormData) {
         enabled:         formData.get('nps_enabled') === 'true',
         trigger:         (formData.get('nps_trigger') as string) || 'lesson',
         games_threshold: Number(formData.get('nps_games_threshold')) || 10,
+        cooldown_days:   Number(formData.get('nps_cooldown_days')) || 30,
       } as Json },
     { key: 'game_configs', value: Object.fromEntries(
         GAME_REGISTRY.map(g => [g.id, {

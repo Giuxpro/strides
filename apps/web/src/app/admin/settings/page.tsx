@@ -25,7 +25,7 @@ export default async function AdminSettingsPage() {
   const trialDays       = (s['trial_days'] as number) ?? 7
   const monthlyPrice    = (s['monthly_price'] as number | null) ?? null
   const globalDiscount  = (s['global_discount'] as { enabled: boolean; percent: number; label: string; duration_months: number | null }) ?? { enabled: false, percent: 10, label: '', duration_months: null }
-  const feedbackPrompt  = (s['feedback_prompt_config'] as { enabled: boolean; trigger: 'lesson' | 'module' | 'games' | 'admin_test'; games_threshold: number }) ?? { enabled: false, trigger: 'lesson' as const, games_threshold: 10 }
+  const feedbackPrompt  = (s['feedback_prompt_config'] as { enabled: boolean; trigger: 'lesson' | 'module' | 'games' | 'admin_test'; games_threshold: number; cooldown_days: number }) ?? { enabled: false, trigger: 'lesson' as const, games_threshold: 10, cooldown_days: 30 }
   const availMods = (s['available_modifiers'] as { timer?: boolean; lives?: boolean; multiplier?: boolean }) ??
     { timer: true, lives: true, multiplier: true }
   const gameConfigs = (s['game_configs'] as Record<string, { minItems?: number; maxItems?: number }>) ?? {}

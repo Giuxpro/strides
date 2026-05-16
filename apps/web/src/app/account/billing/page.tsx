@@ -47,7 +47,7 @@ export default async function BillingPage() {
   const [{ data: subscription }, { data: priceRow }, { data: trialDaysRow }, { data: discountRow }] = await Promise.all([
     supabase
       .from('subscriptions')
-      .select('*, access_codes(code, label)')
+      .select('*, access_codes(code, label, trial_days)')
       .eq('user_id', user.id)
       .maybeSingle(),
     supabase.from('settings').select('value').eq('key', 'monthly_price').maybeSingle(),
@@ -68,8 +68,8 @@ export default async function BillingPage() {
 
   if (subscription?.acquisition_type === 'trial' && subscription.trial_ends_at) {
     const endsAt  = new Date(subscription.trial_ends_at)
-    const startsAt = new Date(subscription.created_at)
-    daysTotal     = Math.round((endsAt.getTime() - startsAt.getTime()) / 86400000) || defaultTrialDays
+    const codeTrialDays = (subscription.access_codes as { trial_days?: number | null } | null)?.trial_days
+    daysTotal     = codeTrialDays ?? defaultTrialDays
     daysRemaining = Math.max(0, Math.ceil((endsAt.getTime() - Date.now()) / 86400000))
     trialExpired  = endsAt < new Date()
     trialProgressPct = ((daysTotal - daysRemaining) / daysTotal) * 100
@@ -77,7 +77,7 @@ export default async function BillingPage() {
 
   const typeInfo = TYPE_LABELS[subscription?.acquisition_type ?? '']
   const hasDiscount = !!subscription?.pending_discount_percent
-  const redeemedCode = subscription?.access_codes as { code: string; label: string } | null
+  const redeemedCode = subscription?.access_codes as { code: string; label: string; trial_days: number | null } | null
 
   // Precio con descuento
   const discountedPrice = monthlyPrice && hasDiscount

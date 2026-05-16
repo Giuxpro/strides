@@ -8,6 +8,7 @@ interface Initial {
   enabled: boolean
   trigger: Trigger
   games_threshold: number
+  cooldown_days: number
 }
 
 const TRIGGERS: { id: Trigger; label: string; desc: string }[] = [
@@ -21,6 +22,7 @@ export function FeedbackPromptPanel({ initial }: { initial: Initial }) {
   const [enabled, setEnabled] = useState(initial.enabled)
   const [trigger, setTrigger] = useState<Trigger>(initial.trigger)
   const [threshold, setThreshold] = useState(initial.games_threshold)
+  const [cooldown, setCooldown] = useState(initial.cooldown_days)
 
   return (
     <div className="space-y-4">
@@ -42,6 +44,7 @@ export function FeedbackPromptPanel({ initial }: { initial: Initial }) {
       <input type="hidden" name="nps_enabled" value={String(enabled)} />
       <input type="hidden" name="nps_trigger" value={trigger} />
       <input type="hidden" name="nps_games_threshold" value={String(threshold)} />
+      <input type="hidden" name="nps_cooldown_days" value={String(cooldown)} />
 
       {enabled && (
         <div className="border-t border-gray-800 pt-4 space-y-3">
@@ -77,6 +80,19 @@ export function FeedbackPromptPanel({ initial }: { initial: Initial }) {
               <label className="text-xs text-gray-400">partidas jugadas</label>
             </div>
           )}
+
+          <div className="border-t border-gray-800 pt-4 flex items-center gap-2">
+            <label className="text-xs text-gray-400 shrink-0">Días mínimos entre encuestas:</label>
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={cooldown}
+              onChange={e => setCooldown(Number(e.target.value) || 30)}
+              className="w-20 bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
+            />
+            <label className="text-xs text-gray-400">días</label>
+          </div>
         </div>
       )}
     </div>

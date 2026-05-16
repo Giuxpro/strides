@@ -16,6 +16,7 @@ interface LessonRow {
 interface Props {
   moduleId: string
   lessons: LessonRow[]
+  searchActive?: boolean
 }
 
 function DragHandle() {
@@ -28,7 +29,7 @@ function DragHandle() {
   )
 }
 
-export function SortableLessonList({ moduleId, lessons: initial }: Props) {
+export function SortableLessonList({ moduleId, lessons: initial, searchActive = false }: Props) {
   const [rows, setRows]       = useState(initial)
   const [dragId, setDragId]   = useState<string | null>(null)
   const [dropId, setDropId]   = useState<string | null>(null)
@@ -122,8 +123,8 @@ export function SortableLessonList({ moduleId, lessons: initial }: Props) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
-            <th className="text-left px-3 py-3 w-8"></th>
-            <th className="text-left px-3 py-3 w-10">#</th>
+            {!searchActive && <th className="text-left px-3 py-3 w-8"></th>}
+            {!searchActive && <th className="text-left px-3 py-3 w-10">#</th>}
             <th className="text-left px-5 py-3">Lección</th>
             <th className="text-center px-5 py-3">Estado</th>
             <th className="px-5 py-3"></th>
@@ -138,11 +139,11 @@ export function SortableLessonList({ moduleId, lessons: initial }: Props) {
             return (
               <tr
                 key={lesson.id}
-                draggable
-                onDragStart={e => onDragStart(e, lesson.id)}
-                onDragOver={e  => onDragOver(e, lesson.id)}
-                onDrop={onDrop}
-                onDragEnd={onDragEnd}
+                draggable={!searchActive}
+                onDragStart={!searchActive ? e => onDragStart(e, lesson.id) : undefined}
+                onDragOver={!searchActive  ? e => onDragOver(e, lesson.id) : undefined}
+                onDrop={!searchActive      ? onDrop : undefined}
+                onDragEnd={!searchActive   ? onDragEnd : undefined}
                 className={[
                   'border-b border-gray-800/50 transition-colors',
                   isDragging   ? 'opacity-40 bg-gray-800/20'             : '',
@@ -150,42 +151,46 @@ export function SortableLessonList({ moduleId, lessons: initial }: Props) {
                 ].join(' ')}
               >
                 {/* Drag handle */}
-                <td className="px-3 py-3">
-                  <div
-                    className="flex items-center justify-center hover:text-gray-400 transition-colors"
-                    style={{ cursor: dragId ? 'grabbing' : 'grab' }}
-                  >
-                    <DragHandle />
-                  </div>
-                </td>
+                {!searchActive && (
+                  <td className="px-3 py-3">
+                    <div
+                      className="flex items-center justify-center hover:text-gray-400 transition-colors"
+                      style={{ cursor: dragId ? 'grabbing' : 'grab' }}
+                    >
+                      <DragHandle />
+                    </div>
+                  </td>
+                )}
 
                 {/* Order number (clicable) */}
-                <td className="px-3 py-3">
-                  {isEditingPos ? (
-                    <input
-                      type="number"
-                      value={editVal}
-                      min={1}
-                      max={rows.length}
-                      autoFocus
-                      onChange={e => setEditVal(e.target.value)}
-                      onBlur={() => commitEdit(lesson)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter')  { e.preventDefault(); commitEdit(lesson) }
-                        if (e.key === 'Escape') setEditId(null)
-                      }}
-                      className="w-9 text-center bg-gray-700 border border-violet-500 text-white text-xs rounded px-1 py-0.5 focus:outline-none"
-                    />
-                  ) : (
-                    <button
-                      onClick={() => startEdit(lesson, idx)}
-                      title="Clic para cambiar posición"
-                      className="w-6 h-6 flex items-center justify-center text-xs font-mono text-gray-500 hover:text-white hover:bg-gray-700 rounded transition-colors"
-                    >
-                      {idx + 1}
-                    </button>
-                  )}
-                </td>
+                {!searchActive && (
+                  <td className="px-3 py-3">
+                    {isEditingPos ? (
+                      <input
+                        type="number"
+                        value={editVal}
+                        min={1}
+                        max={rows.length}
+                        autoFocus
+                        onChange={e => setEditVal(e.target.value)}
+                        onBlur={() => commitEdit(lesson)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter')  { e.preventDefault(); commitEdit(lesson) }
+                          if (e.key === 'Escape') setEditId(null)
+                        }}
+                        className="w-9 text-center bg-gray-700 border border-violet-500 text-white text-xs rounded px-1 py-0.5 focus:outline-none"
+                      />
+                    ) : (
+                      <button
+                        onClick={() => startEdit(lesson, idx)}
+                        title="Clic para cambiar posición"
+                        className="w-6 h-6 flex items-center justify-center text-xs font-mono text-gray-500 hover:text-white hover:bg-gray-700 rounded transition-colors"
+                      >
+                        {idx + 1}
+                      </button>
+                    )}
+                  </td>
+                )}
 
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-3">

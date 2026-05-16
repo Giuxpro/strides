@@ -17,7 +17,7 @@ const CONTEXT_LABELS: Record<string, string> = {
   account: 'Cuenta',
 }
 
-export default async function CodeDetailPage({ params }: { params: { id: string } }) {
+export default async function CodeDetailPage({ params, searchParams }: { params: { id: string }; searchParams: { from?: string } }) {
   const supabase = createClient()
   const [{ data: code }, { data: redemptions }] = await Promise.all([
     getAccessCodeById(supabase, params.id),
@@ -33,8 +33,11 @@ export default async function CodeDetailPage({ params }: { params: { id: string 
   return (
     <div className="p-8 max-w-4xl">
       <CodesRealtimeRefresher />
-      <Link href="/admin/codes" className="text-sm text-gray-500 hover:text-gray-300 transition-colors mb-6 inline-block">
-        ← Volver a códigos
+      <Link
+        href={searchParams.from ?? '/admin/codes'}
+        className="text-sm text-gray-500 hover:text-gray-300 transition-colors mb-6 inline-block"
+      >
+        ← Volver a {searchParams.from?.includes('/redemptions') ? 'canjes' : 'códigos'}
       </Link>
 
       {/* Header */}
@@ -97,13 +100,13 @@ export default async function CodeDetailPage({ params }: { params: { id: string 
         <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Configuración</h2>
         <div className="grid grid-cols-2 gap-4 text-sm">
           {code.trial_days && (
-            <div><span className="text-gray-500">Días de trial:</span> <span className="text-white ml-2">{code.trial_days} días</span></div>
+            <div><span className="text-gray-500">Días de trial:</span> <span className="text-white ml-2">{code.trial_days} {code.trial_days === 1 ? 'día' : 'días'}</span></div>
           )}
           {code.discount_percent && (
             <div><span className="text-gray-500">Descuento:</span> <span className="text-white ml-2">{code.discount_percent}%</span></div>
           )}
           {code.discount_duration_months && (
-            <div><span className="text-gray-500">Duración descuento:</span> <span className="text-white ml-2">{code.discount_duration_months} meses</span></div>
+            <div><span className="text-gray-500">Duración descuento:</span> <span className="text-white ml-2">{code.discount_duration_months} {code.discount_duration_months === 1 ? 'mes' : 'meses'}</span></div>
           )}
           {!code.discount_duration_months && code.discount_percent && (
             <div><span className="text-gray-500">Duración descuento:</span> <span className="text-white ml-2">Permanente</span></div>

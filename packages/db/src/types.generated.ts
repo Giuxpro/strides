@@ -1259,8 +1259,12 @@ export type Database = {
           total_game_plays: number
         }[]
       }
+      get_admin_users_count: {
+        Args: { p_search?: string; p_plan?: string; p_status?: string }
+        Returns: number
+      }
       get_admin_users_overview: {
-        Args: never
+        Args: { p_search?: string; p_limit?: number; p_offset?: number; p_plan?: string; p_status?: string }
         Returns: {
           acquisition_type: string
           children_count: number

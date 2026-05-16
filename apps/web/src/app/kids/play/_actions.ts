@@ -72,7 +72,7 @@ export async function completeLesson(formData: FormData) {
       supabase.from('profiles').select('nps_prompted_at').eq('id', user.id).single(),
       supabase.from('feedback').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('type', 'rating'),
     ])
-    const cfg = cfgRow?.value as { enabled: boolean; trigger: string; games_threshold: number } | null
+    const cfg = cfgRow?.value as { enabled: boolean; trigger: string; games_threshold: number; cooldown_days?: number } | null
 
     if (cfg?.enabled && (cfg.trigger === 'lesson' || cfg.trigger === 'module') && (ratingsDone ?? 0) === 0) {
       let triggerFired = cfg.trigger === 'lesson'
@@ -94,7 +94,7 @@ export async function completeLesson(formData: FormData) {
 
       if (triggerFired) {
         const cooldownOk = !profile?.nps_prompted_at ||
-          (Date.now() - new Date(profile.nps_prompted_at as string).getTime()) / 86400000 >= 30
+          (Date.now() - new Date(profile.nps_prompted_at as string).getTime()) / 86400000 >= (cfg.cooldown_days ?? 30)
         if (cooldownOk) {
           await supabase.from('profiles').update({ nps_prompted_at: new Date().toISOString() }).eq('id', user.id)
           showNps = true
@@ -133,7 +133,7 @@ export async function recordGamePlay(gameId: string, correct: number, total: num
     supabase.from('feedback').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('type', 'rating'),
   ])
 
-  const cfg = configRow?.value as { enabled: boolean; trigger: string; games_threshold: number } | null
+  const cfg = configRow?.value as { enabled: boolean; trigger: string; games_threshold: number; cooldown_days?: number } | null
   if (!cfg?.enabled || cfg.trigger !== 'games') return false
   if ((ratingsDone ?? 0) > 0) return false
 
@@ -143,7 +143,7 @@ export async function recordGamePlay(gameId: string, correct: number, total: num
 
   if (profile?.nps_prompted_at) {
     const daysSince = (Date.now() - new Date(profile.nps_prompted_at as string).getTime()) / 86400000
-    if (daysSince < 30) return false
+    if (daysSince < (cfg.cooldown_days ?? 30)) return false
   }
 
   await supabase.from('profiles').update({ nps_prompted_at: new Date().toISOString() }).eq('id', user.id)

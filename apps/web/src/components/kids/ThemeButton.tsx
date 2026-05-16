@@ -12,8 +12,8 @@ interface Props {
 export function ThemeButton({ currentTheme }: Props) {
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(currentTheme)
-  const { muted: musicMuted, toggleMute: toggleMusic } = useMusicContext()
-  const { muted: soundMuted, toggleMute: toggleSound } = useClickSoundContext()
+  const { muted: musicMuted, toggleMute: toggleMusic, volume: musicVolume, setVolume: setMusicVolume } = useMusicContext()
+  const { muted: soundMuted, toggleMute: toggleSound, volume: soundVolume, setVolume: setSoundVolume } = useClickSoundContext()
 
   function applyTheme(themeId: string) {
     setActive(themeId)
@@ -93,12 +93,16 @@ export function ThemeButton({ currentTheme }: Props) {
                   label="Música"
                   active={!musicMuted}
                   onToggle={toggleMusic}
+                  volume={musicVolume}
+                  onVolumeChange={setMusicVolume}
                 />
                 <SoundToggle
                   emoji={soundMuted ? '🔕' : '🔊'}
                   label="Sonidos de botones"
                   active={!soundMuted}
                   onToggle={toggleSound}
+                  volume={soundVolume}
+                  onVolumeChange={setSoundVolume}
                 />
               </div>
             </div>
@@ -124,32 +128,50 @@ export function ThemeButton({ currentTheme }: Props) {
 }
 
 function SoundToggle({
-  emoji, label, active, onToggle,
+  emoji, label, active, onToggle, volume, onVolumeChange,
 }: {
   emoji: string
   label: string
   active: boolean
   onToggle: () => void
+  volume: number
+  onVolumeChange: (v: number) => void
 }) {
+  const volIcon = volume === 0 ? '🔇' : volume < 0.4 ? '🔈' : volume < 0.75 ? '🔉' : '🔊'
   return (
     <div
-      className="flex items-center justify-between px-4 py-3 rounded-2xl"
+      className="rounded-2xl overflow-hidden"
       style={{ background: 'var(--kids-surface-alt)' }}
     >
-      <div className="flex items-center gap-2.5">
-        <span style={{ fontSize: 20 }}>{emoji}</span>
-        <span className="text-sm font-semibold" style={{ color: 'var(--kids-text)' }}>{label}</span>
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2.5">
+          <span style={{ fontSize: 20 }}>{emoji}</span>
+          <span className="text-sm font-semibold" style={{ color: 'var(--kids-text)' }}>{label}</span>
+        </div>
+        <button
+          type="button"
+          onClick={onToggle}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${active ? 'bg-violet-500' : 'bg-gray-400'}`}
+          aria-label={active ? 'Silenciar' : 'Activar'}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${active ? 'translate-x-6' : 'translate-x-1'}`}
+          />
+        </button>
       </div>
-      <button
-        type="button"
-        onClick={onToggle}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${active ? 'bg-violet-500' : 'bg-gray-400'}`}
-        aria-label={active ? 'Silenciar' : 'Activar'}
-      >
-        <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${active ? 'translate-x-6' : 'translate-x-1'}`}
+      <div className="flex items-center gap-2 px-4 pb-3">
+        <span style={{ fontSize: 13, minWidth: 18, color: 'var(--kids-text-muted)' }}>{volIcon}</span>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.02}
+          value={volume}
+          onChange={e => onVolumeChange(parseFloat(e.target.value))}
+          className="flex-1 accent-violet-500"
+          style={{ cursor: 'pointer', height: 4 }}
         />
-      </button>
+      </div>
     </div>
   )
 }

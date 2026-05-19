@@ -115,7 +115,7 @@ export function UsersTableClient({
         <AdminSearch initialValue={searchValue} placeholder="Buscar por email o nombre..." />
       </div>
 
-      <div className="flex items-center gap-6 mb-4">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-gray-600 mr-1">Plan</span>
           {PLAN_FILTERS.map(f => (
@@ -132,7 +132,7 @@ export function UsersTableClient({
             </button>
           ))}
         </div>
-        <div className="w-px h-4 bg-gray-800" />
+        <div className="hidden sm:block w-px h-4 bg-gray-800" />
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-gray-600 mr-1">Estado</span>
           {STATUS_FILTERS.map(f => (
@@ -158,7 +158,7 @@ export function UsersTableClient({
               params.delete('page')
               startTransition(() => router.replace(`${pathname}?${params.toString()}`))
             }}
-            className="text-xs text-gray-600 hover:text-gray-400 transition-colors ml-auto"
+            className="text-xs text-gray-600 hover:text-gray-400 transition-colors sm:ml-auto"
           >
             Limpiar filtros ×
           </button>
@@ -172,21 +172,21 @@ export function UsersTableClient({
           </p>
         </div>
       ) : (
-        <div className={`bg-gray-900 border border-gray-800 rounded-xl overflow-hidden transition-opacity duration-150 ${isPending ? 'opacity-50' : 'opacity-100'}`}>
+        <div className={`bg-gray-900 border border-gray-800 rounded-xl overflow-x-auto transition-opacity duration-150 ${isPending ? 'opacity-50' : 'opacity-100'}`}>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
-                <th className="text-left px-5 py-3 font-medium w-8">#</th>
-                <th className="text-left px-5 py-3 font-medium">Usuario</th>
-                <th className="text-left px-5 py-3 font-medium">Plan</th>
-                <th className="text-left px-5 py-3 font-medium">Estado</th>
-                <th className="text-left px-5 py-3 font-medium">Hijos</th>
-                <th className="text-left px-5 py-3 font-medium">Pagando</th>
-                <th className="text-left px-5 py-3 font-medium">Descuento</th>
-                <th className="text-left px-5 py-3 font-medium">Último acceso</th>
-                <th className="text-left px-5 py-3 font-medium">Días en app</th>
-                <th className="text-left px-5 py-3 font-medium">Actividad</th>
-                <th className="text-left px-5 py-3 font-medium">Código</th>
+                <th className="hidden sm:table-cell text-left px-5 py-3 font-medium w-8">#</th>
+                <th className="text-left px-4 sm:px-5 py-3 font-medium">Usuario</th>
+                <th className="text-left px-4 sm:px-5 py-3 font-medium">Plan</th>
+                <th className="text-left px-4 sm:px-5 py-3 font-medium">Estado</th>
+                <th className="hidden lg:table-cell text-left px-5 py-3 font-medium">Hijos</th>
+                <th className="hidden lg:table-cell text-left px-5 py-3 font-medium">Pagando</th>
+                <th className="hidden lg:table-cell text-left px-5 py-3 font-medium">Descuento</th>
+                <th className="hidden md:table-cell text-left px-5 py-3 font-medium">Último acceso</th>
+                <th className="hidden lg:table-cell text-left px-5 py-3 font-medium">Días en app</th>
+                <th className="hidden md:table-cell text-left px-5 py-3 font-medium">Actividad</th>
+                <th className="hidden lg:table-cell text-left px-5 py-3 font-medium">Código</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
@@ -201,37 +201,37 @@ export function UsersTableClient({
 
                 return (
                   <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-5 py-4 text-xs text-gray-600 tabular-nums">{rowNumber}</td>
-                    <td className="px-5 py-4">
+                    <td className="hidden sm:table-cell px-5 py-4 text-xs text-gray-600 tabular-nums">{rowNumber}</td>
+                    <td className="px-4 sm:px-5 py-4">
                       <Link href={`/admin/users/${u.id}`} className="flex items-center gap-3 hover:text-violet-400 transition-colors group">
                         <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-base shrink-0">
                           {avatar ?? '👤'}
                         </div>
-                        <div>
-                          <p className="font-medium text-white group-hover:text-violet-400 transition-colors">{u.display_name ?? '—'}</p>
-                          <p className="text-xs text-gray-500">{u.email}</p>
+                        <div className="min-w-0">
+                          <p className="font-medium text-white group-hover:text-violet-400 transition-colors truncate">{u.display_name ?? '—'}</p>
+                          <p className="text-xs text-gray-500 truncate">{u.email}</p>
                           <p className="text-xs text-gray-600 mt-0.5">Desde {fmt(u.joined_at)}</p>
                         </div>
                       </Link>
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-4 sm:px-5 py-4">
                       {plan
                         ? <span className={`text-xs font-semibold px-2 py-1 rounded-full ${plan.color}`}>{plan.label}</span>
                         : <span className="text-xs text-gray-600">Sin plan</span>}
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-4 sm:px-5 py-4">
                       <span className={`text-xs font-semibold px-2 py-1 rounded-full whitespace-nowrap ${effectiveStatus.color}`}>
                         {effectiveStatus.label}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-center">
+                    <td className="hidden lg:table-cell px-5 py-4 text-center">
                       <span className="text-gray-300 font-mono">{u.children_count ?? 0}</span>
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="hidden lg:table-cell px-5 py-4">
                       <span className="text-gray-300 font-mono text-sm">{effectivePrice(u)}</span>
                       <span className="text-xs text-gray-600 block">/mes</span>
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="hidden lg:table-cell px-5 py-4">
                       {u.pending_discount_percent
                         ? <span className="text-xs font-semibold bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded-full">
                             -{u.pending_discount_percent}%
@@ -241,11 +241,11 @@ export function UsersTableClient({
                           ? <span className="text-xs bg-violet-500/10 text-violet-400 px-2 py-1 rounded-full">-{promoPercent}% promo</span>
                           : <span className="text-xs text-gray-600">—</span>}
                     </td>
-                    <td className="px-5 py-4 text-gray-400 text-xs">{fmt(u.last_sign_in_at)}</td>
-                    <td className="px-5 py-4">
+                    <td className="hidden md:table-cell px-5 py-4 text-gray-400 text-xs">{fmt(u.last_sign_in_at)}</td>
+                    <td className="hidden lg:table-cell px-5 py-4">
                       <span className="text-gray-300 font-mono text-sm">{fmtDays(daysInApp)}</span>
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="hidden md:table-cell px-5 py-4">
                       {u.last_activity
                         ? <span className={`text-xs font-medium ${daysInactive! > 7 ? 'text-red-400' : daysInactive! > 3 ? 'text-amber-400' : 'text-emerald-400'}`}>
                             {daysInactive === 0 ? 'Hoy' : `Hace ${fmtDays(daysInactive)}`}
@@ -255,7 +255,7 @@ export function UsersTableClient({
                         <span className="text-xs text-gray-600 block">{String(u.total_completions)} lecciones</span>
                       )}
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="hidden lg:table-cell px-5 py-4">
                       {u.redeemed_code && codeIdByUser[u.id]
                         ? <Link href={`/admin/codes/${codeIdByUser[u.id]}`} className="font-mono text-xs text-violet-400 hover:text-violet-300 hover:underline transition-colors">
                             {u.redeemed_code}

@@ -1,12 +1,19 @@
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { KidsModuleTabs } from '@/components/kids/KidsModuleTabs'
 import { getModuleConfig, isSpeechProvider, DEFAULT_SPEECH_PROVIDER } from '@strides/core/kids'
 import type { ModifierConfig } from '@strides/core/kids'
 import type { AvailableModifiers } from '@/components/kids/ModifierPickerModal'
 import type { GameConfigs } from '@/components/kids/engine/gamePool'
+import {
+  computeProgressiveUnlock,
+  isWithinPreviewTier,
+  type LockConfig,
+  type PreviewConfig,
+  type LessonLockState,
+} from '@strides/core'
 
 interface Props {
   params: Promise<{ moduleSlug: string }>
@@ -35,7 +42,9 @@ export default async function ModulePage({ params, searchParams }: Props) {
   const daysToMonday = now.getUTCDay() === 0 ? 6 : now.getUTCDay() - 1
   const weekStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysToMonday))
 
-  const [{ data: lessons }, { data: completions }, { data: vocab }, { data: dailyRow }, { count: countdownCount }, { data: availModRow }, { data: gameConfigsRow }, { data: speechRow }, { data: npsConfigRow }, { data: masteryRows }] = await Promise.all([
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const [{ data: lessons }, { data: completions }, { data: vocab }, { data: dailyRow }, { count: countdownCount }, { data: availModRow }, { data: gameConfigsRow }, { data: speechRow }, { data: npsConfigRow }, { data: masteryRows }, { data: profile }, { data: subscription }, { data: lockConfigRow }, { data: previewConfigRow }, { data: allModules }, { data: allLessons }] = await Promise.all([
     supabase
       .from('lessons')
       .select('*')
@@ -79,6 +88,16 @@ export default async function ModulePage({ params, searchParams }: Props) {
         .select('vocab_id, skill_type, correct_count, attempt_count')
         .eq('child_id', selectedChildId)
       : Promise.resolve({ data: [] }),
+    user
+      ? supabase.from('profiles').select('role').eq('id', user.id).single()
+      : Promise.resolve({ data: null }),
+    user
+      ? supabase.from('subscriptions').select('acquisition_type').eq('user_id', user.id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase.from('settings').select('value').eq('key', 'lock_config').maybeSingle(),
+    supabase.from('settings').select('value').eq('key', 'preview_config').maybeSingle(),
+    supabase.from('modules').select('id, order').eq('is_published', true).order('order'),
+    supabase.from('lessons').select('id, module_id, order').eq('is_published', true),
   ])
 
   const config = getModuleConfig(moduleSlug)
@@ -100,6 +119,48 @@ export default async function ModulePage({ params, searchParams }: Props) {
     acc[c.lesson_id] = Math.max(acc[c.lesson_id] ?? 0, c.stars)
     return acc
   }, {})
+
+  // ── Acceso y bloqueo progresivo ──
+  const isAdmin         = profile?.role === 'admin'
+  const acquisitionType = subscription?.acquisition_type ?? 'trial'
+  const lockConfig      = (lockConfigRow?.value as unknown as LockConfig) ?? { enabled: false, applies_to: [] }
+  const previewConfig   = (previewConfigRow?.value as unknown as PreviewConfig) ?? { scope: 'module' as const, lessons_count: 3 }
+  const completedIds    = new Set((completions ?? []).map(c => c.lesson_id))
+  const shouldLock      = !isAdmin && lockConfig.enabled
+  const isPreviewUser   = !isAdmin && acquisitionType === 'preview'
+
+  // Índice (posición en la lista ordenada) del módulo actual
+  const sortedModules   = allModules ?? []
+  const moduleIndex     = sortedModules.findIndex(m => m.id === module.id)
+
+  // Redirigir si el módulo entero está bloqueado (acceso directo por URL)
+  if (!isAdmin && sortedModules.length > 0) {
+    if (isPreviewUser && moduleIndex > 0) redirect('/kids/play')
+
+    if (shouldLock && moduleIndex > 0) {
+      const { unlockedModuleIds } = computeProgressiveUnlock(sortedModules, allLessons ?? [], completedIds)
+      if (!unlockedModuleIds.has(module.id)) redirect('/kids/play')
+    }
+  }
+
+  // Calcular estado de lock por lección
+  const lessonLockStates: Record<string, LessonLockState> = {}
+  const sortedLessons = lessons ?? []
+
+  if (!isAdmin) {
+    const allLessonsForUnlock = sortedLessons.map(l => ({ id: l.id, module_id: l.module_id, order: l.order }))
+    const { unlockedLessonIds } = shouldLock
+      ? computeProgressiveUnlock(sortedModules, allLessonsForUnlock, completedIds)
+      : { unlockedLessonIds: new Set(sortedLessons.map(l => l.id)) }
+
+    sortedLessons.forEach((lesson, lessonIndex) => {
+      if (isPreviewUser && !isWithinPreviewTier(moduleIndex, lessonIndex, previewConfig)) {
+        lessonLockStates[lesson.id] = 'preview-locked'
+      } else if (!unlockedLessonIds.has(lesson.id)) {
+        lessonLockStates[lesson.id] = 'progress-locked'
+      }
+    })
+  }
 
   // vocab_id → mastery level 0-3
   // Agrupa por vocab+skill, calcula ratio por skill, toma el mínimo entre skills
@@ -191,6 +252,7 @@ export default async function ModulePage({ params, searchParams }: Props) {
             moduleId={module.id}
             lessons={lessons}
             starsMap={starsMap}
+            lessonLockStates={lessonLockStates}
             animLessonId={animLessonId}
             animPrevStars={animPrevStars}
             vocab={vocab ?? []}

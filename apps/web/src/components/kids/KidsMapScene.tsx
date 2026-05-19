@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { logout } from '@/app/actions/auth'
 import { KidsModuleCard } from './KidsModuleCard'
 import type { Module } from '@strides/db'
+import type { ModuleLockState } from '@strides/core'
 
 // Positions of the 4 circular bases as % within the 16:9 scene.
 // Tweak x/y to align each island over its background circle.
@@ -22,6 +23,7 @@ interface Props {
   childName: string | null
   childAvatar: string
   currentStreak: number
+  moduleLockStates: Record<string, ModuleLockState>
 }
 
 function ArrowButton({ direction, onClick }: { direction: 'prev' | 'next'; onClick: () => void }) {
@@ -48,12 +50,12 @@ function ArrowButton({ direction, onClick }: { direction: 'prev' | 'next'; onCli
   )
 }
 
-export function KidsMapScene({ modules, childName, childAvatar, currentStreak }: Props) {
+export function KidsMapScene({ modules, childName, childAvatar, currentStreak, moduleLockStates }: Props) {
   const [page, setPage] = useState(0)
 
-  const totalPages    = Math.max(1, Math.ceil(modules.length / PER_MAP))
+  const totalPages = Math.max(1, Math.ceil(modules.length / PER_MAP))
   const visibleModules = modules.slice(page * PER_MAP, (page + 1) * PER_MAP)
-  const greeting      = childName ? `¡Hola, ${childName}!` : '¡Hola!'
+  const greeting = childName ? `¡Hola, ${childName}!` : '¡Hola!'
 
   function goNext() { setPage(p => Math.min(p + 1, totalPages - 1)) }
   function goPrev() { setPage(p => Math.max(p - 1, 0)) }
@@ -64,7 +66,7 @@ export function KidsMapScene({ modules, childName, childAvatar, currentStreak }:
       style={{
         minHeight: '100svh',
         background: '#baa0d8',
-        paddingTop:    'max(0px, calc((100svh - 56.25vw) / 2 - 90px))',
+        paddingTop: 'max(0px, calc((100svh - 56.25vw) / 2 - 90px))',
         paddingBottom: 'max(0px, calc((100svh - 56.25vw) / 2))',
       }}
     >
@@ -160,13 +162,17 @@ export function KidsMapScene({ modules, childName, childAvatar, currentStreak }:
                 key={module.id}
                 className="absolute z-20"
                 style={{
-                  left:      `${pos.x}%`,
-                  top:       `${pos.y}%`,
-                  width:     'min(44vw, 280px)',
+                  left: `${pos.x}%`,
+                  top: `${pos.y}%`,
+                  width: 'min(44vw, 280px)',
                   transform: 'translate(-50%, -55%)',
                 }}
               >
-                <KidsModuleCard module={module} index={index} />
+                <KidsModuleCard
+                  module={module}
+                  index={index}
+                  lockState={moduleLockStates[module.id]}
+                />
               </div>
             )
           })}
@@ -192,8 +198,8 @@ export function KidsMapScene({ modules, childName, childAvatar, currentStreak }:
                 aria-label={`Mapa ${i + 1}`}
                 className="rounded-full transition-all duration-200"
                 style={{
-                  width:   i === page ? 'clamp(10px, 1.8vw, 16px)' : 'clamp(7px, 1.2vw, 11px)',
-                  height:  i === page ? 'clamp(10px, 1.8vw, 16px)' : 'clamp(7px, 1.2vw, 11px)',
+                  width: i === page ? 'clamp(10px, 1.8vw, 16px)' : 'clamp(7px, 1.2vw, 11px)',
+                  height: i === page ? 'clamp(10px, 1.8vw, 16px)' : 'clamp(7px, 1.2vw, 11px)',
                   background: i === page ? '#fff' : 'rgba(255,255,255,0.4)',
                   boxShadow: i === page ? '0 0 8px rgba(255,255,255,0.6)' : 'none',
                 }}

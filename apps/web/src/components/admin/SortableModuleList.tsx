@@ -109,17 +109,17 @@ export function SortableModuleList({ modules: initial, lessonCounts, searchActiv
   }
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+    <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
-            {!searchActive && <th className="text-left px-3 py-3 w-8"></th>}
-            {!searchActive && <th className="text-left px-3 py-3 w-10">#</th>}
-            <th className="text-left px-5 py-3">Módulo</th>
-            <th className="text-left px-5 py-3 hidden sm:table-cell">Slug</th>
-            <th className="text-center px-5 py-3">Lecciones</th>
+            {!searchActive && <th className="hidden sm:table-cell text-left px-3 py-3 w-8"></th>}
+            {!searchActive && <th className="hidden sm:table-cell text-left px-3 py-3 w-10">#</th>}
+            <th className="text-left px-4 sm:px-5 py-3">Módulo</th>
+            <th className="hidden sm:table-cell text-left px-5 py-3">Slug</th>
+            <th className="hidden sm:table-cell text-center px-5 py-3">Lecciones</th>
             <th className="text-center px-5 py-3">Estado</th>
-            <th className="px-5 py-3"></th>
+            <th className="px-4 sm:px-5 py-3"></th>
           </tr>
         </thead>
         <tbody>
@@ -144,7 +144,7 @@ export function SortableModuleList({ modules: initial, lessonCounts, searchActiv
               >
                 {/* Drag handle */}
                 {!searchActive && (
-                  <td className="px-3 py-3">
+                  <td className="hidden sm:table-cell px-3 py-3">
                     <div
                       className="flex items-center justify-center hover:text-gray-400 transition-colors"
                       style={{ cursor: dragId ? 'grabbing' : 'grab' }}
@@ -156,7 +156,7 @@ export function SortableModuleList({ modules: initial, lessonCounts, searchActiv
 
                 {/* Order number (clicable) */}
                 {!searchActive && (
-                  <td className="px-3 py-3">
+                  <td className="hidden sm:table-cell px-3 py-3">
                     {isEditingPos ? (
                       <input
                         type="number"
@@ -205,8 +205,8 @@ export function SortableModuleList({ modules: initial, lessonCounts, searchActiv
                   </div>
                 </td>
 
-                <td className="px-5 py-3 text-gray-400 font-mono text-xs hidden sm:table-cell">{mod.slug}</td>
-                <td className="px-5 py-3 text-center text-gray-300">{lessonCounts[mod.id] ?? 0}</td>
+                <td className="hidden sm:table-cell px-5 py-3 text-gray-400 font-mono text-xs">{mod.slug}</td>
+                <td className="hidden sm:table-cell px-5 py-3 text-center text-gray-300">{lessonCounts[mod.id] ?? 0}</td>
 
                 {/* Published toggle */}
                 <td className="px-5 py-3 text-center">
@@ -224,7 +224,7 @@ export function SortableModuleList({ modules: initial, lessonCounts, searchActiv
                   </form>
                 </td>
 
-                <td className="px-5 py-3">
+                <td className="px-4 sm:px-5 py-3">
                   <div className="flex items-center justify-end gap-3">
                     <Link
                       href={`/admin/content/${mod.id}/edit?from=list`}

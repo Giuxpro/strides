@@ -14,6 +14,7 @@ import type { GameConfigs } from './engine/gamePool'
 import { SpeechConfigProvider } from './engine/SpeechConfigContext'
 import type { SpeechProvider } from '@strides/core/kids'
 import { NpsPrompt } from '@/components/feedback/NpsPrompt'
+import type { LessonLockState } from '@strides/core'
 
 interface Props {
   moduleSlug: string
@@ -38,6 +39,7 @@ interface Props {
   vocabMasteryMap: Record<string, number>
   speechProvider?: SpeechProvider
   showNps?: boolean
+  lessonLockStates?: Record<string, LessonLockState>
 }
 
 export function KidsModuleTabs({
@@ -47,6 +49,7 @@ export function KidsModuleTabs({
   availableModifiers, activeGameIds, gameConfigs, vocabMasteryMap,
   speechProvider = 'web-speech',
   showNps = false,
+  lessonLockStates = {},
 }: Props) {
   const [tab, setTab] = useState<TabId>('aprender')
   const [npsVisible, setNpsVisible] = useState(showNps)
@@ -69,6 +72,7 @@ export function KidsModuleTabs({
               previousStars={lesson.id === animLessonId ? animPrevStars : undefined}
               animationDelay={`${index * 90}ms`}
               audioUrl={lesson.audio_url ?? undefined}
+              lockState={lessonLockStates[lesson.id]}
             />
           ))}
         </div>

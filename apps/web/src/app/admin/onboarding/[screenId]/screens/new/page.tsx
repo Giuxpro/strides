@@ -17,7 +17,7 @@ export default async function NewScreenPage({ params }: Props) {
   if (!flow) notFound()
 
   return (
-    <div className="p-8 max-w-md">
+    <div className="p-4 sm:p-8 max-w-md">
       <Link href={`/admin/onboarding/${flowId}`} className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
         ← {flow.name}
       </Link>

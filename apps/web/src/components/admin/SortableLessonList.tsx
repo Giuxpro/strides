@@ -119,15 +119,15 @@ export function SortableLessonList({ moduleId, lessons: initial, searchActive = 
   }
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+    <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
-            {!searchActive && <th className="text-left px-3 py-3 w-8"></th>}
-            {!searchActive && <th className="text-left px-3 py-3 w-10">#</th>}
-            <th className="text-left px-5 py-3">Lección</th>
+            {!searchActive && <th className="hidden sm:table-cell text-left px-3 py-3 w-8"></th>}
+            {!searchActive && <th className="hidden sm:table-cell text-left px-3 py-3 w-10">#</th>}
+            <th className="text-left px-4 sm:px-5 py-3">Lección</th>
             <th className="text-center px-5 py-3">Estado</th>
-            <th className="px-5 py-3"></th>
+            <th className="px-4 sm:px-5 py-3"></th>
           </tr>
         </thead>
         <tbody>
@@ -152,7 +152,7 @@ export function SortableLessonList({ moduleId, lessons: initial, searchActive = 
               >
                 {/* Drag handle */}
                 {!searchActive && (
-                  <td className="px-3 py-3">
+                  <td className="hidden sm:table-cell px-3 py-3">
                     <div
                       className="flex items-center justify-center hover:text-gray-400 transition-colors"
                       style={{ cursor: dragId ? 'grabbing' : 'grab' }}
@@ -164,7 +164,7 @@ export function SortableLessonList({ moduleId, lessons: initial, searchActive = 
 
                 {/* Order number (clicable) */}
                 {!searchActive && (
-                  <td className="px-3 py-3">
+                  <td className="hidden sm:table-cell px-3 py-3">
                     {isEditingPos ? (
                       <input
                         type="number"
@@ -228,7 +228,7 @@ export function SortableLessonList({ moduleId, lessons: initial, searchActive = 
                   </form>
                 </td>
 
-                <td className="px-5 py-3">
+                <td className="px-4 sm:px-5 py-3">
                   <div className="flex items-center justify-end gap-3">
                     <Link
                       href={`/admin/content/${moduleId}/lessons/${lesson.id}/edit`}

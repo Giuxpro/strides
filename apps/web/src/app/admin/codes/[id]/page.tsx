@@ -116,7 +116,7 @@ export default async function CodeDetailPage({ params, searchParams }: { params:
       </section>
 
       {/* Redemptions */}
-      <section className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+      <section className="bg-gray-900 border border-gray-800 rounded-xl overflow-x-auto">
         <div className="px-6 py-4 border-b border-gray-800">
           <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
             Canjes ({redemptions?.length ?? 0})

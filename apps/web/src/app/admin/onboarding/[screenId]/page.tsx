@@ -24,7 +24,7 @@ export default async function FlowDetailPage({ params }: Props) {
   const updateFlow = updateOnboardingFlow.bind(null, flow.id)
 
   return (
-    <div className="p-8 max-w-3xl">
+    <div className="p-4 sm:p-8 max-w-3xl">
       <Link href="/admin/onboarding" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
         ← Onboarding
       </Link>
@@ -48,19 +48,19 @@ export default async function FlowDetailPage({ params }: Props) {
       </form>
 
       {/* Pantallas del flujo */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between gap-4 mb-4">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
           Pantallas ({screens?.length ?? 0})
         </h2>
         <Link
           href={`/admin/onboarding/${flow.id}/screens/new`}
-          className="text-xs text-violet-400 hover:text-violet-300 border border-violet-800 hover:border-violet-600 px-3 py-1.5 rounded-lg transition-colors"
+          className="shrink-0 text-xs text-violet-400 hover:text-violet-300 border border-violet-800 hover:border-violet-600 px-3 py-1.5 rounded-lg transition-colors"
         >
           + Nueva pantalla
         </Link>
       </div>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-x-auto">
         {(!screens || screens.length === 0) ? (
           <div className="px-6 py-12 text-center">
             <p className="text-gray-600 text-sm mb-3">Sin pantallas todavía.</p>
@@ -75,20 +75,20 @@ export default async function FlowDetailPage({ params }: Props) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
-                <th className="text-left px-5 py-3 w-8">#</th>
-                <th className="text-left px-5 py-3">Pantalla</th>
-                <th className="text-left px-5 py-3">Slug</th>
-                <th className="text-center px-5 py-3">Estado</th>
-                <th className="px-5 py-3"></th>
+                <th className="hidden sm:table-cell text-left px-5 py-3 w-8">#</th>
+                <th className="text-left px-4 sm:px-5 py-3">Pantalla</th>
+                <th className="hidden sm:table-cell text-left px-5 py-3">Slug</th>
+                <th className="text-center px-4 sm:px-5 py-3">Estado</th>
+                <th className="px-4 sm:px-5 py-3"></th>
               </tr>
             </thead>
             <tbody>
               {screens.map(screen => (
                 <tr key={screen.id} className="border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors">
-                  <td className="px-5 py-3 text-gray-600 text-xs">{screen.order}</td>
-                  <td className="px-5 py-3 font-medium text-white">{screen.title}</td>
-                  <td className="px-5 py-3 text-gray-400 font-mono text-xs">{screen.slug}</td>
-                  <td className="px-5 py-3 text-center">
+                  <td className="hidden sm:table-cell px-5 py-3 text-gray-600 text-xs">{screen.order}</td>
+                  <td className="px-4 sm:px-5 py-3 font-medium text-white">{screen.title}</td>
+                  <td className="hidden sm:table-cell px-5 py-3 text-gray-400 font-mono text-xs">{screen.slug}</td>
+                  <td className="px-4 sm:px-5 py-3 text-center">
                     <form action={toggleOnboardingPublished.bind(null, screen.id, !screen.is_published)}>
                       <button
                         type="submit"
@@ -102,7 +102,7 @@ export default async function FlowDetailPage({ params }: Props) {
                       </button>
                     </form>
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="px-4 sm:px-5 py-3">
                     <div className="flex items-center justify-end gap-3">
                       <Link
                         href={`/admin/onboarding/${flow.id}/screens/${screen.id}`}

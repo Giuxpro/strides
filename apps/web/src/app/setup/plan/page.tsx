@@ -2,22 +2,25 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { RedeemCodeForm } from '@/components/account/RedeemCodeForm'
+import { PlanSelector } from '@/components/billing/PlanSelector'
 
 export default async function SetupPlanPage() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: subscription }, { data: priceRow }, { data: discountRow }] = await Promise.all([
+  const [{ data: subscription }, { data: priceRow }, { data: discountRow }, { data: annualDiscRow }] = await Promise.all([
     supabase.from('subscriptions').select('acquisition_type, status, trial_ends_at').eq('user_id', user.id).maybeSingle(),
     supabase.from('settings').select('value').eq('key', 'monthly_price').maybeSingle(),
     supabase.from('settings').select('value').eq('key', 'global_discount').maybeSingle(),
+    supabase.from('settings').select('value').eq('key', 'annual_discount_pct').maybeSingle(),
   ])
 
-  const monthlyPrice   = (priceRow?.value as number) ?? null
-  const globalDiscount = discountRow?.value as { enabled: boolean; percent: number; label: string; duration_months: number | null } | null
-  const promoActive    = globalDiscount?.enabled && (globalDiscount.percent ?? 0) > 0
-  const promoPrice     = promoActive && monthlyPrice ? monthlyPrice * (1 - globalDiscount!.percent / 100) : null
+  const monthlyPrice      = (priceRow?.value as number) ?? null
+  const annualDiscountPct = (annualDiscRow?.value as number) ?? 0
+  const globalDiscount    = discountRow?.value as { enabled: boolean; percent: number; label: string; duration_months: number | null } | null
+  const promoActive       = globalDiscount?.enabled && (globalDiscount.percent ?? 0) > 0
+  const promoPrice        = promoActive && monthlyPrice ? monthlyPrice * (1 - globalDiscount!.percent / 100) : null
 
   const isTrial = subscription?.acquisition_type === 'trial'
 
@@ -114,28 +117,19 @@ export default async function SetupPlanPage() {
           </ul>
         </div>
 
-        {/* Precio */}
+        {/* Selector mensual / anual */}
         {monthlyPrice && (
-          <div className="bg-white rounded-2xl border border-violet-100 p-4 mb-4 flex items-center justify-between shadow-sm">
-            <div>
-              {promoActive ? (
-                <>
-                  <p className="text-xs text-gray-400 line-through">${monthlyPrice.toFixed(2)}/mes</p>
-                  <p className="text-2xl font-extrabold text-gray-900">${promoPrice!.toFixed(2)}<span className="text-sm font-normal text-gray-400">/mes</span></p>
-                </>
-              ) : (
-                <p className="text-2xl font-extrabold text-gray-900">${monthlyPrice.toFixed(2)}<span className="text-sm font-normal text-gray-400">/mes</span></p>
-              )}
-            </div>
+          <div className="mb-4 text-left">
+            <PlanSelector monthlyPrice={monthlyPrice} annualDiscountPct={annualDiscountPct} />
             {promoActive && (
-              <span className="text-xs bg-emerald-100 text-emerald-700 font-bold px-2.5 py-1 rounded-full">
-                -{globalDiscount!.percent}%{globalDiscount!.label ? ` · ${globalDiscount!.label}` : ''}
-              </span>
+              <p className="text-xs text-center text-emerald-600 font-medium mt-2">
+                + promoción global -{globalDiscount!.percent}%{globalDiscount!.label ? ` · ${globalDiscount!.label}` : ''}
+              </p>
             )}
           </div>
         )}
 
-        {/* Placeholder — se conectará a Stripe */}
+        {/* Placeholder — se conectará al proveedor de pagos */}
         <div
           className="w-full py-4 rounded-2xl font-bold text-white text-base text-center opacity-60 cursor-not-allowed"
           style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', boxShadow: '0 4px 0 #4338ca' }}

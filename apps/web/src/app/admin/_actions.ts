@@ -391,7 +391,15 @@ export async function updateSettings(formData: FormData) {
     { key: 'onboarding_flow', value: formData.get('onboarding_flow') as string },
     { key: 'landing_variant',  value: formData.get('landing_variant') as string },
     { key: 'trial_days',       value: Number(formData.get('trial_days')) },
-    { key: 'monthly_price',    value: Number(formData.get('monthly_price')) || null },
+    { key: 'monthly_price',       value: Number(formData.get('monthly_price')) || null },
+    { key: 'annual_discount_pct', value: Number(formData.get('annual_discount_pct')) || null },
+    { key: 'preview_config', value: {
+        scope:         (formData.get('preview_scope') as string) || 'module',
+        lessons_count: Number(formData.get('preview_lessons_count')) || 3,
+      } as Json },
+    { key: 'lock_config', value: {
+        enabled: formData.get('lock_enabled') === 'true',
+      } as Json },
     { key: 'global_discount',  value: {
         enabled:         formData.get('global_discount_enabled') === 'true',
         percent:         Number(formData.get('global_discount_percent')) || 0,

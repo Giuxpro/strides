@@ -24,7 +24,7 @@ export default async function ScreenDetailPage({ params }: Props) {
   const updateMeta = updateOnboardingMeta.bind(null, screen.id)
 
   return (
-    <div className="p-8 max-w-xl">
+    <div className="p-4 sm:p-8 max-w-xl">
       <Link href={`/admin/onboarding/${flowId}`} className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
         ← {flow.name}
       </Link>

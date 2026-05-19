@@ -20,20 +20,23 @@ export default async function AdminSettingsPage() {
 
   const aiProvider = (s['ai_provider'] as string) ?? 'anthropic'
   const aiModel = (s['ai_model'] as string) ?? 'claude-haiku-4-5'
-  const onboardingFlow  = (s['onboarding_flow']  as string) ?? ''
-  const landingVariant  = (s['landing_variant']  as string) ?? 'a'
-  const trialDays       = (s['trial_days'] as number) ?? 7
-  const monthlyPrice    = (s['monthly_price'] as number | null) ?? null
-  const globalDiscount  = (s['global_discount'] as { enabled: boolean; percent: number; label: string; duration_months: number | null }) ?? { enabled: false, percent: 10, label: '', duration_months: null }
-  const feedbackPrompt  = (s['feedback_prompt_config'] as { enabled: boolean; trigger: 'lesson' | 'module' | 'games' | 'admin_test'; games_threshold: number; cooldown_days: number }) ?? { enabled: false, trigger: 'lesson' as const, games_threshold: 10, cooldown_days: 30 }
+  const onboardingFlow = (s['onboarding_flow'] as string) ?? ''
+  const landingVariant = (s['landing_variant'] as string) ?? 'a'
+  const trialDays = (s['trial_days'] as number) ?? 7
+  const monthlyPrice = (s['monthly_price'] as number | null) ?? null
+  const annualDiscountPct = (s['annual_discount_pct'] as number | null) ?? null
+  const globalDiscount = (s['global_discount'] as { enabled: boolean; percent: number; label: string; duration_months: number | null }) ?? { enabled: false, percent: 10, label: '', duration_months: null }
+  const previewConfig = (s['preview_config'] as { scope: 'module' | 'lessons'; lessons_count: number }) ?? { scope: 'module' as const, lessons_count: 3 }
+  const lockConfig = (s['lock_config'] as { enabled: boolean; applies_to: string[] }) ?? { enabled: false, applies_to: ['preview', 'trial'] }
+  const feedbackPrompt = (s['feedback_prompt_config'] as { enabled: boolean; trigger: 'lesson' | 'module' | 'games' | 'admin_test'; games_threshold: number; cooldown_days: number }) ?? { enabled: false, trigger: 'lesson' as const, games_threshold: 10, cooldown_days: 30 }
   const availMods = (s['available_modifiers'] as { timer?: boolean; lives?: boolean; multiplier?: boolean }) ??
     { timer: true, lives: true, multiplier: true }
   const gameConfigs = (s['game_configs'] as Record<string, { minItems?: number; maxItems?: number }>) ?? {}
-  const voicePreset    = isVoicePreset(s['voice_preset']) ? s['voice_preset'] : DEFAULT_VOICE_PRESET
+  const voicePreset = isVoicePreset(s['voice_preset']) ? s['voice_preset'] : DEFAULT_VOICE_PRESET
   const speechProvider = isSpeechProvider(s['speech_provider']) ? s['speech_provider'] : DEFAULT_SPEECH_PROVIDER
-  const audioConfig_   = isAudioConfig(s['audio_config']) ? s['audio_config'] : DEFAULT_AUDIO_CONFIG
-  const audioVolume    = audioConfig_.volume
-  const clickVolume    = audioConfig_.click_volume ?? audioVolume
+  const audioConfig_ = isAudioConfig(s['audio_config']) ? s['audio_config'] : DEFAULT_AUDIO_CONFIG
+  const audioVolume = audioConfig_.volume
+  const clickVolume = audioConfig_.click_volume ?? audioVolume
 
   // Fuente de verdad: bucket real (no la config cacheada)
   const MUSIC_BASE = 'https://ievftgzxiwtjocxnrmgv.supabase.co/storage/v1/object/public/background-music'
@@ -43,21 +46,21 @@ export default async function AdminSettingsPage() {
   ])
   const bucketAudioConfig = {
     navigation_tracks: (navFiles ?? []).map(f => `${MUSIC_BASE}/navigation/${f.name}`),
-    game_tracks:       (gameFiles ?? []).map(f => `${MUSIC_BASE}/game/${f.name}`),
+    game_tracks: (gameFiles ?? []).map(f => `${MUSIC_BASE}/game/${f.name}`),
     volume: audioVolume,
     click_sound_url: audioConfig_.click_sound_url ?? null,
   }
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-8 max-w-7xl">
       <h1 className="text-xl font-bold text-white mb-1">Configuración</h1>
       <p className="text-sm text-gray-500 mb-8">IA, onboarding, juegos y voz</p>
 
       <form action={updateSettings}>
-        <div className="grid grid-cols-2 gap-6 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
-          {/* ── Columna izquierda: App ── */}
-          <div className="flex flex-col gap-6 h-full">
+          {/* ── Col 1: Técnica ── */}
+          <div className="flex flex-col gap-6">
 
             {/* IA */}
             <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-5">
@@ -71,8 +74,46 @@ export default async function AdminSettingsPage() {
               <SpeechProviderSelector initialProvider={speechProvider} />
             </section>
 
+            {/* Bloqueo progresivo */}
+            <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Bloqueo progresivo</h2>
+                <p className="text-xs text-gray-600 mt-0.5">El contenido se desbloquea lección a lección según el avance del niño. Aplica a todos los perfiles excepto el admin.</p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-400 shrink-0">Estado</span>
+                <div className="flex gap-2">
+                  {(['true', 'false'] as const).map((val) => (
+                    <label key={val} className={`flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-lg border text-xs transition-all ${(lockConfig.enabled ? 'true' : 'false') === val
+                      ? 'border-violet-500 bg-violet-500/5 text-gray-200'
+                      : 'border-gray-700 text-gray-500 hover:border-gray-600'
+                      }`}>
+                      <input
+                        type="radio"
+                        name="lock_enabled"
+                        value={val}
+                        defaultChecked={(lockConfig.enabled ? 'true' : 'false') === val}
+                        className="accent-violet-500"
+                      />
+                      {val === 'true' ? 'Activado' : 'Desactivado'}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-600">
+                El admin siempre tiene acceso completo. Futuros roles (profesor, coordinador) podrán configurarse como exentos.
+              </p>
+            </section>
+
+          </div>
+
+          {/* ── Col 2: Onboarding y planes ── */}
+          <div className="flex flex-col gap-6">
+
             {/* Adquisición y Onboarding */}
-            <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-5 flex-1">
+            <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-5 pb-10">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Onboarding</h2>
@@ -83,27 +124,64 @@ export default async function AdminSettingsPage() {
                 </a>
               </div>
 
-              <AcquisitionSelector initialVariant={landingVariant} initialTrialDays={trialDays} />
+              <AcquisitionSelector
+                initialVariant={landingVariant}
+                initialTrialDays={trialDays}
+                initialPreviewConfig={previewConfig}
+              />
 
-              <div>
-                <label htmlFor="monthly_price" className="block text-sm text-gray-400 mb-1.5">
-                  Precio mensual (USD)
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
-                  <input
-                    id="monthly_price"
-                    name="monthly_price"
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    defaultValue={monthlyPrice ?? ''}
-                    placeholder="9.99"
-                    className="w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg pl-7 pr-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                  />
-                </div>
-                <p className="text-xs text-gray-600 mt-1">Precio que se muestra en la página de billing.</p>
+              <div className="flex items-start gap-2 bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2.5">
+                <span className="text-base leading-none mt-0.5">💡</span>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  El precio mensual es lo que se cobra cada mes. El plan anual usa ese mismo precio con el descuento aplicado — el usuario paga todo el año de una sola vez.
+                </p>
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="monthly_price" className="block text-sm text-gray-400 mb-1.5">
+                    Precio mensual (USD)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                    <input
+                      id="monthly_price"
+                      name="monthly_price"
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      defaultValue={monthlyPrice ?? ''}
+                      placeholder="9.99"
+                      className="w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg pl-7 pr-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="annual_discount_pct" className="block text-sm text-gray-400 mb-1.5">
+                    Descuento anual (%)
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="annual_discount_pct"
+                      name="annual_discount_pct"
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={1}
+                      defaultValue={annualDiscountPct ?? ''}
+                      placeholder="20"
+                      className="w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-3 pr-8 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">%</span>
+                  </div>
+                </div>
+              </div>
+              {annualDiscountPct && monthlyPrice ? (
+                <p className="text-xs text-gray-600 -mt-1">
+                  Plan anual: ${(monthlyPrice * (1 - annualDiscountPct / 100)).toFixed(2)}/mes · ${(monthlyPrice * 12 * (1 - annualDiscountPct / 100)).toFixed(2)}/año
+                </p>
+              ) : null}
 
               <div className="border-t border-gray-800 pt-5">
                 <p className="text-xs text-gray-400 font-medium mb-3">Promoción global</p>
@@ -139,10 +217,9 @@ export default async function AdminSettingsPage() {
 
             </section>
 
-
           </div>
 
-          {/* ── Columna derecha: Experiencia kids ── */}
+          {/* ── Col 3: Experiencia kids ── */}
           <div className="flex flex-col gap-6">
 
             {/* Voz del sistema */}
@@ -172,16 +249,16 @@ export default async function AdminSettingsPage() {
             </section>
 
             {/* Juegos */}
-            <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-6">
+            <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-6 pb-9">
               <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Juegos</h2>
 
               <div>
                 <p className="text-xs text-gray-400 font-medium mb-3">Modificadores disponibles</p>
                 <div className="flex flex-col gap-3">
                   {([
-                    { name: 'modifier_timer',      label: 'Temporizador', hint: 'Partidas con cuenta atrás' },
-                    { name: 'modifier_lives',      label: 'Vidas',        hint: 'Número de errores permitidos' },
-                    { name: 'modifier_multiplier', label: 'Multiplicador',hint: 'Duplica opciones (requiere tiempo o vidas)' },
+                    { name: 'modifier_timer', label: 'Temporizador', hint: 'Partidas con cuenta atrás' },
+                    { name: 'modifier_lives', label: 'Vidas', hint: 'Número de errores permitidos' },
+                    { name: 'modifier_multiplier', label: 'Multiplicador', hint: 'Duplica opciones (requiere tiempo o vidas)' },
                   ] as const).map(({ name, label, hint }) => (
                     <label key={name} className="flex items-start gap-3 cursor-pointer group">
                       <input
@@ -204,9 +281,9 @@ export default async function AdminSettingsPage() {
                 <p className="text-xs text-gray-600 mb-4">Mín: palabras para habilitar · Máx: palabras por partida</p>
                 <div className="flex flex-col gap-3">
                   {GAME_REGISTRY.map(game => (
-                    <div key={game.id} className="flex items-center gap-4">
-                      <span className="text-sm text-gray-300 w-32 shrink-0">{game.emoji} {game.title}</span>
-                      <div className="flex items-center gap-2">
+                    <div key={game.id} className="flex items-center gap-3">
+                      <span className="text-sm text-gray-300 flex-1 min-w-0 truncate">{game.emoji} {game.title}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <label className="text-xs text-gray-500">Mín</label>
                         <input
                           type="number"
@@ -214,10 +291,10 @@ export default async function AdminSettingsPage() {
                           min={1}
                           max={50}
                           defaultValue={gameConfigs[game.id]?.minItems ?? game.minItems}
-                          className="w-16 bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                          className="w-14 bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
                         />
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <label className="text-xs text-gray-500">Máx</label>
                         <input
                           type="number"
@@ -225,7 +302,7 @@ export default async function AdminSettingsPage() {
                           min={1}
                           max={50}
                           defaultValue={gameConfigs[game.id]?.maxItems ?? game.maxItems}
-                          className="w-16 bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                          className="w-14 bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
                         />
                       </div>
                     </div>
@@ -234,27 +311,31 @@ export default async function AdminSettingsPage() {
               </div>
             </section>
 
-            {/* Feedback & NPS */}
-            <section className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-              <div className="mb-4">
-                <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-0.5">Feedback & NPS</h2>
-                <p className="text-xs text-gray-600">Cuándo mostrar la encuesta de satisfacción a los usuarios.</p>
-              </div>
-              <FeedbackPromptPanel initial={feedbackPrompt} />
-            </section>
-
           </div>
         </div>
 
-        {/* ── Audio de fondo ── */}
-        <section className="mt-6 bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-6">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-1">Música de fondo</h2>
-            <p className="text-xs text-gray-600">Un URL por línea. Se reproducen en bucle con orden aleatorio.</p>
-          </div>
+        {/* ── Fila inferior: Música (col-span-2) + Feedback ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
 
-          <MusicUploaderPanel config={bucketAudioConfig} audioVolume={audioVolume} clickVolume={clickVolume} />
-        </section>
+          {/* Música de fondo — ocupa las dos primeras columnas */}
+          <section className="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-6 ">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-1">Música de fondo</h2>
+              <p className="text-xs text-gray-600">Un URL por línea. Se reproducen en bucle con orden aleatorio.</p>
+            </div>
+            <MusicUploaderPanel config={bucketAudioConfig} audioVolume={audioVolume} clickVolume={clickVolume} />
+          </section>
+
+          {/* Feedback & NPS — tercera columna */}
+          <section className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+            <div className="mb-4">
+              <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-0.5">Feedback & NPS</h2>
+              <p className="text-xs text-gray-600">Cuándo mostrar la encuesta de satisfacción a los usuarios.</p>
+            </div>
+            <FeedbackPromptPanel initial={feedbackPrompt} />
+          </section>
+
+        </div>
 
         <div className="mt-6">
           <SubmitButton label="Guardar cambios" />

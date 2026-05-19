@@ -23,15 +23,15 @@ export default async function AdminOnboardingPage() {
   const countMap = Object.fromEntries(counts.map(c => [c.id, c.count]))
 
   return (
-    <div className="p-8 max-w-3xl">
-      <div className="flex items-start justify-between mb-8">
+    <div className="p-4 sm:p-8 max-w-3xl">
+      <div className="flex items-start justify-between gap-4 mb-8">
         <div>
           <h1 className="text-xl font-bold text-white">Onboarding</h1>
           <p className="text-sm text-gray-500 mt-1">Flujos de registro. Cada flujo contiene las pantallas que verá el usuario antes de registrarse.</p>
         </div>
         <Link
           href="/admin/onboarding/new"
-          className="text-xs text-violet-400 hover:text-violet-300 border border-violet-800 hover:border-violet-600 px-3 py-1.5 rounded-lg transition-colors"
+          className="shrink-0 text-xs text-violet-400 hover:text-violet-300 border border-violet-800 hover:border-violet-600 px-3 py-1.5 rounded-lg transition-colors"
         >
           + Nuevo flujo
         </Link>

@@ -180,17 +180,17 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
             <AdminSearch initialValue={searchParams.q ?? ''} placeholder="Buscar vocabulario..." extraParams={{ tab: 'vocab' }} />
           </div>
 
-          <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+          <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
-                  <th className="text-left px-5 py-3 w-10">#</th>
-                  <th className="text-left px-5 py-3">Español</th>
-                  <th className="text-left px-5 py-3">Inglés</th>
-                  <th className="text-left px-5 py-3">Imagen</th>
-                  <th className="text-center px-5 py-3">Tipo</th>
-                  <th className="text-center px-5 py-3">Uso</th>
-                  <th className="px-5 py-3"></th>
+                  <th className="hidden sm:table-cell text-left px-5 py-3 w-10">#</th>
+                  <th className="text-left px-4 sm:px-5 py-3">Español</th>
+                  <th className="text-left px-4 sm:px-5 py-3">Inglés</th>
+                  <th className="hidden md:table-cell text-left px-5 py-3">Imagen</th>
+                  <th className="hidden sm:table-cell text-center px-5 py-3">Tipo</th>
+                  <th className="hidden sm:table-cell text-center px-5 py-3">Uso</th>
+                  <th className="px-4 sm:px-5 py-3"></th>
                 </tr>
               </thead>
               <tbody>
@@ -198,10 +198,10 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
                   const usedIn = usageMap[item.id] ?? []
                   return (
                     <tr key={item.id} className="border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors">
-                      <td className="px-5 py-3 text-gray-600 text-xs">{item.order}</td>
-                      <td className="px-5 py-3 font-medium text-white">{item.text_es}</td>
-                      <td className="px-5 py-3 text-gray-300">{item.text_en}</td>
-                      <td className="px-5 py-3">
+                      <td className="hidden sm:table-cell px-5 py-3 text-gray-600 text-xs">{item.order}</td>
+                      <td className="px-4 sm:px-5 py-3 font-medium text-white">{item.text_es}</td>
+                      <td className="px-4 sm:px-5 py-3 text-gray-300">{item.text_en}</td>
+                      <td className="hidden md:table-cell px-5 py-3">
                         {item.image_url ? (
                           <div className="flex items-center gap-2">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -214,13 +214,13 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
                           <span className="text-xs text-gray-700">—</span>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-center">
+                      <td className="hidden sm:table-cell px-5 py-3 text-center">
                         <span className="text-xs text-gray-500">{item.type}</span>
                       </td>
-                      <td className="px-5 py-3 text-center">
+                      <td className="hidden sm:table-cell px-5 py-3 text-center">
                         <VocabUsagePopover count={usedIn.length} lessons={usedIn} />
                       </td>
-                      <td className="px-5 py-3">
+                      <td className="px-4 sm:px-5 py-3">
                         <div className="flex items-center justify-end gap-3">
                           <Link
                             href={`/admin/content/${params.moduleId}/vocab/${item.id}/edit`}

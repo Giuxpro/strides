@@ -79,7 +79,7 @@ export default async function AdminUserDetailPage({ params, searchParams }: { pa
     : null
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-4 sm:p-8 max-w-5xl">
       <Link
         href={searchParams.from ?? '/admin/users'}
         className="text-sm text-gray-500 hover:text-gray-300 mb-6 inline-block transition-colors"
@@ -88,26 +88,26 @@ export default async function AdminUserDetailPage({ params, searchParams }: { pa
       </Link>
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-8">
+        <div className="flex items-center gap-4 min-w-0">
           <div className="w-14 h-14 rounded-2xl bg-gray-800 flex items-center justify-center text-2xl shrink-0">
             {avatar ?? '👤'}
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white mb-0.5">{u.display_name ?? u.email}</h1>
-            {u.display_name && <p className="text-sm text-gray-500">{u.email}</p>}
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-white mb-0.5 truncate">{u.display_name ?? u.email}</h1>
+            {u.display_name && <p className="text-sm text-gray-500 truncate">{u.email}</p>}
             <p className="text-xs text-gray-600 mt-1">Se unió el {fmt(u.joined_at)} · {daysInApp} días en la plataforma</p>
           </div>
         </div>
         {u.acquisition_type && (
-          <span className={`text-xs font-semibold px-3 py-1.5 rounded-full ${PLAN_COLORS[u.acquisition_type] ?? ''}`}>
+          <span className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full ${PLAN_COLORS[u.acquisition_type] ?? ''}`}>
             {PLAN_LABELS[u.acquisition_type] ?? u.acquisition_type}
           </span>
         )}
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8">
         {[
           { label: 'Días en la app',    value: fmtDays(daysInApp) },
           { label: 'Meses activo',      value: monthsActive != null ? `${monthsActive}m` : '—' },
@@ -128,7 +128,7 @@ export default async function AdminUserDetailPage({ params, searchParams }: { pa
       {/* Suscripción */}
       <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
         <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Suscripción</h2>
-        <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-500">Tipo</span>
             <span className="text-white">{PLAN_LABELS[u.acquisition_type ?? ''] ?? '—'}</span>
@@ -249,7 +249,7 @@ export default async function AdminUserDetailPage({ params, searchParams }: { pa
 
       {/* Historial de códigos */}
       {redemptions && redemptions.length > 0 && (
-        <section className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+        <section className="bg-gray-900 border border-gray-800 rounded-xl overflow-x-auto">
           <div className="px-6 py-4 border-b border-gray-800">
             <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Códigos canjeados ({redemptions.length})
@@ -258,10 +258,10 @@ export default async function AdminUserDetailPage({ params, searchParams }: { pa
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-800">
-                <th className="text-left px-6 py-3 font-medium">Código</th>
-                <th className="text-left px-6 py-3 font-medium">Tipo</th>
-                <th className="text-left px-6 py-3 font-medium">Ruta de canje</th>
-                <th className="text-left px-6 py-3 font-medium">Fecha</th>
+                <th className="text-left px-4 sm:px-6 py-3 font-medium">Código</th>
+                <th className="text-left px-4 sm:px-6 py-3 font-medium">Tipo</th>
+                <th className="hidden sm:table-cell text-left px-6 py-3 font-medium">Ruta de canje</th>
+                <th className="text-left px-4 sm:px-6 py-3 font-medium">Fecha</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
@@ -269,17 +269,17 @@ export default async function AdminUserDetailPage({ params, searchParams }: { pa
                 const ac = r.access_codes as { code: string; label: string; access_type: string } | null
                 return (
                   <tr key={r.id} className="hover:bg-white/[0.02]">
-                    <td className="px-6 py-4">
+                    <td className="px-4 sm:px-6 py-4">
                       <Link href={`/admin/codes/${r.code_id}`} className="font-mono text-violet-400 hover:underline">{ac?.code ?? '—'}</Link>
                       <p className="text-xs text-gray-600 mt-0.5">{ac?.label}</p>
                     </td>
-                    <td className="px-6 py-4 text-gray-400 text-xs">{ac?.access_type ?? '—'}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 sm:px-6 py-4 text-gray-400 text-xs">{ac?.access_type ?? '—'}</td>
+                    <td className="hidden sm:table-cell px-6 py-4">
                       <span className="text-xs bg-gray-800 text-gray-400 px-2 py-1 rounded-full">
                         {r.context === 'signup' ? 'Durante registro' : 'Desde cuenta'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-gray-400 text-xs">{fmt(r.redeemed_at, true)}</td>
+                    <td className="px-4 sm:px-6 py-4 text-gray-400 text-xs break-words">{fmt(r.redeemed_at, true)}</td>
                   </tr>
                 )
               })}

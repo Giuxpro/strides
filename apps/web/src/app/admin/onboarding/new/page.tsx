@@ -7,7 +7,7 @@ const L = 'block text-sm text-gray-400 mb-1.5'
 
 export default function NewFlowPage() {
   return (
-    <div className="p-8 max-w-md">
+    <div className="p-4 sm:p-8 max-w-md">
       <Link href="/admin/onboarding" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
         ← Onboarding
       </Link>

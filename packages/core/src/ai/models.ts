@@ -1,11 +1,13 @@
 export interface ModelMetadata {
   id: string
-  provider: 'anthropic' | 'openai' | 'google'
+  provider: 'anthropic' | 'openai' | 'google' | 'groq'
   displayName: string
   inputCostPerMTok: number
   outputCostPerMTok: number
   contextWindow: number
   hasReasoning: boolean
+  hasFreeTier: boolean
+  freeTierLimits?: { requestsPerDay: number; requestsPerMinute: number }
   speed: 'fast' | 'medium' | 'slow'
   bestFor: string[]
   limitations: string[]
@@ -22,6 +24,7 @@ export const MODELS: ModelMetadata[] = [
     outputCostPerMTok: 4.00,
     contextWindow: 200000,
     hasReasoning: false,
+    hasFreeTier: false,
     speed: 'fast',
     bestFor: ['generación de contenido', 'tutor conversacional', 'tareas repetitivas'],
     limitations: ['menos preciso en razonamiento complejo'],
@@ -35,6 +38,7 @@ export const MODELS: ModelMetadata[] = [
     outputCostPerMTok: 15.00,
     contextWindow: 200000,
     hasReasoning: false,
+    hasFreeTier: false,
     speed: 'medium',
     bestFor: ['contenido de alta calidad', 'tutor conversacional avanzado', 'instrucciones complejas'],
     limitations: ['más caro que Haiku'],
@@ -48,6 +52,7 @@ export const MODELS: ModelMetadata[] = [
     outputCostPerMTok: 75.00,
     contextWindow: 200000,
     hasReasoning: true,
+    hasFreeTier: false,
     speed: 'slow',
     bestFor: ['tareas de máxima calidad', 'razonamiento complejo', 'currículo educativo avanzado'],
     limitations: ['el más caro', 'latencia alta'],
@@ -63,6 +68,7 @@ export const MODELS: ModelMetadata[] = [
     outputCostPerMTok: 0.60,
     contextWindow: 128000,
     hasReasoning: false,
+    hasFreeTier: false,
     speed: 'fast',
     bestFor: ['generación de contenido masivo', 'tareas de texto simples'],
     limitations: ['contexto más corto', 'menos preciso que modelos mayores'],
@@ -76,6 +82,7 @@ export const MODELS: ModelMetadata[] = [
     outputCostPerMTok: 1.60,
     contextWindow: 128000,
     hasReasoning: false,
+    hasFreeTier: false,
     speed: 'medium',
     bestFor: ['generación de contenido de calidad', 'instrucciones complejas'],
     limitations: ['más lento que gpt-4o-mini'],
@@ -89,6 +96,7 @@ export const MODELS: ModelMetadata[] = [
     outputCostPerMTok: 4.40,
     contextWindow: 128000,
     hasReasoning: true,
+    hasFreeTier: false,
     speed: 'slow',
     bestFor: ['razonamiento complejo', 'evaluación de pronunciación', 'tareas que requieren lógica'],
     limitations: ['más caro', 'más lento'],
@@ -104,10 +112,12 @@ export const MODELS: ModelMetadata[] = [
     outputCostPerMTok: 0.30,
     contextWindow: 1000000,
     hasReasoning: false,
+    hasFreeTier: true,
+    freeTierLimits: { requestsPerDay: 1500, requestsPerMinute: 30 },
     speed: 'fast',
     bestFor: ['generación masiva de contenido', 'tareas simples a bajo costo'],
     limitations: ['calidad inferior a modelos mayores'],
-    description: 'El más económico disponible. Contexto de 1M tokens a costo mínimo.',
+    description: 'El más económico de Google. Contexto de 1M tokens.',
   },
   {
     id: 'gemini-2.0-flash',
@@ -117,10 +127,12 @@ export const MODELS: ModelMetadata[] = [
     outputCostPerMTok: 0.40,
     contextWindow: 1000000,
     hasReasoning: false,
+    hasFreeTier: true,
+    freeTierLimits: { requestsPerDay: 1500, requestsPerMinute: 15 },
     speed: 'fast',
     bestFor: ['generación de contenido', 'tutor conversacional', 'respuestas rápidas'],
     limitations: ['menos capaz que modelos Pro'],
-    description: 'Rápido, económico y con contexto enorme. Muy competitivo con Haiku.',
+    description: 'Rápido, contexto de 1M tokens. Muy competitivo con Haiku.',
   },
   {
     id: 'gemini-2.5-flash',
@@ -130,10 +142,12 @@ export const MODELS: ModelMetadata[] = [
     outputCostPerMTok: 0.60,
     contextWindow: 1000000,
     hasReasoning: true,
+    hasFreeTier: true,
+    freeTierLimits: { requestsPerDay: 500, requestsPerMinute: 10 },
     speed: 'medium',
     bestFor: ['contenido de calidad', 'razonamiento liviano', 'tareas multimodales'],
     limitations: ['más lento que Flash 2.0'],
-    description: 'La mejor relación calidad-precio de Google. Con capacidades de razonamiento.',
+    description: 'Mejor calidad de Google con razonamiento. Contexto de 1M tokens.',
   },
   {
     id: 'gemini-2.5-pro',
@@ -143,10 +157,58 @@ export const MODELS: ModelMetadata[] = [
     outputCostPerMTok: 5.00,
     contextWindow: 1000000,
     hasReasoning: true,
+    hasFreeTier: false,
     speed: 'slow',
     bestFor: ['máxima calidad', 'razonamiento complejo', 'currículos educativos avanzados'],
     limitations: ['el más caro de Google', 'latencia mayor'],
     description: 'El modelo más capaz de Google. Para contenido educativo de primer nivel.',
+  },
+
+  // ── Groq (open-source, siempre gratuito) ──────────────────────────────────
+  {
+    id: 'llama-3.3-70b-versatile',
+    provider: 'groq',
+    displayName: 'Llama 3.3 70B',
+    inputCostPerMTok: 0,
+    outputCostPerMTok: 0,
+    contextWindow: 128000,
+    hasReasoning: false,
+    hasFreeTier: true,
+    freeTierLimits: { requestsPerDay: 14400, requestsPerMinute: 30 },
+    speed: 'fast',
+    bestFor: ['generación de contenido', 'tutor conversacional', 'tareas generales'],
+    limitations: ['open-source, menor coherencia en tareas muy complejas'],
+    description: 'Llama 3.3 de Meta. Bueno para tareas generales y tutor conversacional.',
+  },
+  {
+    id: 'llama-3.1-8b-instant',
+    provider: 'groq',
+    displayName: 'Llama 3.1 8B Instant',
+    inputCostPerMTok: 0,
+    outputCostPerMTok: 0,
+    contextWindow: 128000,
+    hasReasoning: false,
+    hasFreeTier: true,
+    freeTierLimits: { requestsPerDay: 14400, requestsPerMinute: 30 },
+    speed: 'fast',
+    bestFor: ['generación masiva de contenido', 'respuestas rápidas'],
+    limitations: ['modelo pequeño, menor calidad en instrucciones complejas'],
+    description: 'El más rápido de Groq. Ideal para generar vocab en volumen.',
+  },
+  {
+    id: 'mixtral-8x7b-32768',
+    provider: 'groq',
+    displayName: 'Mixtral 8x7B',
+    inputCostPerMTok: 0,
+    outputCostPerMTok: 0,
+    contextWindow: 32768,
+    hasReasoning: false,
+    hasFreeTier: true,
+    freeTierLimits: { requestsPerDay: 14400, requestsPerMinute: 30 },
+    speed: 'fast',
+    bestFor: ['generación de contenido multilingüe', 'tareas en español e inglés'],
+    limitations: ['contexto más corto'],
+    description: 'Mixtral de Mistral AI. Excelente en tareas bilingües español/inglés.',
   },
 ]
 

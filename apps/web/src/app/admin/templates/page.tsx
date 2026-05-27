@@ -27,7 +27,7 @@ export default async function AdminTemplatesPage() {
   const pages: TemplatePageType[] = ['landing', 'login', 'signup']
 
   return (
-    <div className="p-8 max-w-6xl">
+    <div className="p-8">
       <h1 className="text-xl font-bold text-white mb-1">Plantillas de páginas</h1>
       <p className="text-sm text-gray-500 mb-8">
         Selecciona el diseño visual de cada página. El cambio es inmediato, sin deploy.

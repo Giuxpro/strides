@@ -54,7 +54,7 @@ export default async function LessonPage({ params }: Props) {
         id, type, phase,
         exercise_items(
           order,
-          vocabulary_items(id, text_en, text_es, image_url, audio_url)
+          vocabulary_items(id, text_en, text_es, image_url, emoji_unicode, audio_url)
         )
       )
     `)

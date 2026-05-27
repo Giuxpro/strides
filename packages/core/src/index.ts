@@ -1,4 +1,6 @@
-export * from './ai/index'
+export { MODELS, getModel, getModelsByProvider } from './ai/models'
+export { getStorageUrl, toStoragePath } from './storageUtils'
+export type { ModelMetadata } from './ai/models'
 export * from './exercises/index'
 export * from './kids/index'
 export * from './templates/index'

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { toggleLessonPublished, deleteLesson, reorderLessons } from '@/app/admin/_actions'
+import { getStorageUrl } from '@strides/core'
 
 interface LessonRow {
   id: string
@@ -17,6 +18,7 @@ interface Props {
   moduleId: string
   lessons: LessonRow[]
   searchActive?: boolean
+  footer?: React.ReactNode
 }
 
 function DragHandle() {
@@ -29,7 +31,7 @@ function DragHandle() {
   )
 }
 
-export function SortableLessonList({ moduleId, lessons: initial, searchActive = false }: Props) {
+export function SortableLessonList({ moduleId, lessons: initial, searchActive = false, footer }: Props) {
   const [rows, setRows]       = useState(initial)
   const [dragId, setDragId]   = useState<string | null>(null)
   const [dropId, setDropId]   = useState<string | null>(null)
@@ -194,10 +196,10 @@ export function SortableLessonList({ moduleId, lessons: initial, searchActive = 
 
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-3">
-                    {lesson.cover_url ? (
+                    {getStorageUrl(lesson.cover_url) ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={lesson.cover_url}
+                        src={getStorageUrl(lesson.cover_url)!}
                         alt={lesson.title_es}
                         className="w-8 h-8 object-cover rounded shrink-0"
                         draggable={false}
@@ -250,6 +252,7 @@ export function SortableLessonList({ moduleId, lessons: initial, searchActive = 
           })}
         </tbody>
       </table>
+      {footer}
     </div>
   )
 }

@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from 'react'
 import { uploadMusicTrack, removeMusicTrack, uploadClickSound, removeClickSound } from '@/app/admin/_actions'
 import type { AudioConfig } from '@strides/core/kids'
+import { getStorageUrl } from '@strides/core'
 
 interface TrackListProps {
   tracks: string[]
@@ -27,7 +28,7 @@ function TrackList({ tracks }: TrackListProps) {
         const name = url.split('/').pop() ?? url
         return (
           <li key={url} className="flex items-center gap-2 bg-gray-800 rounded-lg px-3 py-1.5">
-            <audio controls src={url} className="h-7 flex-1 min-w-0" style={{ filter: 'invert(0.8)' }} />
+            <audio controls src={getStorageUrl(url) ?? url} className="h-7 flex-1 min-w-0" style={{ filter: 'invert(0.8)' }} />
             <span className="text-xs text-gray-400 truncate max-w-[120px]" title={name}>{name}</span>
             <button
               onClick={() => handleRemove(url)}
@@ -115,7 +116,7 @@ function ClickSoundUploader({ currentUrl }: { currentUrl: string | null | undefi
     <div className="flex flex-col gap-2">
       {currentUrl ? (
         <div className="flex items-center gap-2 bg-gray-800 rounded-lg px-3 py-1.5">
-          <audio controls src={currentUrl} className="h-7 flex-1 min-w-0" style={{ filter: 'invert(0.8)' }} />
+          <audio controls src={getStorageUrl(currentUrl) ?? currentUrl} className="h-7 flex-1 min-w-0" style={{ filter: 'invert(0.8)' }} />
           <span className="text-xs text-gray-400 truncate max-w-[120px]" title={currentUrl.split('/').pop()}>
             {currentUrl.split('/').pop()}
           </span>

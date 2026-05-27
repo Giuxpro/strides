@@ -2,6 +2,7 @@
 
 import type { VocabItem } from './engine/LessonEngine'
 import type { ModuleConfig } from '@strides/core/kids'
+import { getVocabImageUrl } from '@strides/core/kids'
 import { useSpeak } from './VoicePresetProvider'
 
 interface Props {
@@ -96,10 +97,10 @@ export function KidsPalabrasTab({ vocab, masteryMap, moduleConfig }: Props) {
                 className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden"
                 style={{ background: 'rgba(255,255,255,0.55)' }}
               >
-                {item.image_url ? (
+                {getVocabImageUrl(item) ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={item.image_url}
+                    src={getVocabImageUrl(item)!}
                     alt={item.text_en}
                     className="w-8 h-8 object-contain"
                     loading="lazy"

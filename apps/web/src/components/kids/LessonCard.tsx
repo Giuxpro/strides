@@ -5,6 +5,7 @@ import Link from 'next/link'
 import type { Lesson } from '@strides/db'
 import { AnimatedStar } from './AnimatedStar'
 import type { LessonLockState } from '@strides/core'
+import { getStorageUrl } from '@strides/core'
 
 function playAudio(url: string) {
   try { new Audio(url).play() } catch { /* ignore autoplay restrictions */ }
@@ -34,7 +35,7 @@ const CARD_W = 220
 const CARD_H = Math.round(IMG_W * 752 / 1380)
 
 export function LessonCard({ lesson, moduleSlug, stars, previousStars, animationDelay, audioUrl, lockState }: LessonCardProps) {
-  const imageSrc = lesson.cover_url ?? SLUG_FALLBACK[lesson.slug] ?? '/lesson-cards/mar.png'
+  const imageSrc = getStorageUrl(lesson.cover_url) ?? SLUG_FALLBACK[lesson.slug] ?? '/lesson-cards/mar.png'
   const isLocked = lockState !== undefined
   const isPreview = lockState === 'preview-locked'
   const href = isPreview ? '/upgrade' : isLocked ? undefined : `/kids/play/${moduleSlug}/${lesson.slug}`

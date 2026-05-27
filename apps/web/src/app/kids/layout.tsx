@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { resolveThemeId, isVoicePreset, DEFAULT_VOICE_PRESET, isAudioConfig, DEFAULT_AUDIO_CONFIG } from '@strides/core/kids'
+import { getStorageUrl } from '@strides/core'
 import { ThemeButton } from '@/components/kids/ThemeButton'
 import { VoicePresetProvider } from '@/components/kids/VoicePresetProvider'
 import { MusicProvider } from '@/components/kids/MusicProvider'
@@ -46,7 +47,13 @@ export default async function KidsLayout({ children }: { children: React.ReactNo
   ])
 
   const voicePreset  = isVoicePreset(voiceRow?.value) ? voiceRow.value : DEFAULT_VOICE_PRESET
-  const audioConfig  = isAudioConfig(audioRow?.value) ? audioRow.value : DEFAULT_AUDIO_CONFIG
+  const rawConfig    = isAudioConfig(audioRow?.value) ? audioRow.value : DEFAULT_AUDIO_CONFIG
+  const audioConfig  = {
+    ...rawConfig,
+    navigation_tracks: rawConfig.navigation_tracks.map(p => getStorageUrl(p) ?? p),
+    game_tracks:       rawConfig.game_tracks.map(p => getStorageUrl(p) ?? p),
+    click_sound_url:   getStorageUrl(rawConfig.click_sound_url ?? null),
+  }
 
   return (
     <div

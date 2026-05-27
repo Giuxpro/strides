@@ -5,6 +5,7 @@ import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { toStoragePath } from '@strides/core'
 
 export async function selectChild(childId: string) {
   const supabase = createClient()
@@ -45,7 +46,7 @@ export async function createChildSetup(formData: FormData): Promise<void> {
       parent_id: user.id,
       name: formData.get('name') as string,
       age: parseInt(formData.get('age') as string),
-      avatar_url: (formData.get('avatar_url') as string) || null,
+      avatar_url: toStoragePath((formData.get('avatar_url') as string) || null),
     })
 
   if (error) throw new Error(error.message)
@@ -63,7 +64,7 @@ export async function createChild(formData: FormData): Promise<void> {
       parent_id: user.id,
       name: formData.get('name') as string,
       age: parseInt(formData.get('age') as string),
-      avatar_url: (formData.get('avatar_url') as string) || null,
+      avatar_url: toStoragePath((formData.get('avatar_url') as string) || null),
     })
 
   if (error) throw new Error(error.message)
@@ -80,7 +81,7 @@ export async function updateChild(childId: string, formData: FormData): Promise<
     .update({
       name: formData.get('name') as string,
       age: parseInt(formData.get('age') as string),
-      avatar_url: (formData.get('avatar_url') as string) || null,
+      avatar_url: toStoragePath((formData.get('avatar_url') as string) || null),
     })
     .eq('id', childId)
     .eq('parent_id', user.id)

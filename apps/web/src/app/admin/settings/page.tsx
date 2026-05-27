@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { updateSettings } from '@/app/admin/_actions'
 import { AIModelSelector } from '@/components/admin/AIModelSelector'
 import { SpeechProviderSelector } from '@/components/admin/SpeechProviderSelector'
@@ -8,18 +9,19 @@ import { GAME_REGISTRY, VOICE_PRESET_CONFIGS, isVoicePreset, DEFAULT_VOICE_PRESE
 import { MusicUploaderPanel } from '@/components/admin/MusicUploaderPanel'
 import { GlobalDiscountPanel } from '@/components/admin/GlobalDiscountPanel'
 import { FeedbackPromptPanel } from '@/components/admin/FeedbackPromptPanel'
-import { getAllFlows } from '@strides/db'
+import { getAllFlows, getAIUsageToday, getAllSettings } from '@strides/db'
 
 export default async function AdminSettingsPage() {
   const supabase = createClient()
 
-  const { data: rows } = await supabase.from('settings').select('key, value')
+  const { data: rows } = await getAllSettings(supabase)
   const s = Object.fromEntries((rows ?? []).map(r => [r.key, r.value]))
 
   const { data: allFlows } = await getAllFlows(supabase)
+  const aiUsageToday = await getAIUsageToday(createAdminClient())
 
   const aiProvider = (s['ai_provider'] as string) ?? 'anthropic'
-  const aiModel = (s['ai_model'] as string) ?? 'claude-haiku-4-5'
+  const aiModel    = (s['ai_model']    as string) ?? 'claude-haiku-4-5'
   const onboardingFlow = (s['onboarding_flow'] as string) ?? ''
   const landingVariant = (s['landing_variant'] as string) ?? 'a'
   const trialDays = (s['trial_days'] as number) ?? 7
@@ -39,20 +41,19 @@ export default async function AdminSettingsPage() {
   const clickVolume = audioConfig_.click_volume ?? audioVolume
 
   // Fuente de verdad: bucket real (no la config cacheada)
-  const MUSIC_BASE = 'https://ievftgzxiwtjocxnrmgv.supabase.co/storage/v1/object/public/background-music'
   const [{ data: navFiles }, { data: gameFiles }] = await Promise.all([
     supabase.storage.from('background-music').list('navigation'),
     supabase.storage.from('background-music').list('game'),
   ])
   const bucketAudioConfig = {
-    navigation_tracks: (navFiles ?? []).map(f => `${MUSIC_BASE}/navigation/${f.name}`),
-    game_tracks: (gameFiles ?? []).map(f => `${MUSIC_BASE}/game/${f.name}`),
+    navigation_tracks: (navFiles ?? []).map(f => `background-music/navigation/${f.name}`),
+    game_tracks: (gameFiles ?? []).map(f => `background-music/game/${f.name}`),
     volume: audioVolume,
     click_sound_url: audioConfig_.click_sound_url ?? null,
   }
 
   return (
-    <div className="p-8 max-w-7xl">
+    <div className="p-8">
       <h1 className="text-xl font-bold text-white mb-1">Configuración</h1>
       <p className="text-sm text-gray-500 mb-8">IA, onboarding, juegos y voz</p>
 
@@ -65,7 +66,11 @@ export default async function AdminSettingsPage() {
             {/* IA */}
             <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-5">
               <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Inteligencia Artificial</h2>
-              <AIModelSelector initialProvider={aiProvider} initialModel={aiModel} />
+              <AIModelSelector
+                initialProvider={aiProvider}
+                initialModel={aiModel}
+                usage={aiUsageToday}
+              />
             </section>
 
             {/* Reconocimiento de voz */}
@@ -113,7 +118,7 @@ export default async function AdminSettingsPage() {
           <div className="flex flex-col gap-6">
 
             {/* Adquisición y Onboarding */}
-            <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-5 pb-10">
+            <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-5 pb-20">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Onboarding</h2>

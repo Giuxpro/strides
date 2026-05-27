@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import type { VocabItem, ModuleConfig, WordResult } from '@strides/core/kids'
 import { useGameEvents } from '../modifiers/ModifierContext'
+import { getVocabImageUrl } from '@strides/core/kids'
 
 interface Card {
   uid: string
@@ -22,9 +23,10 @@ interface Props {
 }
 
 function bestCols(total: number): number {
+  if (total <= 6) return 3
   if (total % 4 === 0) return 4
-  if (total % 3 === 0) return 3
   if (total % 5 === 0) return 5
+  if (total % 3 === 0) return 3
   return 4
 }
 
@@ -39,23 +41,61 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
+const CARD_BACK = `repeating-linear-gradient(
+  -45deg,
+  #f87171 0px,  #f87171 16px,
+  #fb923c 16px, #fb923c 32px,
+  #fbbf24 32px, #fbbf24 48px,
+  #4ade80 48px, #4ade80 64px,
+  #38bdf8 64px, #38bdf8 80px
+)`
+
+const SUNBURST_STOPS = [
+  'rgba(255,255,255,0.14) 0deg 22.5deg',
+  'transparent 22.5deg 45deg',
+  'rgba(255,255,255,0.14) 45deg 67.5deg',
+  'transparent 67.5deg 90deg',
+  'rgba(255,255,255,0.14) 90deg 112.5deg',
+  'transparent 112.5deg 135deg',
+  'rgba(255,255,255,0.14) 135deg 157.5deg',
+  'transparent 157.5deg 180deg',
+  'rgba(255,255,255,0.14) 180deg 202.5deg',
+  'transparent 202.5deg 225deg',
+  'rgba(255,255,255,0.14) 225deg 247.5deg',
+  'transparent 247.5deg 270deg',
+  'rgba(255,255,255,0.14) 270deg 292.5deg',
+  'transparent 292.5deg 315deg',
+  'rgba(255,255,255,0.14) 315deg 337.5deg',
+  'transparent 337.5deg 360deg',
+].join(', ')
+
+const LEV_DELAYS = ['0s','0.5s','1s','1.5s','0.25s','0.75s','1.25s','1.75s','0.1s','0.6s','1.1s','1.6s']
+
+const PAIR_COLORS = [
+  '#FF6B6B', '#4ECDC4', '#45B7D1', '#F7B731', '#A29BFE',
+  '#FD79A8', '#6C5CE7', '#00B894', '#E17055', '#74B9FF',
+  '#55EFC4', '#FDCB6E', '#E84393', '#00CEC9', '#FF7675',
+]
+
+const COL_CLASS: Record<number, string> = { 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5' }
+
 export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }: Props) {
   const { reportCorrect, reportWrong, isTerminated } = useGameEvents()
+
   const [cards] = useState<Card[]>(() =>
     shuffle([
-      ...items.map(v => ({ uid: `en-${v.id}`, pairId: v.id, lang: 'en' as const, text: v.text_en, enText: v.text_en, imageUrl: v.image_url })),
-      ...items.map(v => ({ uid: `es-${v.id}`, pairId: v.id, lang: 'es' as const, text: v.text_es, enText: v.text_en, imageUrl: null })),
+      ...items.map(v => ({ uid: `en-${v.id}`, pairId: v.id, lang: 'en' as const, text: v.text_en, enText: v.text_en, imageUrl: getVocabImageUrl(v) })),
+      ...items.map(v => ({ uid: `es-${v.id}`, pairId: v.id, lang: 'es' as const, text: v.text_es, enText: v.text_en, imageUrl: getVocabImageUrl(v) })),
     ])
   )
 
-  const [flipped, setFlipped] = useState<string[]>([])
-  const [matched, setMatched] = useState<Set<string>>(new Set())
-  const [locked, setLocked] = useState(false)
+  const [flipped, setFlipped]     = useState<string[]>([])
+  const [matched, setMatched]     = useState<Set<string>>(new Set())
+  const [locked, setLocked]       = useState(false)
   const [pairsFound, setPairsFound] = useState(0)
 
   const totalPairs = items.length
-
-  const getCard = useCallback((uid: string) => cards.find(c => c.uid === uid)!, [cards])
+  const getCard    = useCallback((uid: string) => cards.find(c => c.uid === uid)!, [cards])
 
   function flip(uid: string) {
     if (locked || isTerminated) return
@@ -64,12 +104,12 @@ export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }
     if (flipped.includes(uid)) return
     if (flipped.length >= 2) return
 
-    const newFlipped = [...flipped, uid]
-    setFlipped(newFlipped)
+    const next = [...flipped, uid]
+    setFlipped(next)
 
-    if (newFlipped.length === 2) {
+    if (next.length === 2) {
       setLocked(true)
-      const [a, b] = [getCard(newFlipped[0]!), getCard(newFlipped[1]!)]
+      const [a, b] = [getCard(next[0]!), getCard(next[1]!)]
 
       if (a.pairId === b.pairId && a.lang !== b.lang) {
         reportCorrect()
@@ -77,14 +117,11 @@ export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }
           setMatched(prev => new Set([...prev, a.pairId]))
           setFlipped([])
           setLocked(false)
-          setPairsFound(prev => prev + 1)
+          setPairsFound(p => p + 1)
         }, 500)
       } else {
         reportWrong()
-        setTimeout(() => {
-          setFlipped([])
-          setLocked(false)
-        }, 800)
+        setTimeout(() => { setFlipped([]); setLocked(false) }, 900)
       }
     }
   }
@@ -93,7 +130,18 @@ export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }
     return flipped.includes(uid) || matched.has(getCard(uid).pairId)
   }
 
-  const allMatched = pairsFound === totalPairs
+  const cols     = bestCols(cards.length)
+  const colClass = COL_CLASS[cols] ?? 'grid-cols-4'
+
+  useEffect(() => {
+    if (pairsFound === totalPairs && totalPairs > 0) {
+      const t = setTimeout(() => {
+        onComplete(totalPairs, totalPairs, items.map(v => ({ vocabId: v.id, correct: true })))
+      }, 700)
+      return () => clearTimeout(t)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pairsFound])
 
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden">
@@ -102,7 +150,6 @@ export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }
         style={{ background: `radial-gradient(circle, ${moduleConfig.gradientFrom}, transparent)` }}
       />
 
-      {/* Header */}
       <header className="relative z-10 px-6 pt-6 pb-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
@@ -114,7 +161,7 @@ export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }
           </button>
           <div>
             <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
-              Memorama
+              Memoria
             </p>
             <p className="font-bold text-lg" style={{ color: 'var(--kids-text)' }}>
               {pairsFound}/{totalPairs} parejas
@@ -133,86 +180,96 @@ export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }
       </header>
 
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 gap-8">
-        <div className={`grid gap-3 w-full max-w-md ${{ 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5' }[bestCols(cards.length)]}`}>
-          {cards.map(card => {
+        <p className="text-base font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
+          Voltea las cartas y encuentra las dos iguales
+        </p>
+
+        <div className={`grid ${colClass} gap-3 md:gap-4 w-full max-w-2xl md:max-w-3xl lg:max-w-4xl`}>
+          {cards.map((card, idx) => {
             const faceUp  = isFaceUp(card.uid)
             const isMatch = matched.has(card.pairId)
+            const levDelay = LEV_DELAYS[idx % LEV_DELAYS.length] ?? '0s'
+            const pairIdx  = items.findIndex(v => v.id === card.pairId)
+            const frontBg  = PAIR_COLORS[pairIdx % PAIR_COLORS.length] ?? moduleConfig.gradientFrom
 
             return (
-              <button
+              <div
                 key={card.uid}
+                className="aspect-square cursor-pointer select-none"
+                style={{ perspective: '700px' }}
                 onClick={() => flip(card.uid)}
-                disabled={faceUp}
-                className="aspect-square rounded-2xl flex items-center justify-center p-2 transition-all duration-200 active:scale-90 min-h-[80px]"
-                style={{
-                  background: faceUp
-                    ? card.lang === 'en'
-                      ? moduleConfig.gradient
-                      : 'var(--kids-flip)'
-                    : 'var(--kids-down)',
-                  border: `2px solid ${
-                    isMatch
-                      ? moduleConfig.accent + '80'
-                      : faceUp
-                        ? 'var(--kids-border-color)'
-                        : 'transparent'
-                  }`,
-                  opacity: isMatch ? 0.5 : 1,
-                  boxShadow: isMatch ? `0 0 10px ${moduleConfig.accentLight}` : 'none',
-                  transform: faceUp && !isMatch ? 'scale(1.05)' : 'scale(1)',
-                }}
               >
-                {faceUp ? (
-                  card.lang === 'en' ? (
-                    card.imageUrl ? (
-                      <img
-                        src={card.imageUrl}
-                        alt={card.text}
-                        className="w-12 h-12 object-contain"
-                        draggable={false}
-                      />
-                    ) : (
-                      <span className="font-extrabold text-sm leading-tight text-center break-words text-white">
-                        {card.text}
-                      </span>
-                    )
-                  ) : (
-                    // ES card: English word is protagonist, Spanish is secondary hint
-                    <div className="flex flex-col items-center gap-0.5 px-1">
-                      <span
-                        className="font-extrabold text-sm leading-tight text-center break-words"
-                        style={{ color: 'var(--kids-text)' }}
-                      >
-                        {card.enText}
-                      </span>
-                      <span
-                        className="text-[9px] leading-tight text-center break-words opacity-45"
-                        style={{ color: 'var(--kids-text)' }}
-                      >
-                        {card.text}
-                      </span>
+                <div
+                  className="relative w-full h-full"
+                  style={{
+                    transformStyle: 'preserve-3d',
+                    transform: faceUp ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                    transition: 'transform 420ms cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
+                >
+                  {/* Back */}
+                  <div
+                    className="absolute inset-0 rounded-3xl flex items-center justify-center"
+                    style={{
+                      backfaceVisibility: 'hidden',
+                      background: CARD_BACK,
+                      border: '4px solid rgba(255,255,255,0.7)',
+                      boxShadow: '0 6px 20px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.25)',
+                    }}
+                  >
+                    <span className="text-white/40 text-3xl">✦</span>
+                  </div>
+
+                  {/* Front */}
+                  <div
+                    className="absolute inset-0 rounded-3xl flex flex-col items-center justify-center overflow-hidden"
+                    style={{
+                      backfaceVisibility: 'hidden',
+                      transform: 'rotateY(180deg)',
+                      background: frontBg,
+                      border: `4px solid rgba(255,255,255,${isMatch ? '0.35' : '0.72'})`,
+                      boxShadow: isMatch
+                        ? `0 0 28px ${moduleConfig.accentLight}, 0 4px 12px rgba(0,0,0,0.1)`
+                        : '0 6px 20px rgba(0,0,0,0.22)',
+                      opacity: isMatch ? 0.65 : 1,
+                    }}
+                  >
+                    {/* Sunburst */}
+                    <div
+                      className="absolute inset-0"
+                      style={{ background: `conic-gradient(${SUNBURST_STOPS})` }}
+                    />
+
+                    <div className="relative z-10 flex flex-col items-center gap-1.5 p-2 w-full">
+                      {card.imageUrl ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={card.imageUrl}
+                            alt={card.enText}
+                            className={`w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 object-contain drop-shadow-lg ${isMatch ? '' : 'animate-levitate'}`}
+                            draggable={false}
+                            style={{ animationDelay: levDelay }}
+                          />
+                          <div className="rounded-full px-2.5 py-0.5" style={{ background: 'rgba(255,255,255,0.88)' }}>
+                            <span className="text-gray-700 font-bold text-[11px] sm:text-xs leading-tight capitalize">
+                              {card.enText}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <span className="font-extrabold text-base leading-tight text-center text-white px-2">
+                          {card.enText}
+                        </span>
+                      )}
                     </div>
-                  )
-                ) : (
-                  <span style={{ color: 'var(--kids-text-faint)', fontSize: 16 }}>✦</span>
-                )}
-              </button>
+                  </div>
+                </div>
+              </div>
             )
           })}
         </div>
 
-        {allMatched && (
-          <button
-            onClick={() => {
-              const wordResults = items.map(v => ({ vocabId: v.id, correct: true }))
-              onComplete(totalPairs, totalPairs, wordResults)
-            }}
-            className="animate-pop-in text-white font-extrabold text-lg px-10 py-4 rounded-2xl transition-all hover:scale-105 active:scale-95"
-            style={{ background: moduleConfig.gradient, boxShadow: moduleConfig.shadow }}
-          >
-            ¡Listo! ✓
-          </button>
-        )}
       </main>
     </div>
   )

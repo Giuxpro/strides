@@ -53,7 +53,7 @@ export default async function LessonPreviewPage({ params, searchParams }: Props)
       id, position, step_type, title, config,
       exercises!lesson_steps_exercise_id_fkey(
         id, type, phase,
-        exercise_items(order, vocabulary_items(id, text_en, text_es, image_url, audio_url))
+        exercise_items(order, vocabulary_items(id, text_en, text_es, image_url, emoji_unicode, audio_url))
       )
     `)
     .eq('lesson_id', lesson.id)

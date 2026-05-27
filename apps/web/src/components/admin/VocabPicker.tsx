@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { getVocabImageUrl } from '@strides/core/kids'
 
 type Filter = 'all' | 'unused' | 'used' | 'selected'
 
@@ -9,6 +10,7 @@ export interface VocabItemWithUsage {
   text_es: string
   text_en: string
   image_url: string | null
+  emoji_unicode: string | null
   lessonCount: number
 }
 
@@ -117,9 +119,9 @@ export function VocabPicker({ items, initialSelected = [] }: Props) {
               onChange={() => toggle(item.id)}
               className="w-4 h-4 accent-violet-500 flex-shrink-0"
             />
-            {item.image_url && (
+            {getVocabImageUrl(item) && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={item.image_url} alt={item.text_es} className="w-6 h-6 object-contain flex-shrink-0" />
+              <img src={getVocabImageUrl(item)!} alt={item.text_es} className="w-6 h-6 object-contain flex-shrink-0" />
             )}
             <span className="flex-1 text-sm text-gray-300">
               {item.text_es}

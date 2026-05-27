@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { FeedbackTableClient } from './FeedbackTableClient'
+import { getFeedback, getFeedbackStats, getFeedbackUserIds } from '@strides/db'
 
 const PAGE_SIZE = 25
 
@@ -21,36 +22,18 @@ export default async function AdminFeedbackPage({
   const page   = Math.max(1, parseInt(searchParams.page ?? '1') || 1)
   const offset = (page - 1) * PAGE_SIZE
 
-  // Search by message; for user email/name we do a two-step when q is set
-  let userIds: string[] | null = null
+  let userIds: string[] | undefined
   if (q) {
-    const { data: profiles } = await admin
-      .from('profiles')
-      .select('id')
-      .or(`email.ilike.%${q}%,display_name.ilike.%${q}%`)
+    const { data: profiles } = await getFeedbackUserIds(admin, q)
     userIds = (profiles ?? []).map(p => p.id)
   }
 
-  // Build query: search by message OR by user IDs found above
-  let query = admin
-    .from('feedback')
-    .select('*, profiles(display_name, email)', { count: 'exact' })
-    .order('created_at', { ascending: false })
-    .range(offset, offset + PAGE_SIZE - 1)
+  const [{ data: feedbacks, count }, { data: allFeedback }] = await Promise.all([
+    getFeedback(admin, { q, userIds, offset, limit: PAGE_SIZE }),
+    getFeedbackStats(admin),
+  ])
 
-  if (q) {
-    if (userIds && userIds.length > 0) {
-      query = query.or(`message.ilike.%${q}%,user_id.in.(${userIds.join(',')})`)
-    } else {
-      query = query.ilike('message', `%${q}%`)
-    }
-  }
-
-  const { data: feedbacks, count } = await query
-  const total = count ?? 0
-
-  // Stats (global, not filtered)
-  const { data: allFeedback } = await admin.from('feedback').select('stars, status')
+  const total     = count ?? 0
   const newCount  = (allFeedback ?? []).filter(f => f.status === 'new').length
   const ratingCnt = (allFeedback ?? []).filter(f => f.stars).length
   const avgStars  = ratingCnt > 0
@@ -58,7 +41,7 @@ export default async function AdminFeedbackPage({
     : '—'
 
   return (
-    <div className="p-8 max-w-7xl">
+    <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-xl font-bold text-white mb-1">Feedback</h1>

@@ -7,6 +7,8 @@ interface Props {
   pageSize: number
   currentPage: number
   extraParams?: Record<string, string>
+  /** Si se pasa, la paginación es client-side (no modifica la URL) */
+  onPageChange?: (page: number) => void
 }
 
 function getPageRange(current: number, total: number): (number | '...')[] {
@@ -28,14 +30,18 @@ function getPageRange(current: number, total: number): (number | '...')[] {
   return pages
 }
 
-export function AdminPagination({ total, pageSize, currentPage, extraParams = {} }: Props) {
+export function AdminPagination({ total, pageSize, currentPage, extraParams = {}, onPageChange }: Props) {
   const router     = useRouter()
   const pathname   = usePathname()
   const totalPages = Math.ceil(total / pageSize)
 
-  if (totalPages <= 1) return null
+  if (total === 0) return null
 
   function goTo(page: number) {
+    if (onPageChange) {
+      onPageChange(page)
+      return
+    }
     const params = new URLSearchParams(extraParams)
     if (page > 1) params.set('page', String(page))
     const qs = params.toString()

@@ -36,7 +36,7 @@ export default async function EditLessonPage({ params }: Props) {
   const [{ data: mod }, { data: lesson }, { data: vocab }, { data: exercisesRaw }] = await Promise.all([
     supabase.from('modules').select('id, title_es').eq('id', params.moduleId).single(),
     supabase.from('lessons').select('id, title_es, title_en, slug, order, min_age, cover_url, audio_url').eq('id', params.lessonId).single(),
-    supabase.from('vocabulary_items').select('id, text_es, text_en, image_url').eq('module_id', params.moduleId).order('order'),
+    supabase.from('vocabulary_items').select('id, text_es, text_en, image_url, emoji_unicode').eq('module_id', params.moduleId).order('order'),
     supabase.from('exercises').select('lesson_id, exercise_items(vocabulary_item_id)').eq('module_id', params.moduleId) as unknown as Promise<{ data: ExerciseUsageRow[] | null }>,
   ])
 

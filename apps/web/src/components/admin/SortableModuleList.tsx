@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { toggleModulePublished, reorderModules } from '@/app/admin/_actions'
+import { getStorageUrl } from '@strides/core'
 
 interface ModuleRow {
   id: string
@@ -18,6 +19,7 @@ interface Props {
   modules: ModuleRow[]
   lessonCounts: Record<string, number>
   searchActive?: boolean
+  footer?: React.ReactNode
 }
 
 function DragHandle() {
@@ -30,7 +32,7 @@ function DragHandle() {
   )
 }
 
-export function SortableModuleList({ modules: initial, lessonCounts, searchActive = false }: Props) {
+export function SortableModuleList({ modules: initial, lessonCounts, searchActive = false, footer }: Props) {
   const [rows, setRows]           = useState(initial)
   const [dragId, setDragId]       = useState<string | null>(null)
   const [dropId, setDropId]       = useState<string | null>(null)
@@ -127,6 +129,7 @@ export function SortableModuleList({ modules: initial, lessonCounts, searchActiv
             const isDragging   = dragId === mod.id
             const isDropTarget = dropId === mod.id && dragId !== mod.id
             const isEditingPos = editId === mod.id
+            const coverUrl     = getStorageUrl(mod.cover_image_url)
 
             return (
               <tr
@@ -187,10 +190,10 @@ export function SortableModuleList({ modules: initial, lessonCounts, searchActiv
                 {/* Title + cover thumbnail */}
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-3">
-                    {mod.cover_image_url ? (
+                    {coverUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={mod.cover_image_url}
+                        src={coverUrl}
                         alt={mod.title_es}
                         className="w-8 h-8 object-contain rounded shrink-0"
                         draggable={false}
@@ -245,6 +248,7 @@ export function SortableModuleList({ modules: initial, lessonCounts, searchActiv
           })}
         </tbody>
       </table>
+      {footer}
     </div>
   )
 }

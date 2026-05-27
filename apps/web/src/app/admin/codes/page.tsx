@@ -25,7 +25,7 @@ export default async function CodesPage({
   const total = count ?? 0
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-8">
       <CodesRealtimeRefresher />
       <div className="flex items-center justify-between mb-6">
         <div>

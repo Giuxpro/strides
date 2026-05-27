@@ -4,6 +4,7 @@ import Link from 'next/link'
 import type { Module } from '@strides/db'
 import { getModuleConfig } from '@strides/core/kids'
 import type { ModuleLockState } from '@strides/core'
+import { getStorageUrl } from '@strides/core'
 
 interface Props {
   module: Module
@@ -21,6 +22,7 @@ export function KidsModuleCard({ module, index, lockState }: Props) {
   const isLocked = lockState !== undefined
   const isPreviewLock = lockState === 'preview-locked'
   const href = isPreviewLock ? '/upgrade' : isLocked ? undefined : `/kids/play/${module.slug}`
+  const coverUrl = getStorageUrl(module.cover_image_url)
 
   const inner = (
     <div
@@ -32,10 +34,10 @@ export function KidsModuleCard({ module, index, lockState }: Props) {
         style={{ animationDelay: levDelay }}
       >
         <div className={`w-full h-full relative transition-transform duration-300 ease-out ${!isLocked ? 'group-hover:scale-110 active:scale-95' : ''}`}>
-          {module.cover_image_url ? (
+          {coverUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={module.cover_image_url}
+              src={coverUrl}
               alt={module.title_es}
               className={`w-full h-full object-contain transition-all ${isLocked ? 'opacity-60 grayscale' : ''}`}
               style={{ filter: isLocked ? undefined : 'drop-shadow(0 20px 36px rgba(80,20,160,0.30)) drop-shadow(0 6px 12px rgba(0,0,0,0.18))' }}

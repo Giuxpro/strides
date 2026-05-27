@@ -184,7 +184,7 @@ export function UsersTableClient({
                 <th className="hidden lg:table-cell text-left px-5 py-3 font-medium">Pagando</th>
                 <th className="hidden lg:table-cell text-left px-5 py-3 font-medium">Descuento</th>
                 <th className="hidden md:table-cell text-left px-5 py-3 font-medium">Último acceso</th>
-                <th className="hidden lg:table-cell text-left px-5 py-3 font-medium">Días en app</th>
+                <th className="hidden lg:table-cell text-left px-5 py-3 font-medium">Antigüedad</th>
                 <th className="hidden md:table-cell text-left px-5 py-3 font-medium">Actividad</th>
                 <th className="hidden lg:table-cell text-left px-5 py-3 font-medium">Código</th>
               </tr>
@@ -241,10 +241,12 @@ export function UsersTableClient({
                           ? <span className="text-xs bg-violet-500/10 text-violet-400 px-2 py-1 rounded-full">-{promoPercent}% promo</span>
                           : <span className="text-xs text-gray-600">—</span>}
                     </td>
-                    <td className="hidden md:table-cell px-5 py-4 text-gray-400 text-xs">{fmt(u.last_sign_in_at)}</td>
-                    <td className="hidden lg:table-cell px-5 py-4">
-                      <span className="text-gray-300 font-mono text-sm">{fmtDays(daysInApp)}</span>
+                    <td className="hidden md:table-cell px-5 py-4 text-gray-400 text-xs">
+                      {u.last_sign_in_at
+                        ? (daysSince(u.last_sign_in_at) === 0 ? 'Hoy' : `Hace ${fmtDays(daysSince(u.last_sign_in_at))}`)
+                        : '—'}
                     </td>
+                    <td className="hidden lg:table-cell px-5 py-4 text-gray-400 text-xs">{fmt(u.joined_at)}</td>
                     <td className="hidden md:table-cell px-5 py-4">
                       {u.last_activity
                         ? <span className={`text-xs font-medium ${daysInactive! > 7 ? 'text-red-400' : daysInactive! > 3 ? 'text-amber-400' : 'text-emerald-400'}`}>

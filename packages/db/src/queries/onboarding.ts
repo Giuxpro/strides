@@ -9,6 +9,24 @@ export function getAllFlows(db: DB) {
   return db.from('onboarding_flows').select('*').order('created_at')
 }
 
+export function getFlowsAdmin(
+  db: DB,
+  { q, offset, limit }: { q?: string; offset: number; limit: number },
+) {
+  let query = db
+    .from('onboarding_flows')
+    .select('*', { count: 'exact' })
+    .order('created_at')
+    .range(offset, offset + limit - 1)
+
+  if (q) query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%`)
+  return query
+}
+
+export function getScreenCountsByFlowIds(db: DB, flowIds: string[]) {
+  return db.from('onboarding_screens').select('flow_id').in('flow_id', flowIds)
+}
+
 export function getFlowById(db: DB, id: string) {
   return db.from('onboarding_flows').select('*').eq('id', id).single()
 }

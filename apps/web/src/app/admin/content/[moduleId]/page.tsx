@@ -1,17 +1,26 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { getVocabImageUrl } from '@strides/core/kids'
 import { deleteVocabItem } from '@/app/admin/_actions'
 import { VocabUsagePopover } from '@/components/admin/VocabUsagePopover'
 import { RetoConfigForm } from '@/components/admin/RetoConfigForm'
 import { ModuleJugarConfigForm } from '@/components/admin/ModuleJugarConfigForm'
 import { SortableLessonList } from '@/components/admin/SortableLessonList'
 import { AdminSearch } from '@/components/admin/AdminSearch'
+import { AdminPagination } from '@/components/admin/AdminPagination'
+import {
+  getLessonsAdmin,
+  getLessonsAdminCount,
+  getVocabAdmin,
+  getVocabAdminCount,
+  getExercisesForVocabUsage,
+} from '@strides/db'
 import type { ModifierConfig } from '@strides/core/kids'
 
 interface Props {
   params: { moduleId: string }
-  searchParams: { tab?: string; q?: string }
+  searchParams: { tab?: string; q?: string; page?: string }
 }
 
 type LessonRef = { id: string; title_es: string }
@@ -22,6 +31,7 @@ type ExerciseRow = {
 }
 
 const TB = 'px-4 py-1.5 rounded-lg text-sm font-medium transition-colors'
+const PAGE_SIZE = 25
 
 export default async function AdminModuleDetailPage({ params, searchParams }: Props) {
   const supabase = createClient()
@@ -29,29 +39,54 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
     : searchParams.tab === 'retos'  ? 'retos'
     : searchParams.tab === 'juegos' ? 'juegos'
     : 'vocab'
-  const q = searchParams.q?.toLowerCase().trim() ?? ''
+  const q      = searchParams.q?.toLowerCase().trim() ?? ''
+  const page   = Math.max(1, parseInt(searchParams.page ?? '1') || 1)
+  const offset = (page - 1) * PAGE_SIZE
 
-  const [{ data: mod }, { data: modGame }, { data: lessons }, { data: vocab }, { data: exercisesRaw }] = await Promise.all([
+  const [{ data: mod }, { data: modGame }] = await Promise.all([
     supabase.from('modules').select('id, title_es, title_en, slug').eq('id', params.moduleId).single(),
     supabase.from('modules')
       .select('reto_game_id, reto_modifiers, diario_game_id, active_game_ids')
       .eq('id', params.moduleId).single() as unknown as
       Promise<{ data: { reto_game_id: string | null; reto_modifiers: ModifierConfig[] | null; diario_game_id: string | null; active_game_ids: string[] | null } | null }>,
-    supabase.from('lessons').select('id, title_es, title_en, order, is_published, cover_url').eq('module_id', params.moduleId).order('order'),
-    supabase.from('vocabulary_items').select('id, text_es, text_en, image_url, type, order').eq('module_id', params.moduleId).order('order'),
-    supabase.from('exercises').select('lesson_id, lessons(id, title_es), exercise_items(vocabulary_item_id)').eq('module_id', params.moduleId) as unknown as Promise<{ data: ExerciseRow[] | null }>,
   ])
 
   if (!mod) notFound()
 
-  const filteredVocab = (tab === 'vocab' && q)
-    ? (vocab ?? []).filter(v => v.text_es.toLowerCase().includes(q) || v.text_en.toLowerCase().includes(q))
-    : vocab ?? []
-  const filteredLessons = (tab === 'lessons' && q)
-    ? (lessons ?? []).filter(l => l.title_es.toLowerCase().includes(q) || l.title_en.toLowerCase().includes(q))
-    : lessons ?? []
+  // Queries tab-específicas: solo carga lo que necesita el tab activo
+  let lessons:      { id: string; title_es: string; title_en: string; order: number; is_published: boolean; cover_url: string | null }[] = []
+  let lessonCount   = 0
+  let vocab:        { id: string; text_es: string; text_en: string; image_url: string | null; emoji_unicode: string | null; type: string | null; order: number }[] = []
+  let vocabCount    = 0
+  let exercisesRaw: ExerciseRow[] | null = null
 
-  // Build usage map: vocabId → unique lessons that use it
+  if (tab === 'lessons') {
+    const [{ data: ld, count: lc }, { count: vc }] = await Promise.all([
+      getLessonsAdmin(supabase, { moduleId: params.moduleId, q, offset, limit: PAGE_SIZE }),
+      getVocabAdminCount(supabase, params.moduleId),
+    ])
+    lessons     = ld ?? []
+    lessonCount = lc ?? 0
+    vocabCount  = vc ?? 0
+  } else if (tab === 'vocab') {
+    const [{ data: vd, count: vc }, { count: lc }, { data: ex }] = await Promise.all([
+      getVocabAdmin(supabase, { moduleId: params.moduleId, q, offset, limit: PAGE_SIZE }),
+      getLessonsAdminCount(supabase, params.moduleId),
+      getExercisesForVocabUsage(supabase, params.moduleId),
+    ])
+    vocab       = vd ?? []
+    vocabCount  = vc ?? 0
+    lessonCount = lc ?? 0
+    exercisesRaw = ex as ExerciseRow[] | null
+  } else {
+    const [{ count: lc }, { count: vc }] = await Promise.all([
+      getLessonsAdminCount(supabase, params.moduleId),
+      getVocabAdminCount(supabase, params.moduleId),
+    ])
+    lessonCount = lc ?? 0
+    vocabCount  = vc ?? 0
+  }
+
   const usageMap: Record<string, LessonRef[]> = {}
   for (const ex of exercisesRaw ?? []) {
     const lesson = ex.lessons
@@ -64,6 +99,12 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
       }
     }
   }
+
+  const lessonExtraParams: Record<string, string> = { tab: 'lessons' }
+  if (q) lessonExtraParams.q = q
+
+  const vocabExtraParams: Record<string, string> = { tab: 'vocab' }
+  if (q) vocabExtraParams.q = q
 
   return (
     <div className="p-8 space-y-6">
@@ -90,13 +131,13 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
           href="?tab=vocab"
           className={`${TB} ${tab === 'vocab' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
         >
-          Vocabulario ({vocab?.length ?? 0})
+          Vocabulario ({vocabCount})
         </Link>
         <Link
           href="?tab=lessons"
           className={`${TB} ${tab === 'lessons' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
         >
-          Lecciones ({lessons?.length ?? 0})
+          Lecciones ({lessonCount})
         </Link>
         <Link
           href="?tab=juegos"
@@ -127,7 +168,12 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
           <div className="mb-3">
             <AdminSearch initialValue={searchParams.q ?? ''} placeholder="Buscar lección..." extraParams={{ tab: 'lessons' }} />
           </div>
-          <SortableLessonList moduleId={params.moduleId} lessons={filteredLessons} searchActive={!!q} />
+          <SortableLessonList
+            moduleId={params.moduleId}
+            lessons={lessons}
+            searchActive={!!q || lessonCount > PAGE_SIZE}
+            footer={<AdminPagination total={lessonCount} pageSize={PAGE_SIZE} currentPage={page} extraParams={lessonExtraParams} />}
+          />
         </section>
       )}
 
@@ -194,7 +240,7 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
                 </tr>
               </thead>
               <tbody>
-                {filteredVocab.map(item => {
+                {vocab.map(item => {
                   const usedIn = usageMap[item.id] ?? []
                   return (
                     <tr key={item.id} className="border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors">
@@ -202,17 +248,20 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
                       <td className="px-4 sm:px-5 py-3 font-medium text-white">{item.text_es}</td>
                       <td className="px-4 sm:px-5 py-3 text-gray-300">{item.text_en}</td>
                       <td className="hidden md:table-cell px-5 py-3">
-                        {item.image_url ? (
-                          <div className="flex items-center gap-2">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={item.image_url} alt={item.text_es} className="w-7 h-7 object-contain" />
-                            <span className="text-xs text-gray-600 truncate max-w-[100px]" title={item.image_url}>
-                              {item.image_url.split('/').pop()}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-gray-700">—</span>
-                        )}
+                        {(() => {
+                          const imgUrl = getVocabImageUrl(item)
+                          return imgUrl ? (
+                            <div className="flex items-center gap-2">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={imgUrl} alt={item.text_es} className="w-7 h-7 object-contain" />
+                              <span className="text-xs text-gray-600 truncate max-w-[100px]">
+                                {item.emoji_unicode ?? item.image_url?.split('/').pop()}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-700">—</span>
+                          )
+                        })()}
                       </td>
                       <td className="hidden sm:table-cell px-5 py-3 text-center">
                         <span className="text-xs text-gray-500">{item.type}</span>
@@ -241,7 +290,7 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
                   )
                 })}
 
-                {filteredVocab.length === 0 && (
+                {vocab.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-5 py-8 text-center text-gray-600">
                       {q ? `Sin resultados para "${q}".` : (
@@ -257,6 +306,7 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
                 )}
               </tbody>
             </table>
+            <AdminPagination total={vocabCount} pageSize={PAGE_SIZE} currentPage={page} extraParams={vocabExtraParams} />
           </div>
         </section>
       )}

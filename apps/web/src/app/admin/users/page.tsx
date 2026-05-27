@@ -2,6 +2,13 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { UsersTableClient } from './UsersTableClient'
+import {
+  getAdminUsers,
+  getAdminUsersCount,
+  getAdminUserProfiles,
+  getAdminUserSubs,
+} from '@strides/db'
+import { getSetting } from '@strides/db'
 
 const PAGE_SIZE = 25
 
@@ -30,10 +37,10 @@ export default async function AdminUsersPage({
     { data: priceRow },
     { data: discountRow },
   ] = await Promise.all([
-    admin.rpc('get_admin_users_overview', { p_search: search, p_limit: PAGE_SIZE, p_offset: offset, p_plan: plan, p_status: status }),
-    admin.rpc('get_admin_users_count',    { p_search: search, p_plan: plan, p_status: status }),
-    admin.from('settings').select('value').eq('key', 'monthly_price').maybeSingle(),
-    admin.from('settings').select('value').eq('key', 'global_discount').maybeSingle(),
+    getAdminUsers(admin, { search, limit: PAGE_SIZE, offset, plan, status }),
+    getAdminUsersCount(admin, { search, plan, status }),
+    getSetting(admin, 'monthly_price'),
+    getSetting(admin, 'global_discount'),
   ])
 
   const total          = (totalRaw as number) ?? 0
@@ -44,8 +51,8 @@ export default async function AdminUsersPage({
   const userIds = (users ?? []).map(u => u.id)
   const [{ data: avatarRows }, { data: subs }] = userIds.length > 0
     ? await Promise.all([
-        admin.from('profiles').select('id, avatar').in('id', userIds),
-        admin.from('subscriptions').select('user_id, redeemed_code_id').in('user_id', userIds),
+        getAdminUserProfiles(admin, userIds),
+        getAdminUserSubs(admin, userIds),
       ])
     : [{ data: [] }, { data: [] }]
 
@@ -57,7 +64,7 @@ export default async function AdminUsersPage({
   )
 
   return (
-    <div className="p-4 sm:p-8 max-w-7xl">
+    <div className="p-4 sm:p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-white mb-1">Usuarios</h1>

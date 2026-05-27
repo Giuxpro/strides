@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createLesson } from '@/app/admin/_actions'
 import { VocabPicker, type VocabItemWithUsage } from '@/components/admin/VocabPicker'
+import { ImageUploadField } from '@/components/admin/ImageUploadField'
 import { SubmitButton } from '@/components/admin/SubmitButton'
 
 const I = 'w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500'
@@ -21,7 +22,7 @@ export default async function NewLessonPage({ params }: Props) {
   const [{ data: mod }, { data: lessons }, { data: vocab }, { data: exercisesRaw }] = await Promise.all([
     supabase.from('modules').select('id, title_es').eq('id', params.moduleId).single(),
     supabase.from('lessons').select('order').eq('module_id', params.moduleId).order('order', { ascending: false }).limit(1),
-    supabase.from('vocabulary_items').select('id, text_es, text_en, image_url').eq('module_id', params.moduleId).order('order'),
+    supabase.from('vocabulary_items').select('id, text_es, text_en, image_url, emoji_unicode').eq('module_id', params.moduleId).order('order'),
     supabase.from('exercises').select('lesson_id, exercise_items(vocabulary_item_id)').eq('module_id', params.moduleId) as unknown as Promise<{ data: ExerciseRow[] | null }>,
   ])
 
@@ -45,6 +46,7 @@ export default async function NewLessonPage({ params }: Props) {
     text_es: item.text_es,
     text_en: item.text_en,
     image_url: item.image_url,
+    emoji_unicode: item.emoji_unicode,
     lessonCount: lessonCountMap[item.id]?.size ?? 0,
   }))
 
@@ -92,6 +94,21 @@ export default async function NewLessonPage({ params }: Props) {
               <input name="min_age" type="number" min={4} max={12} defaultValue={4} className={I} />
             </div>
           </div>
+
+          <ImageUploadField
+            name="cover_url"
+            bucket="lesson-cards"
+            defaultValue=""
+            label="Imagen de portada"
+          />
+
+          <ImageUploadField
+            name="audio_url"
+            bucket="lesson-audio"
+            defaultValue=""
+            label="Audio de la tarjeta"
+            accept="audio/*"
+          />
         </div>
 
         {/* Vocab selector */}

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import type { WordResult, ModuleConfig } from '@strides/core/kids'
+import { getVocabImageUrl } from '@strides/core/kids'
 import type { VocabItem } from './LessonEngine'
 
 function getPronunciationTip(word: string): string {
@@ -176,9 +177,9 @@ export function PronunciationResultPanel({ wordResults, vocabMap, moduleConfig }
                   >
                     {/* Imagen + palabra + botón */}
                     <div className="flex items-center gap-1.5">
-                      {vocab?.image_url && (
+                      {vocab && getVocabImageUrl(vocab) && (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={vocab.image_url} alt=""
+                        <img src={getVocabImageUrl(vocab)!} alt=""
                           className="rounded-xl object-contain flex-shrink-0"
                           style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.1)' }}
                         />

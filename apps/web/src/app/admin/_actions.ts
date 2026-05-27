@@ -4,7 +4,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { Json } from '@strides/db'
+import { getAllSettings, insertGeneratedModule, insertGeneratedVocab, insertGeneratedLessons, logAIUsage } from '@strides/db'
 import { GAME_REGISTRY } from '@strides/core/kids'
+import { createAIProvider } from '@strides/core/ai'
+import { toStoragePath } from '@strides/core'
 
 async function requireAdmin() {
   const supabase = createClient()
@@ -53,8 +56,8 @@ export async function createModule(formData: FormData) {
   const title_en        = formData.get('title_en') as string
   const slug            = formData.get('slug') as string
   const description_es  = (formData.get('description_es') as string) || null
-  const cover_image_url = (formData.get('cover_image_url') as string) || null
-  const audio_url       = (formData.get('audio_url') as string) || null
+  const cover_image_url = toStoragePath((formData.get('cover_image_url') as string) || null)
+  const audio_url       = toStoragePath((formData.get('audio_url') as string) || null)
 
   const { count } = await supabase.from('modules').select('*', { count: 'exact', head: true })
 
@@ -76,8 +79,8 @@ export async function updateModule(formData: FormData) {
   const title_en        = formData.get('title_en') as string
   const description_es  = (formData.get('description_es') as string) || null
   const order           = Number(formData.get('order'))
-  const cover_image_url = (formData.get('cover_image_url') as string) || null
-  const audio_url       = (formData.get('audio_url') as string) || null
+  const cover_image_url = toStoragePath((formData.get('cover_image_url') as string) || null)
+  const audio_url       = toStoragePath((formData.get('audio_url') as string) || null)
 
   await supabase.from('modules').update({ title_es, title_en, description_es, order, cover_image_url, audio_url }).eq('id', moduleId)
 
@@ -102,11 +105,13 @@ export async function createLesson(formData: FormData) {
   const slug      = formData.get('slug') as string
   const order     = Number(formData.get('order'))
   const min_age   = Number(formData.get('min_age'))
+  const cover_url = toStoragePath((formData.get('cover_url') as string) || null)
+  const audio_url = toStoragePath((formData.get('audio_url') as string) || null)
   const vocabIds  = formData.getAll('vocab_ids') as string[]
 
   const { data: lesson, error: lessonErr } = await supabase
     .from('lessons')
-    .insert({ module_id: moduleId, title_es, title_en, slug, order, min_age })
+    .insert({ module_id: moduleId, title_es, title_en, slug, order, min_age, cover_url, audio_url })
     .select('id')
     .single()
 
@@ -152,8 +157,8 @@ export async function updateLesson(formData: FormData) {
   const title_en  = formData.get('title_en') as string
   const order     = Number(formData.get('order'))
   const min_age   = Number(formData.get('min_age'))
-  const cover_url = (formData.get('cover_url') as string) || null
-  const audio_url = (formData.get('audio_url') as string) || null
+  const cover_url = toStoragePath((formData.get('cover_url') as string) || null)
+  const audio_url = toStoragePath((formData.get('audio_url') as string) || null)
 
   await supabase.from('lessons').update({ title_es, title_en, order, min_age, cover_url, audio_url }).eq('id', lessonId)
 
@@ -180,7 +185,6 @@ export async function deleteLesson(formData: FormData) {
   await supabase.from('lessons').delete().eq('id', lessonId)
 
   revalidatePath(`/admin/content/${moduleId}`)
-  redirect(`/admin/content/${moduleId}`)
 }
 
 // ─── Lesson Steps ───────────────────────────────────────────────────────────
@@ -205,7 +209,7 @@ export async function addLessonStep(formData: FormData) {
     config = {
       text_en:   formData.get('text_en') as string,
       text_es:   formData.get('text_es') as string,
-      image_url: (formData.get('image_url') as string) || '',
+      image_url: toStoragePath((formData.get('image_url') as string) || null) ?? '',
     }
   } else if (stepType === 'exercise') {
     const exType  = formData.get('exercise_type') as 'memory' | 'recognition' | 'speaking'
@@ -258,7 +262,7 @@ export async function updateLessonStep(formData: FormData) {
       config: {
         text_en:   formData.get('text_en') as string,
         text_es:   formData.get('text_es') as string,
-        image_url: (formData.get('image_url') as string) || '',
+        image_url: toStoragePath((formData.get('image_url') as string) || null) ?? '',
       },
     }).eq('id', stepId)
   } else if (stepType === 'exercise') {
@@ -329,8 +333,8 @@ export async function createVocabItem(formData: FormData) {
   const moduleId  = formData.get('module_id') as string
   const text_es   = formData.get('text_es') as string
   const text_en   = formData.get('text_en') as string
-  const image_url = (formData.get('image_url') as string) || null
-  const audio_url = (formData.get('audio_url') as string) || null
+  const image_url = toStoragePath((formData.get('image_url') as string) || null)
+  const audio_url = toStoragePath((formData.get('audio_url') as string) || null)
   const type      = formData.get('type') as 'word' | 'phrase'
   const min_age   = Number(formData.get('min_age'))
 
@@ -349,34 +353,41 @@ export async function createVocabItem(formData: FormData) {
 }
 
 export async function updateVocabItem(formData: FormData) {
-  const { supabase } = await requireAdmin()
+  await requireAdmin()
+  const admin     = createAdminClient()
   const itemId    = formData.get('id') as string
   const moduleId  = formData.get('module_id') as string
   const text_es   = formData.get('text_es') as string
   const text_en   = formData.get('text_en') as string
-  const image_url = (formData.get('image_url') as string) || null
-  const audio_url = (formData.get('audio_url') as string) || null
+  const image_url = toStoragePath((formData.get('image_url') as string) || null)
+  const audio_url = toStoragePath((formData.get('audio_url') as string) || null)
   const type      = formData.get('type') as 'word' | 'phrase'
   const min_age   = Number(formData.get('min_age'))
 
-  await supabase.from('vocabulary_items')
+  const { error } = await admin.from('vocabulary_items')
     .update({ text_es, text_en, image_url, audio_url, type, min_age })
     .eq('id', itemId)
+
+  if (error) throw new Error(`Error actualizando vocabulario: ${error.message}`)
 
   revalidatePath(`/admin/content/${moduleId}`)
   redirect(`/admin/content/${moduleId}`)
 }
 
 export async function deleteVocabItem(formData: FormData) {
-  const { supabase } = await requireAdmin()
-  const itemId    = formData.get('item_id') as string
-  const moduleId  = formData.get('module_id') as string
+  await requireAdmin()
+  const admin    = createAdminClient()
+  const itemId   = formData.get('item_id') as string
+  const moduleId = formData.get('module_id') as string
 
-  await supabase.from('exercise_items').delete().eq('vocabulary_item_id', itemId)
-  await supabase.from('vocabulary_items').delete().eq('id', itemId)
+  await admin.from('child_vocab_mastery').delete().eq('vocab_id', itemId)
+  await admin.from('child_word_status').delete().eq('vocabulary_item_id', itemId)
+  await admin.from('exercise_items').delete().eq('vocabulary_item_id', itemId)
+
+  const { error } = await admin.from('vocabulary_items').delete().eq('id', itemId)
+  if (error) throw new Error(`Error eliminando vocabulario: ${error.message}`)
 
   revalidatePath(`/admin/content/${moduleId}`)
-  redirect(`/admin/content/${moduleId}`)
 }
 
 // ─── Settings ────────────────────────────────────────────────────────────────
@@ -449,8 +460,6 @@ export async function updateSettings(formData: FormData) {
 
 // ─── Audio Config ─────────────────────────────────────────────────────────────
 
-const MUSIC_BASE = 'https://ievftgzxiwtjocxnrmgv.supabase.co/storage/v1/object/public/background-music'
-
 async function rebuildAudioConfigFromBucket(
   supabase: ReturnType<typeof createClient>,
   userId: string,
@@ -460,11 +469,11 @@ async function rebuildAudioConfigFromBucket(
     supabase.storage.from('background-music').list('navigation'),
     supabase.storage.from('background-music').list('game'),
   ])
-  const navUrls  = (navFiles  ?? []).map(f => `${MUSIC_BASE}/navigation/${f.name}`)
-  const gameUrls = (gameFiles ?? []).map(f => `${MUSIC_BASE}/game/${f.name}`)
+  const navPaths  = (navFiles  ?? []).map(f => `background-music/navigation/${f.name}`)
+  const gamePaths = (gameFiles ?? []).map(f => `background-music/game/${f.name}`)
   await supabase.from('settings').upsert({
     key: 'audio_config',
-    value: { ...currentConfig, navigation_tracks: navUrls, game_tracks: gameUrls } as Json,
+    value: { ...currentConfig, navigation_tracks: navPaths, game_tracks: gamePaths } as Json,
     updated_by: userId,
   })
 }
@@ -490,11 +499,12 @@ export async function uploadMusicTrack(formData: FormData) {
   revalidatePath('/admin/settings')
 }
 
-export async function removeMusicTrack(url: string) {
+export async function removeMusicTrack(storagePath: string) {
   const { supabase, userId } = await requireAdmin()
 
-  const path = url.replace(`${MUSIC_BASE}/`, '')
-  await supabase.storage.from('background-music').remove([path])
+  // storagePath is relative like "background-music/navigation/file.mp3"
+  const bucketPath = storagePath.replace(/^background-music\//, '')
+  await supabase.storage.from('background-music').remove([bucketPath])
 
   const { data: row } = await supabase.from('settings').select('value').eq('key', 'audio_config').maybeSingle()
   const current = (row?.value as Record<string, unknown> | null) ?? { volume: 0.3 }
@@ -516,13 +526,12 @@ export async function uploadClickSound(formData: FormData) {
 
   if (error) throw new Error(error.message)
 
-  const publicUrl = `${MUSIC_BASE}/ui/${safeName}`
   const { data: row } = await supabase.from('settings').select('value').eq('key', 'audio_config').maybeSingle()
   const current = (row?.value as Record<string, unknown> | null) ?? { volume: 0.3 }
 
   await supabase.from('settings').upsert({
     key: 'audio_config',
-    value: { ...current, click_sound_url: publicUrl } as Json,
+    value: { ...current, click_sound_url: `background-music/ui/${safeName}` } as Json,
     updated_by: userId,
   })
   revalidatePath('/admin/settings')
@@ -535,8 +544,8 @@ export async function removeClickSound() {
   const current = (row?.value as Record<string, unknown> | null) ?? { volume: 0.3 }
 
   if (current['click_sound_url']) {
-    const path = (current['click_sound_url'] as string).replace(`${MUSIC_BASE}/`, '')
-    await adminClient.storage.from('background-music').remove([path])
+    const bucketPath = (current['click_sound_url'] as string).replace(/^background-music\//, '')
+    await adminClient.storage.from('background-music').remove([bucketPath])
   }
 
   await supabase.from('settings').upsert({
@@ -586,6 +595,99 @@ export async function updateModuleRetoConfig(formData: FormData) {
   await supabase.from('modules').update(retoPayload).eq('id', moduleId)
 
   revalidatePath(`/admin/content/${moduleId}`)
+}
+
+// ─── AI Content Generation ───────────────────────────────────────────────────
+
+export async function generateAIContent(formData: FormData) {
+  const { supabase } = await requireAdmin()
+
+  const mode     = formData.get('mode') as 'full-module' | 'lessons-vocab' | 'vocab-only'
+  const topic    = formData.get('topic') as string
+  const ageRange = formData.get('age_range') as '4-5' | '6-7'
+  const style    = (formData.get('style') as string) || undefined
+
+  const { data: settingsRows } = await getAllSettings(supabase)
+  const settings = Object.fromEntries(
+    (settingsRows ?? []).map(r => [r.key, r.value != null ? String(r.value) : '']),
+  )
+
+  const provider = settings['ai_provider'] ?? 'openai'
+  const model    = settings['ai_model']    ?? 'gpt-4o-mini'
+
+  const aiProvider = createAIProvider(provider, model, {
+    openai:    process.env.OPENAI_API_KEY,
+    google:    process.env.GEMINI_API_KEY,
+    anthropic: process.env.ANTHROPIC_API_KEY,
+    groq:      process.env.GROQ_API_KEY,
+  })
+
+  if (mode === 'full-module') {
+    const lessonCount    = Math.max(1, Math.min(5,  Number(formData.get('lesson_count'))    || 3))
+    const vocabPerLesson = Math.max(4, Math.min(15, Number(formData.get('vocab_per_lesson')) || 8))
+
+    const result = await aiProvider.generateModule({ topic, ageRange, lessonCount, vocabPerLesson, style })
+
+    const moduleId = await insertGeneratedModule(supabase, {
+      ...result.module,
+      lessons: result.lessons,
+    })
+
+    await logAIUsage(createAdminClient(), {
+      provider,
+      model,
+      inputTokens:  result.usage.inputTokens,
+      outputTokens: result.usage.outputTokens,
+    })
+
+    revalidatePath('/admin/content')
+    redirect(`/admin/content/${moduleId}`)
+  }
+
+  if (mode === 'lessons-vocab') {
+    const lessonCount    = Math.max(1, Math.min(5,  Number(formData.get('lesson_count'))    || 3))
+    const vocabPerLesson = Math.max(4, Math.min(15, Number(formData.get('vocab_per_lesson')) || 8))
+    const moduleId       = formData.get('module_id') as string
+
+    const { data: existing } = await supabase
+      .from('vocabulary_items').select('text_en').eq('module_id', moduleId)
+    const existingVocab = (existing ?? []).map(v => v.text_en)
+
+    const result = await aiProvider.generateModule({ topic, ageRange, lessonCount, vocabPerLesson, style, existingVocab })
+
+    await insertGeneratedLessons(supabase, moduleId, result.lessons)
+
+    await logAIUsage(createAdminClient(), {
+      provider,
+      model,
+      inputTokens:  result.usage.inputTokens,
+      outputTokens: result.usage.outputTokens,
+    })
+
+    revalidatePath(`/admin/content/${moduleId}`)
+    redirect(`/admin/content/${moduleId}?tab=lessons`)
+  }
+
+  const moduleId  = formData.get('module_id') as string
+  const wordCount = Math.max(1, Math.min(30, Number(formData.get('word_count')) || 10))
+
+  const { data: existing } = await supabase
+    .from('vocabulary_items').select('text_en').eq('module_id', moduleId)
+  const existingVocab = (existing ?? []).map(v => v.text_en)
+
+  const result = await aiProvider.generateContent({ topic, ageRange, wordCount, style, existingVocab })
+
+  await insertGeneratedVocab(supabase, moduleId, result.vocabularyItems)
+
+  await logAIUsage(createAdminClient(), {
+    provider,
+    model,
+    inputTokens:  result.usage.inputTokens,
+    outputTokens: result.usage.outputTokens,
+  })
+
+  revalidatePath(`/admin/content/${moduleId}`)
+  redirect(`/admin/content/${moduleId}`)
 }
 
 // ─── Module Jugar Config ──────────────────────────────────────────────────────

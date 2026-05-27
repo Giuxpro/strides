@@ -53,7 +53,7 @@ export default async function RedemptionsPage({
   }
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-8">
       <Link href="/admin/codes" className="text-sm text-gray-500 hover:text-gray-300 transition-colors mb-6 inline-block">
         ← Volver a códigos
       </Link>

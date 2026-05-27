@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getStorageUrl } from '@strides/core'
 
 const I = 'w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500'
 const L = 'block text-sm text-gray-400 mb-1.5'
@@ -15,7 +16,7 @@ interface Props {
 }
 
 export function ImageUploadField({ name, bucket, defaultValue = '', label = 'Imagen', accept = 'image/*' }: Props) {
-  const [url, setUrl] = useState(defaultValue)
+  const [url, setUrl] = useState(() => getStorageUrl(defaultValue) ?? defaultValue ?? '')
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -28,12 +29,15 @@ export function ImageUploadField({ name, bucket, defaultValue = '', label = 'Ima
 
       // Delete previous file if it came from the same bucket
       if (url) {
+        let oldPath: string | null = null
         const marker = `/storage/v1/object/public/${bucket}/`
         const idx    = url.indexOf(marker)
         if (idx !== -1) {
-          const oldPath = decodeURIComponent(url.slice(idx + marker.length).split('?')[0] ?? '')
-          if (oldPath) await supabase.storage.from(bucket).remove([oldPath])
+          oldPath = decodeURIComponent(url.slice(idx + marker.length).split('?')[0] ?? '')
+        } else if (url.startsWith(`${bucket}/`)) {
+          oldPath = decodeURIComponent(url.slice(bucket.length + 1).split('?')[0] ?? '')
         }
+        if (oldPath) await supabase.storage.from(bucket).remove([oldPath])
       }
 
       const ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin'

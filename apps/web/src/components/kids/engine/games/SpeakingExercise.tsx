@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { VocabItem } from '../LessonEngine'
 import type { ModuleConfig, WordResult } from '@strides/core/kids'
+import { getVocabImageUrl } from '@strides/core/kids'
 import { useGameEvents } from '../modifiers/ModifierContext'
 import { useSpeechProvider } from '../SpeechConfigContext'
 
@@ -58,10 +59,26 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-// ── 3-D flip card ─────────────────────────────────────────────────────────────
+const PAIR_COLORS = [
+  '#FF6B6B', '#4ECDC4', '#45B7D1', '#F7B731', '#A29BFE',
+  '#FD79A8', '#6C5CE7', '#00B894', '#E17055', '#74B9FF',
+]
+
+const SUNBURST = [
+  'rgba(255,255,255,0.13) 0deg 22.5deg', 'transparent 22.5deg 45deg',
+  'rgba(255,255,255,0.13) 45deg 67.5deg', 'transparent 67.5deg 90deg',
+  'rgba(255,255,255,0.13) 90deg 112.5deg', 'transparent 112.5deg 135deg',
+  'rgba(255,255,255,0.13) 135deg 157.5deg', 'transparent 157.5deg 180deg',
+  'rgba(255,255,255,0.13) 180deg 202.5deg', 'transparent 202.5deg 225deg',
+  'rgba(255,255,255,0.13) 225deg 247.5deg', 'transparent 247.5deg 270deg',
+  'rgba(255,255,255,0.13) 270deg 292.5deg', 'transparent 292.5deg 315deg',
+  'rgba(255,255,255,0.13) 315deg 337.5deg', 'transparent 337.5deg 360deg',
+].join(', ')
+
+// ── Tarjeta con flip 3D ───────────────────────────────────────────────────────
 
 function WordCard({
-  imageUrl, wordEn, wordEs, flipped, isCorrect, heard, moduleConfig,
+  imageUrl, wordEn, wordEs, flipped, isCorrect, heard, cardColor,
 }: {
   imageUrl?: string | null
   wordEn: string
@@ -69,7 +86,7 @@ function WordCard({
   flipped: boolean
   isCorrect: boolean
   heard: string | null
-  moduleConfig: ModuleConfig
+  cardColor: string
 }) {
   return (
     <>
@@ -87,7 +104,6 @@ function WordCard({
         .rise-anim  { animation: rise  0.35s ease forwards; }
       `}</style>
 
-      {/* Perspectiva 3D */}
       <div style={{ perspective: '900px' }} className="w-52 h-60">
         <div style={{
           transformStyle: 'preserve-3d',
@@ -100,20 +116,40 @@ function WordCard({
           <div style={{
             backfaceVisibility: 'hidden',
             position: 'absolute', inset: 0,
-            background: moduleConfig.accentLight,
+            background: cardColor,
             borderRadius: '1.75rem',
-            boxShadow: `0 8px 0 ${moduleConfig.accent}55, 0 12px 32px rgba(0,0,0,0.14)`,
+            border: '4px solid rgba(255,255,255,0.65)',
+            boxShadow: `0 8px 28px ${cardColor}88`,
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            gap: '0.5rem', padding: '1rem',
+            gap: '0.5rem', padding: '1rem', overflow: 'hidden',
           }}>
-            {imageUrl
-              ? <img src={imageUrl} alt={wordEn} style={{ width: 100, height: 100, objectFit: 'contain' }} draggable={false} />
-              : <span style={{ fontSize: '4rem', lineHeight: 1 }}>{wordEn[0]?.toUpperCase()}</span>}
-            <p style={{
-              fontWeight: 900, fontSize: '1.25rem', color: moduleConfig.accent,
-              letterSpacing: '-0.01em', textAlign: 'center', lineHeight: 1.1,
-            }}>{wordEn}</p>
-            <p style={{ fontSize: '0.75rem', color: moduleConfig.accent, opacity: 0.55, fontWeight: 600 }}>{wordEs}</p>
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: `conic-gradient(${SUNBURST})`,
+              borderRadius: '1.75rem',
+            }} />
+            <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+              {imageUrl
+                ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={imageUrl}
+                    alt={wordEn}
+                    className="animate-levitate"
+                    style={{ width: 96, height: 96, objectFit: 'contain', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.25))' }}
+                    draggable={false}
+                  />
+                )
+                : <span className="animate-levitate" style={{ fontSize: '4.5rem', lineHeight: 1 }}>{wordEn[0]?.toUpperCase()}</span>
+              }
+              <div style={{
+                background: 'rgba(255,255,255,0.88)', borderRadius: '999px',
+                padding: '0.25rem 0.875rem',
+              }}>
+                <p style={{ fontWeight: 900, fontSize: '1rem', color: '#374151', letterSpacing: '-0.01em' }}>{wordEn}</p>
+              </div>
+              <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.75)', fontWeight: 600 }}>{wordEs}</p>
+            </div>
           </div>
 
           {/* ── Reverso ── */}
@@ -122,40 +158,33 @@ function WordCard({
             transform: 'rotateY(180deg)',
             position: 'absolute', inset: 0,
             borderRadius: '1.75rem',
-            boxShadow: isCorrect
-              ? `0 8px 0 rgba(0,0,0,0.18), 0 12px 32px rgba(0,0,0,0.16)`
-              : `0 8px 0 rgba(0,0,0,0.18), 0 12px 32px rgba(0,0,0,0.16)`,
+            border: '4px solid rgba(255,255,255,0.5)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.22)',
             background: isCorrect
-              ? `linear-gradient(145deg, ${moduleConfig.gradientFrom}, ${moduleConfig.gradientTo})`
-              : 'linear-gradient(145deg, #ff6b6b, #ee4444)',
+              ? 'linear-gradient(145deg, #22c55e, #16a34a)'
+              : 'linear-gradient(145deg, #ff6b6b, #dc2626)',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             gap: '0.6rem', padding: '1rem', overflow: 'hidden',
           }}>
-            {/* Brillo decorativo */}
             <div style={{
               position: 'absolute', top: '-30%', right: '-20%',
               width: '70%', height: '70%', borderRadius: '50%',
               background: 'rgba(255,255,255,0.12)', filter: 'blur(20px)', pointerEvents: 'none',
             }} />
 
-            {/* Emoji con animación stamp */}
             {flipped && (
-              <span className="stamp-anim" style={{ fontSize: '3rem', lineHeight: 1, display: 'block' }}>
+              <span className="stamp-anim" style={{ fontSize: '3.5rem', lineHeight: 1, display: 'block' }}>
                 {isCorrect ? '🏆' : '💪'}
               </span>
             )}
-
-            {/* Título */}
             {flipped && (
               <p className="rise-anim" style={{
-                fontWeight: 900, fontSize: '1.1rem', color: '#fff',
-                textShadow: '0 2px 0 rgba(0,0,0,0.15)', animationDelay: '0.1s', opacity: 0,
+                fontWeight: 900, fontSize: '1.25rem', color: '#fff',
+                textShadow: '0 2px 0 rgba(0,0,0,0.18)', animationDelay: '0.1s', opacity: 0,
               }}>
                 {isCorrect ? '¡Perfecto!' : '¡Casi!'}
               </p>
             )}
-
-            {/* Dijiste / Era */}
             {flipped && (
               <div className="rise-anim" style={{
                 background: 'rgba(255,255,255,0.22)', borderRadius: '1rem',
@@ -163,7 +192,7 @@ function WordCard({
                 animationDelay: '0.2s', opacity: 0,
               }}>
                 {heard && (
-                  <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.75)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.8)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
                     Dijiste
                   </p>
                 )}
@@ -172,7 +201,7 @@ function WordCard({
                 )}
                 {!isCorrect && (
                   <>
-                    <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.65)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: heard ? '0.35rem' : 0 }}>
+                    <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.8)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: heard ? '0.35rem' : 0 }}>
                       Era
                     </p>
                     <p style={{ fontWeight: 900, fontSize: '1rem', color: '#fff' }}>{wordEn}</p>
@@ -180,10 +209,8 @@ function WordCard({
                 )}
               </div>
             )}
-
-            {/* Estrellas en correcto */}
             {flipped && isCorrect && (
-              <p className="rise-anim" style={{ fontSize: '1.1rem', animationDelay: '0.3s', opacity: 0 }}>
+              <p className="rise-anim" style={{ fontSize: '1.3rem', animationDelay: '0.3s', opacity: 0 }}>
                 ⭐⭐⭐
               </p>
             )}
@@ -194,48 +221,48 @@ function WordCard({
   )
 }
 
-// ── Botón de mic con anillo pulsante ──────────────────────────────────────────
+// ── Botón de micrófono ────────────────────────────────────────────────────────
 
-function MicButton({ isActive, isProcessing, disabled, onClick, moduleConfig }: {
+function MicButton({ isActive, isProcessing, disabled, onClick, color }: {
   isActive: boolean
   isProcessing: boolean
   disabled: boolean
   onClick: () => void
-  moduleConfig: ModuleConfig
+  color: string
 }) {
   return (
     <>
       <style>{`
         @keyframes pulse-ring {
-          0%   { transform: scale(1);    opacity: 0.5; }
-          100% { transform: scale(1.65); opacity: 0; }
+          0%   { transform: scale(1);    opacity: 0.55; }
+          100% { transform: scale(1.7);  opacity: 0; }
         }
         .pulse-ring { animation: pulse-ring 1.1s ease-out infinite; }
       `}</style>
 
-      <div style={{ position: 'relative', width: 88, height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {/* Anillo pulsante */}
+      <div style={{ position: 'relative', width: 90, height: 90, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {isActive && (
           <div className="pulse-ring" style={{
             position: 'absolute', inset: 0, borderRadius: '50%',
-            background: isProcessing ? moduleConfig.accent : '#ef4444',
+            background: isProcessing ? color : '#ef4444',
             pointerEvents: 'none',
           }} />
         )}
-
         <button
           onClick={onClick}
           disabled={disabled}
           style={{
-            width: 88, height: 88, borderRadius: '50%',
+            width: 90, height: 90, borderRadius: '50%',
             background: isActive
-              ? (isProcessing ? moduleConfig.gradient : '#ef4444')
-              : moduleConfig.gradient,
+              ? (isProcessing ? color : '#ef4444')
+              : color,
             boxShadow: isActive
               ? '0 6px 0 rgba(0,0,0,0.2)'
-              : `0 6px 0 ${moduleConfig.accent}88, ${moduleConfig.shadow}`,
-            border: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
-            fontSize: '2.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              : `0 6px 0 rgba(0,0,0,0.18), 0 12px 28px ${color}66`,
+            border: '4px solid rgba(255,255,255,0.65)',
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            fontSize: '2.6rem',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'transform 0.1s, background 0.25s',
             transform: 'translateY(0)',
             opacity: disabled ? 0.6 : 1,
@@ -261,6 +288,7 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
   const [heard, setHeard] = useState<string | null>(null)
   const [results, setResults] = useState<boolean[]>([])
   const [heardList, setHeardList] = useState<(string | null)[]>([])
+  const [cardColor, setCardColor] = useState(() => PAIR_COLORS[Math.floor(Math.random() * PAIR_COLORS.length)]!)
   const recognitionRef = useRef<RecognitionInstance | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const sessionRef = useRef(0)
@@ -276,6 +304,10 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    setCardColor(PAIR_COLORS[Math.floor(Math.random() * PAIR_COLORS.length)]!)
+  }, [currentQ])
 
   function advanceWith(newResults: boolean[], isCorrect: boolean, heardTranscript: string | null, sessionGuard?: number) {
     const newHeardList = [...heardList, heardTranscript]
@@ -407,7 +439,6 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
           handled = true; setMicState('no-speech')
           setTimeout(() => { if (session !== sessionRef.current) return; setMicState('idle') }, 1400)
         } else if (e.error === 'aborted' && !gotResult && retryCount < 2) {
-          // Chrome abortó antes de capturar → retry automático
           recognitionRef.current = null
           setTimeout(() => attempt(retryCount + 1), 300)
         } else { handled = true; setMicState('idle') }
@@ -420,7 +451,6 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
           setTimeout(() => { if (session !== sessionRef.current) return; setMicState('idle') }, 1400)
         }
       }
-      // Chrome warm-up fix
       navigator.mediaDevices.getUserMedia({ audio: true })
         .then(stream => {
           stream.getTracks().forEach(t => t.stop())
@@ -436,7 +466,7 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
     try { recognitionRef.current?.abort() } catch { /* ignore */ }
     try { mediaRecorderRef.current?.stop() } catch { /* ignore */ }
     sessionRef.current++
-    const newResults  = [...results, false]
+    const newResults   = [...results, false]
     const newHeardList = [...heardList, null]
     lowConfListRef.current = [...lowConfListRef.current, undefined]
     setResults(newResults); setHeardList(newHeardList); setMicState('idle'); setHeard(null)
@@ -478,30 +508,29 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
 
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden">
-      {/* Fondo decorativo */}
-      <div style={{
-        position: 'absolute', bottom: '-20%', left: '-10%',
-        width: 400, height: 400, borderRadius: '50%', opacity: 0.15,
-        background: `radial-gradient(circle, ${moduleConfig.gradientTo}, transparent)`,
-        filter: 'blur(100px)', pointerEvents: 'none',
-      }} />
-      <div style={{
-        position: 'absolute', top: '-10%', right: '-10%',
-        width: 300, height: 300, borderRadius: '50%', opacity: 0.1,
-        background: `radial-gradient(circle, ${moduleConfig.gradientFrom}, transparent)`,
-        filter: 'blur(80px)', pointerEvents: 'none',
-      }} />
+      <div
+        className="absolute top-[-15%] right-[-15%] w-[380px] h-[380px] rounded-full opacity-20 blur-[100px] pointer-events-none"
+        style={{ background: `radial-gradient(circle, ${moduleConfig.gradientFrom}, transparent)` }}
+      />
+      <div
+        className="absolute bottom-[-15%] left-[-10%] w-[320px] h-[320px] rounded-full opacity-15 blur-[90px] pointer-events-none"
+        style={{ background: `radial-gradient(circle, ${moduleConfig.gradientTo}, transparent)` }}
+      />
 
-      {/* Header */}
       <header className="relative z-10 px-6 pt-6 pb-2 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="text-sm font-bold transition-opacity hover:opacity-70"
             style={{ color: moduleConfig.accent }}>
             ← Volver
           </button>
-          <p className="text-sm" style={{ color: 'var(--kids-text-muted)' }}>
-            <span className="font-bold" style={{ color: 'var(--kids-text)' }}>{currentQ + 1}</span>/{questions.length}
-          </p>
+          <div>
+            <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
+              Pronunciación
+            </p>
+            <p className="font-bold text-lg" style={{ color: 'var(--kids-text)' }}>
+              {currentQ + 1}/{questions.length}
+            </p>
+          </div>
         </div>
         <div className="flex gap-1.5">
           {Array.from({ length: progress.total }).map((_, i) => (
@@ -523,50 +552,49 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
             style={{ background: moduleConfig.accentLight, color: moduleConfig.accent }}>Volver</button>
         </main>
       ) : (
-        <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 gap-5">
+        <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 gap-6">
 
-          {/* Instrucción */}
-          <p className="text-sm font-semibold tracking-wide uppercase"
-            style={{ color: 'var(--kids-text-muted)', letterSpacing: '0.08em' }}>
-            Say it in English!
+          <p className="text-base font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
+            ¡Di la palabra en inglés!
           </p>
 
-          {/* Tarjeta con flip */}
-          <WordCard
-            imageUrl={question.image_url}
-            wordEn={question.text_en}
-            wordEs={question.text_es}
-            flipped={isFlipped}
-            isCorrect={micState === 'correct'}
-            heard={heard}
-            moduleConfig={moduleConfig}
-          />
+          {/* WordCard escalada — margen extra compensa el desbordamiento visual del scale */}
+          <div className="scale-100 md:scale-125 lg:scale-150 origin-center mt-0 md:mt-8 lg:mt-16 mb-0 md:mb-8 lg:mb-16">
+            <WordCard
+              imageUrl={getVocabImageUrl(question)}
+              wordEn={question.text_en}
+              wordEs={question.text_es}
+              flipped={isFlipped}
+              isCorrect={micState === 'correct'}
+              heard={heard}
+              cardColor={cardColor}
+            />
+          </div>
 
-          {/* Micro */}
+          {/* MicButton fuera del scale para que el layout sea correcto */}
           <MicButton
             isActive={isActive}
             isProcessing={isProcessing}
             disabled={isActive || isFlipped}
             onClick={handleMicPress}
-            moduleConfig={moduleConfig}
+            color={cardColor}
           />
 
-          {/* Estado / label */}
           {micLabel() && (
-            <p className="text-sm font-semibold" style={{ color: 'var(--kids-text-muted)' }}>
+            <p className="text-base font-semibold" style={{ color: 'var(--kids-text-muted)' }}>
               {micLabel()}
             </p>
           )}
 
           {micState === 'no-speech' && (
             <p className="text-sm font-bold" style={{ color: 'var(--kids-text-muted)' }}>
-              No te escuché. Intenta otra vez 🎤
+              No te escuché. ¡Intenta otra vez! 🎤
             </p>
           )}
 
           {micState === 'idle' && (
-            <button onClick={skipItem} className="text-xs font-semibold mt-1"
-              style={{ color: 'var(--kids-text-muted)', opacity: 0.6 }}>
+            <button onClick={skipItem} className="text-xs font-semibold mt-6"
+              style={{ color: 'var(--kids-text-muted)', opacity: 0.55 }}>
               Saltar →
             </button>
           )}

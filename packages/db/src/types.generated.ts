@@ -76,6 +76,33 @@ export type Database = {
           },
         ]
       }
+      ai_usage_logs: {
+        Row: {
+          created_at: string
+          id: string
+          input_tokens: number
+          model: string
+          output_tokens: number
+          provider: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          input_tokens?: number
+          model: string
+          output_tokens?: number
+          provider: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          input_tokens?: number
+          model?: string
+          output_tokens?: number
+          provider?: string
+        }
+        Relationships: []
+      }
       child_countdown_attempts: {
         Row: {
           attempted_at: string
@@ -1088,6 +1115,7 @@ export type Database = {
       subscriptions: {
         Row: {
           acquisition_type: string
+          billing_cycle: string | null
           created_at: string
           id: string
           pending_discount_months: number | null
@@ -1102,6 +1130,7 @@ export type Database = {
         }
         Insert: {
           acquisition_type: string
+          billing_cycle?: string | null
           created_at?: string
           id?: string
           pending_discount_months?: number | null
@@ -1116,6 +1145,7 @@ export type Database = {
         }
         Update: {
           acquisition_type?: string
+          billing_cycle?: string | null
           created_at?: string
           id?: string
           pending_discount_months?: number | null
@@ -1191,6 +1221,7 @@ export type Database = {
         Row: {
           audio_url: string | null
           created_at: string
+          emoji_unicode: string | null
           id: string
           image_url: string | null
           min_age: number
@@ -1204,6 +1235,7 @@ export type Database = {
         Insert: {
           audio_url?: string | null
           created_at?: string
+          emoji_unicode?: string | null
           id?: string
           image_url?: string | null
           min_age?: number
@@ -1217,6 +1249,7 @@ export type Database = {
         Update: {
           audio_url?: string | null
           created_at?: string
+          emoji_unicode?: string | null
           id?: string
           image_url?: string | null
           min_age?: number
@@ -1260,11 +1293,17 @@ export type Database = {
         }[]
       }
       get_admin_users_count: {
-        Args: { p_search?: string; p_plan?: string; p_status?: string }
+        Args: { p_plan?: string; p_search?: string; p_status?: string }
         Returns: number
       }
       get_admin_users_overview: {
-        Args: { p_search?: string; p_limit?: number; p_offset?: number; p_plan?: string; p_status?: string }
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_plan?: string
+          p_search?: string
+          p_status?: string
+        }
         Returns: {
           acquisition_type: string
           children_count: number

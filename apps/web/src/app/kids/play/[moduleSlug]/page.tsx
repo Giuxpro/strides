@@ -59,7 +59,7 @@ export default async function ModulePage({ params, searchParams }: Props) {
       : Promise.resolve({ data: [] }),
     supabase
       .from('vocabulary_items')
-      .select('id, text_en, text_es, image_url, audio_url')
+      .select('id, text_en, text_es, image_url, emoji_unicode, audio_url')
       .eq('module_id', module.id),
     selectedChildId
       ? supabase

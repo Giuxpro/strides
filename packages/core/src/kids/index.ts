@@ -23,3 +23,4 @@ export type {
 } from './onboarding/types'
 export type { AudioConfig } from './audio'
 export { DEFAULT_AUDIO_CONFIG, isAudioConfig } from './audio'
+export { getVocabImageUrl } from './vocabUtils'

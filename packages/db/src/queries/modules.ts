@@ -14,6 +14,20 @@ export function getAllModulesForAdmin(db: DB) {
     .order('order')
 }
 
+export function getModulesAdmin(
+  db: DB,
+  { q, offset, limit }: { q?: string; offset: number; limit: number },
+) {
+  let query = db
+    .from('modules')
+    .select('id, title_es, title_en, slug, is_published, order, cover_image_url', { count: 'exact' })
+    .order('order')
+    .range(offset, offset + limit - 1)
+
+  if (q) query = query.or(`title_es.ilike.%${q}%,title_en.ilike.%${q}%,slug.ilike.%${q}%`)
+  return query
+}
+
 export function getModuleBySlug(db: DB, slug: string) {
   return db.from('modules').select('*').eq('slug', slug).eq('is_published', true).single()
 }

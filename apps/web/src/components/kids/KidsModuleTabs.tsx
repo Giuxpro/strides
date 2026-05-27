@@ -15,6 +15,7 @@ import { SpeechConfigProvider } from './engine/SpeechConfigContext'
 import type { SpeechProvider } from '@strides/core/kids'
 import { NpsPrompt } from '@/components/feedback/NpsPrompt'
 import type { LessonLockState } from '@strides/core'
+import { getStorageUrl } from '@strides/core'
 
 interface Props {
   moduleSlug: string
@@ -71,7 +72,7 @@ export function KidsModuleTabs({
               stars={starsMap[lesson.id] ?? 0}
               previousStars={lesson.id === animLessonId ? animPrevStars : undefined}
               animationDelay={`${index * 90}ms`}
-              audioUrl={lesson.audio_url ?? undefined}
+              audioUrl={getStorageUrl(lesson.audio_url) ?? undefined}
               lockState={lessonLockStates[lesson.id]}
             />
           ))}

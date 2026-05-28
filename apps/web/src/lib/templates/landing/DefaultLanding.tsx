@@ -59,18 +59,21 @@ export default function DefaultLanding({ copy, stats }: LandingTemplateProps) {
       />
 
       {/* NAV */}
-      <nav className="relative z-50 flex items-center justify-between px-8 py-6 max-w-6xl mx-auto">
-        <div className="flex items-center gap-2.5">
+      <nav className="relative z-50 flex items-center justify-between px-4 sm:px-8 py-5 sm:py-6 max-w-6xl mx-auto">
+        <div className="flex items-center gap-2">
           <span className="text-2xl">🌍</span>
-          <span style={{ fontFamily: F, fontWeight: 800, fontSize: '1.2rem', letterSpacing: '-0.025em' }}>Strides</span>
+          <span style={{ fontFamily: F, fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.025em' }}>Strides</span>
         </div>
-        <div className="flex items-center gap-4">
-          <Link href="/login" className="text-sm transition-colors" style={{ color: 'rgba(255,255,255,0.5)' }}>
+        <div className="flex items-center gap-2 sm:gap-4">
+          <Link href="/login" className="hidden sm:block text-sm transition-colors" style={{ color: 'rgba(255,255,255,0.5)' }}>
             Iniciar sesión
+          </Link>
+          <Link href="/login" className="sm:hidden text-xs transition-colors" style={{ color: 'rgba(255,255,255,0.5)' }}>
+            Ingresar
           </Link>
           <Link
             href="/onboarding"
-            className="text-sm font-bold px-5 py-2 rounded-full transition-all hover:scale-105 active:scale-95"
+            className="text-xs sm:text-sm font-bold px-3 py-1.5 sm:px-5 sm:py-2 rounded-full transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
             style={{ background: 'linear-gradient(135deg, #7c3aed, #5b21b6)', boxShadow: '0 0 24px rgba(124,58,237,0.45)' }}
           >
             {copy.navCta}
@@ -113,7 +116,7 @@ export default function DefaultLanding({ copy, stats }: LandingTemplateProps) {
             {copy.ctaLabel}
           </Link>
         </div>
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-float" style={{ animationDelay: '1.2s', animationDuration: '2.4s' }}>
+        <div className="absolute bottom-10 inset-x-0 flex flex-col items-center gap-2 animate-float" style={{ animationDelay: '1.2s', animationDuration: '2.4s' }}>
           <span className="text-[10px] tracking-[0.22em] uppercase" style={{ color: 'rgba(255,255,255,0.25)' }}>Descubrir</span>
           <svg width="18" height="28" viewBox="0 0 18 28" fill="none" className="opacity-30">
             <rect x="1" y="1" width="16" height="26" rx="8" stroke="white" strokeWidth="1.5" />

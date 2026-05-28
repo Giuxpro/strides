@@ -104,7 +104,8 @@ function WordCard({
         .rise-anim  { animation: rise  0.35s ease forwards; }
       `}</style>
 
-      <div style={{ perspective: '900px' }} className="w-52 h-60">
+      {/* w-48 h-56 en móvil (192×224px), w-52 h-60 en sm+ (208×240px) */}
+      <div style={{ perspective: '900px' }} className="w-48 h-56 sm:w-52 sm:h-60">
         <div style={{
           transformStyle: 'preserve-3d',
           transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
@@ -136,19 +137,19 @@ function WordCard({
                     src={imageUrl}
                     alt={wordEn}
                     className="animate-levitate"
-                    style={{ width: 96, height: 96, objectFit: 'contain', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.25))' }}
+                    style={{ width: 80, height: 80, objectFit: 'contain', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.25))' }}
                     draggable={false}
                   />
                 )
-                : <span className="animate-levitate" style={{ fontSize: '4.5rem', lineHeight: 1 }}>{wordEn[0]?.toUpperCase()}</span>
+                : <span className="animate-levitate" style={{ fontSize: '4rem', lineHeight: 1 }}>{wordEn[0]?.toUpperCase()}</span>
               }
               <div style={{
                 background: 'rgba(255,255,255,0.88)', borderRadius: '999px',
-                padding: '0.25rem 0.875rem',
+                padding: '0.2rem 0.75rem',
               }}>
-                <p style={{ fontWeight: 900, fontSize: '1rem', color: '#374151', letterSpacing: '-0.01em' }}>{wordEn}</p>
+                <p style={{ fontWeight: 900, fontSize: '0.95rem', color: '#374151', letterSpacing: '-0.01em' }}>{wordEn}</p>
               </div>
-              <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.75)', fontWeight: 600 }}>{wordEs}</p>
+              <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.75)', fontWeight: 600 }}>{wordEs}</p>
             </div>
           </div>
 
@@ -179,7 +180,7 @@ function WordCard({
             )}
             {flipped && (
               <p className="rise-anim" style={{
-                fontWeight: 900, fontSize: '1.25rem', color: '#fff',
+                fontWeight: 900, fontSize: '1.2rem', color: '#fff',
                 textShadow: '0 2px 0 rgba(0,0,0,0.18)', animationDelay: '0.1s', opacity: 0,
               }}>
                 {isCorrect ? '¡Perfecto!' : '¡Casi!'}
@@ -188,23 +189,23 @@ function WordCard({
             {flipped && (
               <div className="rise-anim" style={{
                 background: 'rgba(255,255,255,0.22)', borderRadius: '1rem',
-                padding: '0.4rem 0.9rem', textAlign: 'center',
+                padding: '0.35rem 0.8rem', textAlign: 'center',
                 animationDelay: '0.2s', opacity: 0,
               }}>
                 {heard && (
-                  <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.8)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                  <p style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.8)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
                     Dijiste
                   </p>
                 )}
                 {heard && (
-                  <p style={{ fontWeight: 900, fontSize: '1rem', color: '#fff' }}>{heard}</p>
+                  <p style={{ fontWeight: 900, fontSize: '0.95rem', color: '#fff' }}>{heard}</p>
                 )}
                 {!isCorrect && (
                   <>
-                    <p style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.8)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: heard ? '0.35rem' : 0 }}>
+                    <p style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.8)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: heard ? '0.3rem' : 0 }}>
                       Era
                     </p>
-                    <p style={{ fontWeight: 900, fontSize: '1rem', color: '#fff' }}>{wordEn}</p>
+                    <p style={{ fontWeight: 900, fontSize: '0.95rem', color: '#fff' }}>{wordEn}</p>
                   </>
                 )}
               </div>
@@ -240,7 +241,9 @@ function MicButton({ isActive, isProcessing, disabled, onClick, color }: {
         .pulse-ring { animation: pulse-ring 1.1s ease-out infinite; }
       `}</style>
 
-      <div style={{ position: 'relative', width: 90, height: 90, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {/* 80px en móvil, 90px en sm+ — ambos son buenos touch targets */}
+      <div style={{ position: 'relative', width: 80, height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+           className="sm:!w-[90px] sm:!h-[90px]">
         {isActive && (
           <div className="pulse-ring" style={{
             position: 'absolute', inset: 0, borderRadius: '50%',
@@ -252,7 +255,7 @@ function MicButton({ isActive, isProcessing, disabled, onClick, color }: {
           onClick={onClick}
           disabled={disabled}
           style={{
-            width: 90, height: 90, borderRadius: '50%',
+            width: '100%', height: '100%', borderRadius: '50%',
             background: isActive
               ? (isProcessing ? color : '#ef4444')
               : color,
@@ -261,7 +264,7 @@ function MicButton({ isActive, isProcessing, disabled, onClick, color }: {
               : `0 6px 0 rgba(0,0,0,0.18), 0 12px 28px ${color}66`,
             border: '4px solid rgba(255,255,255,0.65)',
             cursor: disabled ? 'not-allowed' : 'pointer',
-            fontSize: '2.6rem',
+            fontSize: '2.2rem',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'transform 0.1s, background 0.25s',
             transform: 'translateY(0)',
@@ -507,7 +510,7 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
   }
 
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden">
+    <div className="relative min-h-screen flex flex-col overflow-x-hidden">
       <div
         className="absolute top-[-15%] right-[-15%] w-[380px] h-[380px] rounded-full opacity-20 blur-[100px] pointer-events-none"
         style={{ background: `radial-gradient(circle, ${moduleConfig.gradientFrom}, transparent)` }}
@@ -517,8 +520,8 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
         style={{ background: `radial-gradient(circle, ${moduleConfig.gradientTo}, transparent)` }}
       />
 
-      <header className="relative z-10 px-6 pt-6 pb-2 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <header className="relative z-10 px-4 sm:px-6 pt-5 sm:pt-6 pb-2 flex items-center justify-between">
+        <div className="flex items-center gap-3 sm:gap-4">
           <button onClick={onBack} className="text-sm font-bold transition-opacity hover:opacity-70"
             style={{ color: moduleConfig.accent }}>
             ← Volver
@@ -527,7 +530,7 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
             <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
               Pronunciación
             </p>
-            <p className="font-bold text-lg" style={{ color: 'var(--kids-text)' }}>
+            <p className="font-bold text-base sm:text-lg" style={{ color: 'var(--kids-text)' }}>
               {currentQ + 1}/{questions.length}
             </p>
           </div>
@@ -544,21 +547,21 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
       </header>
 
       {micState === 'unsupported' ? (
-        <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-8 text-center gap-4">
+        <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 sm:px-8 text-center gap-4">
           <p className="text-5xl">😔</p>
-          <p className="font-extrabold text-lg" style={{ color: 'var(--kids-text)' }}>Tu navegador no soporta el micrófono</p>
+          <p className="font-extrabold text-base sm:text-lg" style={{ color: 'var(--kids-text)' }}>Tu navegador no soporta el micrófono</p>
           <p className="text-sm" style={{ color: 'var(--kids-text-muted)' }}>Prueba con Chrome en escritorio o Android</p>
-          <button onClick={onBack} className="font-bold px-6 py-3 rounded-2xl mt-2"
+          <button onClick={onBack} className="font-bold px-5 sm:px-6 py-3 rounded-2xl mt-2"
             style={{ background: moduleConfig.accentLight, color: moduleConfig.accent }}>Volver</button>
         </main>
       ) : (
-        <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 gap-6">
+        <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 sm:px-6 gap-4 sm:gap-6 py-4">
 
-          <p className="text-base font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
+          <p className="text-sm sm:text-base font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
             ¡Di la palabra en inglés!
           </p>
 
-          {/* WordCard escalada — margen extra compensa el desbordamiento visual del scale */}
+          {/* WordCard escalada — el scale extra en md/lg da más presencia en pantallas grandes */}
           <div className="scale-100 md:scale-125 lg:scale-150 origin-center mt-0 md:mt-8 lg:mt-16 mb-0 md:mb-8 lg:mb-16">
             <WordCard
               imageUrl={getVocabImageUrl(question)}
@@ -581,7 +584,7 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
           />
 
           {micLabel() && (
-            <p className="text-base font-semibold" style={{ color: 'var(--kids-text-muted)' }}>
+            <p className="text-sm sm:text-base font-semibold" style={{ color: 'var(--kids-text-muted)' }}>
               {micLabel()}
             </p>
           )}
@@ -593,7 +596,7 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
           )}
 
           {micState === 'idle' && (
-            <button onClick={skipItem} className="text-xs font-semibold mt-6"
+            <button onClick={skipItem} className="text-xs font-semibold mt-4 sm:mt-6"
               style={{ color: 'var(--kids-text-muted)', opacity: 0.55 }}>
               Saltar →
             </button>

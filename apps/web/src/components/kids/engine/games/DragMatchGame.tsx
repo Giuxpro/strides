@@ -60,6 +60,9 @@ export function DragMatchGame({ items, onComplete, onBack, moduleConfig, progres
   const wordCardRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const containerRef = useRef<HTMLDivElement>(null)
 
+  // Columnas responsivas: máx 3 en móvil, N completo en desktop
+  const mobileCols = Math.min(items.length, 3)
+
   function startDrag(id: string, e: React.PointerEvent) {
     if (isTerminated || matched[id] !== undefined) return
     const el = wordCardRefs.current[id]
@@ -124,14 +127,14 @@ export function DragMatchGame({ items, onComplete, onBack, moduleConfig, progres
   }, [moveDrag, endDrag])
 
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden">
+    <div className="relative min-h-screen flex flex-col overflow-x-hidden">
       <div
         className="absolute bottom-[-15%] right-[-10%] w-[300px] h-[300px] rounded-full opacity-20 blur-[80px] pointer-events-none"
         style={{ background: `radial-gradient(circle, ${moduleConfig.gradientTo}, transparent)` }}
       />
 
-      <header className="relative z-10 px-6 pt-6 pb-2 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <header className="relative z-10 px-4 sm:px-6 pt-5 pb-2 flex items-center justify-between">
+        <div className="flex items-center gap-3 sm:gap-4">
           <button onClick={onBack} className="text-sm font-bold transition-opacity hover:opacity-70" style={{ color: moduleConfig.accent }}>
             ← Volver
           </button>
@@ -139,7 +142,7 @@ export function DragMatchGame({ items, onComplete, onBack, moduleConfig, progres
             <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
               Arrastra y une
             </p>
-            <p className="font-bold text-lg" style={{ color: 'var(--kids-text)' }}>
+            <p className="font-bold text-base sm:text-lg" style={{ color: 'var(--kids-text)' }}>
               {correctCount}/{items.length} parejas
             </p>
           </div>
@@ -152,111 +155,121 @@ export function DragMatchGame({ items, onComplete, onBack, moduleConfig, progres
         </div>
       </header>
 
-      <main className="relative z-10 flex-1 flex flex-col px-4 gap-6 justify-center" ref={containerRef}>
-        <p className="text-base font-semibold text-center" style={{ color: 'var(--kids-text-faint)' }}>
+      <main
+        className="relative z-10 flex-1 flex flex-col px-4 gap-4 sm:gap-6 pt-2 pb-6 sm:justify-center"
+        ref={containerRef}
+      >
+        <p className="text-sm sm:text-base font-semibold text-center" style={{ color: 'var(--kids-text-faint)' }}>
           Arrastra cada palabra a su imagen
         </p>
 
-        <div className="w-full max-w-2xl lg:max-w-4xl mx-auto flex flex-col gap-6">
+        <div className="w-full max-w-2xl lg:max-w-4xl mx-auto flex flex-col gap-4 sm:gap-6">
 
-        {/* Image drop zones */}
-        <div
-          className="grid gap-3 w-full"
-          style={{ gridTemplateColumns: `repeat(${images.length}, 1fr)` }}
-        >
-          {images.map(item => {
-            const wordMatchedHere   = Object.entries(matched).find(([, imgId]) => imgId === item.id)
-            const isCorrectlyFilled = !!(wordMatchedHere && wordMatchedHere[0] === item.id)
-            const imgUrl  = getVocabImageUrl(item)
-            const color   = colorMap[item.id]!
-            const isDragOver = drag && !matched[drag.id] && (() => {
-              const el = dropZoneRefs.current[item.id]
-              if (!el || !containerRef.current) return false
-              const cr = containerRef.current.getBoundingClientRect()
-              const er = el.getBoundingClientRect()
-              return drag.x >= er.left - cr.left && drag.x <= er.right - cr.left &&
-                     drag.y >= er.top  - cr.top  && drag.y <= er.bottom - cr.top
-            })()
+          {/* Image drop zones */}
+          <div
+            className="dm-grid"
+            style={{
+              '--dm-cols':    images.length,
+              '--dm-cols-sm': mobileCols,
+            } as React.CSSProperties}
+          >
+            {images.map(item => {
+              const wordMatchedHere   = Object.entries(matched).find(([, imgId]) => imgId === item.id)
+              const isCorrectlyFilled = !!(wordMatchedHere && wordMatchedHere[0] === item.id)
+              const imgUrl  = getVocabImageUrl(item)
+              const color   = colorMap[item.id]!
+              const isDragOver = drag && !matched[drag.id] && (() => {
+                const el = dropZoneRefs.current[item.id]
+                if (!el || !containerRef.current) return false
+                const cr = containerRef.current.getBoundingClientRect()
+                const er = el.getBoundingClientRect()
+                return drag.x >= er.left - cr.left && drag.x <= er.right - cr.left &&
+                       drag.y >= er.top  - cr.top  && drag.y <= er.bottom - cr.top
+              })()
 
-            return (
-              <div
-                key={item.id}
-                ref={el => { dropZoneRefs.current[item.id] = el }}
-                className="relative aspect-square rounded-3xl flex items-center justify-center overflow-hidden transition-all duration-150"
-                style={{
-                  background: color,
-                  border: isDragOver
-                    ? '4px solid white'
-                    : isCorrectlyFilled
-                      ? '4px solid rgba(255,255,255,0.3)'
-                      : '4px solid rgba(255,255,255,0.6)',
-                  boxShadow: isDragOver
-                    ? `0 0 0 3px ${color}, 0 8px 24px ${color}88`
-                    : isCorrectlyFilled
-                      ? `0 0 20px ${color}66`
-                      : '0 4px 14px rgba(0,0,0,0.18)',
-                  transform: isDragOver ? 'scale(1.08)' : 'scale(1)',
-                  opacity: isCorrectlyFilled ? 0.6 : 1,
-                }}
-              >
-                <div className="absolute inset-0" style={{ background: `conic-gradient(${SUNBURST})` }} />
-                <div className="relative z-10 flex items-center justify-center w-full h-full">
-                  {imgUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={imgUrl} alt={item.text_en} className="w-3/5 h-3/5 object-contain drop-shadow-lg" draggable={false} />
-                  ) : (
-                    <span className="font-extrabold text-white text-xl">{item.text_en[0]?.toUpperCase()}</span>
+              return (
+                <div
+                  key={item.id}
+                  ref={el => { dropZoneRefs.current[item.id] = el }}
+                  className="relative aspect-square rounded-2xl sm:rounded-3xl flex items-center justify-center overflow-hidden transition-all duration-150"
+                  style={{
+                    background: color,
+                    border: isDragOver
+                      ? '4px solid white'
+                      : isCorrectlyFilled
+                        ? '4px solid rgba(255,255,255,0.3)'
+                        : '4px solid rgba(255,255,255,0.6)',
+                    boxShadow: isDragOver
+                      ? `0 0 0 3px ${color}, 0 8px 24px ${color}88`
+                      : isCorrectlyFilled
+                        ? `0 0 20px ${color}66`
+                        : '0 4px 14px rgba(0,0,0,0.18)',
+                    transform: isDragOver ? 'scale(1.08)' : 'scale(1)',
+                    opacity: isCorrectlyFilled ? 0.6 : 1,
+                  }}
+                >
+                  <div className="absolute inset-0" style={{ background: `conic-gradient(${SUNBURST})` }} />
+                  <div className="relative z-10 flex items-center justify-center w-full h-full">
+                    {imgUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={imgUrl} alt={item.text_en} className="w-3/5 h-3/5 object-contain drop-shadow-lg" draggable={false} />
+                    ) : (
+                      <span className="font-extrabold text-white text-xl">{item.text_en[0]?.toUpperCase()}</span>
+                    )}
+                  </div>
+                  {isCorrectlyFilled && (
+                    <div className="absolute inset-0 flex items-center justify-center rounded-2xl sm:rounded-3xl" style={{ background: 'rgba(0,0,0,0.2)' }}>
+                      <span className="text-3xl font-black drop-shadow" style={{ color: '#22c55e' }}>✓</span>
+                    </div>
                   )}
                 </div>
-                {isCorrectlyFilled && (
-                  <div className="absolute inset-0 flex items-center justify-center rounded-3xl" style={{ background: 'rgba(0,0,0,0.2)' }}>
-                    <span className="text-3xl font-black drop-shadow" style={{ color: '#22c55e' }}>✓</span>
-                  </div>
-                )}
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
+
+          {/* Word cards — draggable */}
+          <div
+            className="dm-grid"
+            style={{
+              '--dm-cols':    words.length,
+              '--dm-cols-sm': mobileCols,
+            } as React.CSSProperties}
+          >
+            {words.map(item => {
+              const isMatched  = matched[item.id] !== undefined
+              const isWrong    = wrongIds.has(item.id)
+              const isDragging = drag?.id === item.id
+              const color      = colorMap[item.id]!
+
+              return (
+                <div
+                  key={item.id}
+                  ref={el => { wordCardRefs.current[item.id] = el }}
+                  onPointerDown={e => startDrag(item.id, e)}
+                  className="min-h-[44px] sm:h-14 px-2 sm:px-3 py-2 rounded-2xl sm:rounded-3xl flex items-center justify-center font-extrabold text-xs sm:text-sm text-center leading-tight select-none touch-none transition-all duration-150 overflow-hidden break-words"
+                  style={{
+                    background: isMatched ? `${color}22` : isWrong ? 'rgba(239,68,68,0.12)' : 'var(--kids-surface)',
+                    border: `3px solid ${isMatched ? color : isWrong ? '#ef4444' : 'var(--kids-border-color)'}`,
+                    boxShadow: isMatched ? `0 0 16px ${color}55` : isWrong ? '0 0 10px #ef444466' : 'none',
+                    color: isMatched ? color : isWrong ? '#ef4444' : 'var(--kids-text)',
+                    opacity: isMatched ? 0.55 : isDragging ? 0.25 : 1,
+                    cursor: isMatched ? 'default' : 'grab',
+                    animation: isWrong ? 'drag-shake 0.4s ease' : undefined,
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {item.text_en}
+                </div>
+              )
+            })}
+          </div>
+
         </div>
-
-        {/* Word cards — draggable */}
-        <div
-          className="grid gap-3 w-full"
-          style={{ gridTemplateColumns: `repeat(${words.length}, 1fr)` }}
-        >
-          {words.map(item => {
-            const isMatched  = matched[item.id] !== undefined
-            const isWrong    = wrongIds.has(item.id)
-            const isDragging = drag?.id === item.id
-            const color      = colorMap[item.id]!
-
-            return (
-              <div
-                key={item.id}
-                ref={el => { wordCardRefs.current[item.id] = el }}
-                onPointerDown={e => startDrag(item.id, e)}
-                className="h-14 px-3 rounded-3xl flex items-center justify-center font-extrabold text-sm select-none touch-none transition-all duration-150"
-                style={{
-                  background: isMatched ? `${color}22` : isWrong ? 'rgba(239,68,68,0.12)' : 'var(--kids-surface)',
-                  border: `4px solid ${isMatched ? color : isWrong ? '#ef4444' : 'var(--kids-border-color)'}`,
-                  boxShadow: isMatched ? `0 0 16px ${color}55` : isWrong ? '0 0 10px #ef444466' : 'none',
-                  color: isMatched ? color : isWrong ? '#ef4444' : 'var(--kids-text)',
-                  opacity: isMatched ? 0.55 : isDragging ? 0.25 : 1,
-                  cursor: isMatched ? 'default' : 'grab',
-                  animation: isWrong ? 'drag-shake 0.4s ease' : undefined,
-                }}
-              >
-                {item.text_en}
-              </div>
-            )
-          })}
-        </div>
-
-        </div>{/* end max-w container */}
 
         {/* Drag ghost */}
         {drag && (
           <div
-            className="fixed pointer-events-none z-50 min-w-[110px] md:min-w-[140px] h-16 md:h-20 px-6 rounded-3xl flex items-center justify-center font-extrabold text-base md:text-lg"
+            className="fixed pointer-events-none z-50 min-w-[90px] sm:min-w-[140px] px-4 sm:px-6 py-2 sm:py-0 h-auto sm:h-16 rounded-2xl sm:rounded-3xl flex items-center justify-center font-extrabold text-sm sm:text-base text-center"
             style={{
               background: colorMap[drag.id] ?? moduleConfig.gradientFrom,
               border: '4px solid rgba(255,255,255,0.7)',
@@ -277,6 +290,19 @@ export function DragMatchGame({ items, onComplete, onBack, moduleConfig, progres
           0%,100% { transform: translateX(0) rotate(0deg) }
           25%     { transform: translateX(-6px) rotate(-2deg) }
           75%     { transform: translateX(6px)  rotate(2deg)  }
+        }
+        /* Responsive grid: móvil = var(--dm-cols-sm) columnas, desktop = var(--dm-cols) */
+        .dm-grid {
+          display: grid;
+          grid-template-columns: repeat(var(--dm-cols-sm), 1fr);
+          gap: 10px;
+          width: 100%;
+        }
+        @media (min-width: 640px) {
+          .dm-grid {
+            grid-template-columns: repeat(var(--dm-cols), 1fr);
+            gap: 12px;
+          }
         }
       `}</style>
     </div>

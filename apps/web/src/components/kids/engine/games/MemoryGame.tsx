@@ -77,8 +77,6 @@ const PAIR_COLORS = [
   '#55EFC4', '#FDCB6E', '#E84393', '#00CEC9', '#FF7675',
 ]
 
-const COL_CLASS: Record<number, string> = { 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5' }
-
 export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }: Props) {
   const { reportCorrect, reportWrong, isTerminated } = useGameEvents()
 
@@ -89,9 +87,9 @@ export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }
     ])
   )
 
-  const [flipped, setFlipped]     = useState<string[]>([])
-  const [matched, setMatched]     = useState<Set<string>>(new Set())
-  const [locked, setLocked]       = useState(false)
+  const [flipped, setFlipped]       = useState<string[]>([])
+  const [matched, setMatched]       = useState<Set<string>>(new Set())
+  const [locked, setLocked]         = useState(false)
   const [pairsFound, setPairsFound] = useState(0)
 
   const totalPairs = items.length
@@ -130,8 +128,9 @@ export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }
     return flipped.includes(uid) || matched.has(getCard(uid).pairId)
   }
 
-  const cols     = bestCols(cards.length)
-  const colClass = COL_CLASS[cols] ?? 'grid-cols-4'
+  // Desktop: best layout; móvil: máx 4 cols para que las cartas no queden minúsculas
+  const desktopCols = bestCols(cards.length)
+  const mobileCols  = Math.min(desktopCols, 4)
 
   useEffect(() => {
     if (pairsFound === totalPairs && totalPairs > 0) {
@@ -144,14 +143,14 @@ export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }
   }, [pairsFound])
 
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden">
+    <div className="relative min-h-screen flex flex-col overflow-x-hidden">
       <div
         className="absolute top-[-20%] right-[-20%] w-[400px] h-[400px] rounded-full opacity-20 blur-[100px] pointer-events-none"
         style={{ background: `radial-gradient(circle, ${moduleConfig.gradientFrom}, transparent)` }}
       />
 
-      <header className="relative z-10 px-6 pt-6 pb-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <header className="relative z-10 px-4 sm:px-6 pt-5 sm:pt-6 pb-4 flex items-center justify-between">
+        <div className="flex items-center gap-3 sm:gap-4">
           <button
             onClick={onBack}
             className="text-sm font-bold transition-opacity hover:opacity-70"
@@ -163,7 +162,7 @@ export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }
             <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
               Memoria
             </p>
-            <p className="font-bold text-lg" style={{ color: 'var(--kids-text)' }}>
+            <p className="font-bold text-base sm:text-lg" style={{ color: 'var(--kids-text)' }}>
               {pairsFound}/{totalPairs} parejas
             </p>
           </div>
@@ -179,15 +178,18 @@ export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }
         </div>
       </header>
 
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 gap-8">
-        <p className="text-base font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 gap-5 sm:gap-8 py-4">
+        <p className="text-sm sm:text-base font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
           Voltea las cartas y encuentra las dos iguales
         </p>
 
-        <div className={`grid ${colClass} gap-3 md:gap-4 w-full max-w-2xl md:max-w-3xl lg:max-w-4xl`}>
+        <div
+          className="mg-grid gap-2 sm:gap-3 md:gap-4 w-full max-w-2xl md:max-w-3xl lg:max-w-4xl"
+          style={{ '--mg-cols': desktopCols, '--mg-cols-sm': mobileCols } as React.CSSProperties}
+        >
           {cards.map((card, idx) => {
-            const faceUp  = isFaceUp(card.uid)
-            const isMatch = matched.has(card.pairId)
+            const faceUp   = isFaceUp(card.uid)
+            const isMatch  = matched.has(card.pairId)
             const levDelay = LEV_DELAYS[idx % LEV_DELAYS.length] ?? '0s'
             const pairIdx  = items.findIndex(v => v.id === card.pairId)
             const frontBg  = PAIR_COLORS[pairIdx % PAIR_COLORS.length] ?? moduleConfig.gradientFrom
@@ -209,25 +211,25 @@ export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }
                 >
                   {/* Back */}
                   <div
-                    className="absolute inset-0 rounded-3xl flex items-center justify-center"
+                    className="absolute inset-0 rounded-2xl sm:rounded-3xl flex items-center justify-center"
                     style={{
                       backfaceVisibility: 'hidden',
                       background: CARD_BACK,
-                      border: '4px solid rgba(255,255,255,0.7)',
+                      border: '3px solid rgba(255,255,255,0.7)',
                       boxShadow: '0 6px 20px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.25)',
                     }}
                   >
-                    <span className="text-white/40 text-3xl">✦</span>
+                    <span className="text-white/40 text-2xl sm:text-3xl">✦</span>
                   </div>
 
                   {/* Front */}
                   <div
-                    className="absolute inset-0 rounded-3xl flex flex-col items-center justify-center overflow-hidden"
+                    className="absolute inset-0 rounded-2xl sm:rounded-3xl flex flex-col items-center justify-center overflow-hidden"
                     style={{
                       backfaceVisibility: 'hidden',
                       transform: 'rotateY(180deg)',
                       background: frontBg,
-                      border: `4px solid rgba(255,255,255,${isMatch ? '0.35' : '0.72'})`,
+                      border: `3px solid rgba(255,255,255,${isMatch ? '0.35' : '0.72'})`,
                       boxShadow: isMatch
                         ? `0 0 28px ${moduleConfig.accentLight}, 0 4px 12px rgba(0,0,0,0.1)`
                         : '0 6px 20px rgba(0,0,0,0.22)',
@@ -240,25 +242,25 @@ export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }
                       style={{ background: `conic-gradient(${SUNBURST_STOPS})` }}
                     />
 
-                    <div className="relative z-10 flex flex-col items-center gap-1.5 p-2 w-full">
+                    <div className="relative z-10 flex flex-col items-center gap-1 sm:gap-1.5 p-1.5 sm:p-2 w-full">
                       {card.imageUrl ? (
                         <>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={card.imageUrl}
                             alt={card.enText}
-                            className={`w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 object-contain drop-shadow-lg ${isMatch ? '' : 'animate-levitate'}`}
+                            className={`w-10 h-10 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 object-contain drop-shadow-lg ${isMatch ? '' : 'animate-levitate'}`}
                             draggable={false}
                             style={{ animationDelay: levDelay }}
                           />
-                          <div className="rounded-full px-2.5 py-0.5" style={{ background: 'rgba(255,255,255,0.88)' }}>
-                            <span className="text-gray-700 font-bold text-[11px] sm:text-xs leading-tight capitalize">
+                          <div className="rounded-full px-1.5 sm:px-2.5 py-0.5" style={{ background: 'rgba(255,255,255,0.88)' }}>
+                            <span className="text-gray-700 font-bold text-[9px] sm:text-[11px] md:text-xs leading-tight capitalize">
                               {card.enText}
                             </span>
                           </div>
                         </>
                       ) : (
-                        <span className="font-extrabold text-base leading-tight text-center text-white px-2">
+                        <span className="font-extrabold text-xs sm:text-sm leading-tight text-center text-white px-1.5 sm:px-2 break-words">
                           {card.enText}
                         </span>
                       )}
@@ -269,8 +271,19 @@ export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }
             )
           })}
         </div>
-
       </main>
+
+      <style>{`
+        .mg-grid {
+          display: grid;
+          grid-template-columns: repeat(var(--mg-cols-sm), 1fr);
+        }
+        @media (min-width: 640px) {
+          .mg-grid {
+            grid-template-columns: repeat(var(--mg-cols), 1fr);
+          }
+        }
+      `}</style>
     </div>
   )
 }

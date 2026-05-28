@@ -97,10 +97,13 @@ export function RecognitionExercise({ items, onComplete, onBack, moduleConfig, p
 
   if (!question || options.length === 0) return null
 
-  const colClass = optionCount <= 4 ? 'grid-cols-2' : 'grid-cols-4'
+  // Móvil: siempre 2 cols para cards grandes y cómodas; desktop: 4 si hay muchas opciones
+  const colClass = optionCount <= 4
+    ? 'grid-cols-2'
+    : 'grid-cols-2 sm:grid-cols-4'
 
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden">
+    <div className="relative min-h-screen flex flex-col overflow-x-hidden">
       <div
         className="absolute bottom-[-20%] left-[-10%] w-[420px] h-[420px] rounded-full opacity-15 blur-[110px] pointer-events-none"
         style={{ background: `radial-gradient(circle, ${moduleConfig.gradientTo}, transparent)` }}
@@ -110,9 +113,8 @@ export function RecognitionExercise({ items, onComplete, onBack, moduleConfig, p
         style={{ background: `radial-gradient(circle, ${moduleConfig.gradientFrom}, transparent)` }}
       />
 
-      {/* Header */}
-      <header className="relative z-10 px-6 pt-6 pb-2 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <header className="relative z-10 px-4 sm:px-6 pt-5 sm:pt-6 pb-2 flex items-center justify-between">
+        <div className="flex items-center gap-3 sm:gap-4">
           <button onClick={onBack} className="text-sm font-bold transition-opacity hover:opacity-70" style={{ color: moduleConfig.accent }}>
             ← Volver
           </button>
@@ -120,7 +122,7 @@ export function RecognitionExercise({ items, onComplete, onBack, moduleConfig, p
             <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
               Reconocimiento
             </p>
-            <p className="font-bold text-lg" style={{ color: 'var(--kids-text)' }}>
+            <p className="font-bold text-base sm:text-lg" style={{ color: 'var(--kids-text)' }}>
               {currentQ + 1}/{questions.length}
             </p>
           </div>
@@ -133,11 +135,11 @@ export function RecognitionExercise({ items, onComplete, onBack, moduleConfig, p
         </div>
       </header>
 
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-5 gap-7">
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 sm:px-5 gap-5 sm:gap-7 py-4">
 
         {/* Question block */}
         <div className="flex flex-col items-center gap-3">
-          <p className="text-base font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
+          <p className="text-sm sm:text-base font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
             ¿Cuál de estas imágenes corresponde?
           </p>
 
@@ -145,7 +147,7 @@ export function RecognitionExercise({ items, onComplete, onBack, moduleConfig, p
             {/* Main speak button */}
             <button
               onClick={() => speak(question.text_en)}
-              className="relative flex flex-col items-center justify-center gap-2 rounded-3xl transition-all active:scale-95 hover:scale-105 w-[130px] h-[130px] md:w-[160px] md:h-[160px]"
+              className="relative flex flex-col items-center justify-center gap-2 rounded-3xl transition-all active:scale-95 hover:scale-105 w-[120px] h-[120px] sm:w-[130px] sm:h-[130px] md:w-[160px] md:h-[160px]"
               style={{
                 background: moduleConfig.gradient,
                 boxShadow: speaking
@@ -155,12 +157,11 @@ export function RecognitionExercise({ items, onComplete, onBack, moduleConfig, p
                 transition: 'box-shadow 0.2s',
               }}
             >
-              {/* Sunburst */}
               <div className="absolute inset-0 rounded-3xl" style={{ background: `conic-gradient(${SUNBURST})` }} />
-              <span className="relative text-4xl" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}>
+              <span className="relative text-3xl sm:text-4xl" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}>
                 {speaking ? '🔊' : '🔉'}
               </span>
-              <span className="relative text-white font-extrabold text-base leading-tight capitalize drop-shadow">
+              <span className="relative text-white font-extrabold text-sm sm:text-base leading-tight capitalize drop-shadow">
                 {question.text_en}
               </span>
             </button>
@@ -169,16 +170,16 @@ export function RecognitionExercise({ items, onComplete, onBack, moduleConfig, p
             <button
               onClick={() => speak(question.text_en, true)}
               title="Más lento"
-              className="w-16 h-16 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all hover:scale-110 active:scale-95"
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all hover:scale-110 active:scale-95"
               style={{ background: moduleConfig.accentLight, border: `2px solid ${moduleConfig.accent}33` }}
             >
-              <span className="text-3xl leading-none">🐢</span>
-              <span className="text-[10px] font-bold" style={{ color: moduleConfig.accent }}>lento</span>
+              <span className="text-2xl sm:text-3xl leading-none">🐢</span>
+              <span className="text-[9px] sm:text-[10px] font-bold" style={{ color: moduleConfig.accent }}>lento</span>
             </button>
           </div>
         </div>
 
-        {/* Options grid */}
+        {/* Options grid — max-w-xs en móvil da cards de ~154px (2 cols), cómodas para tap */}
         <div className={`grid ${colClass} gap-3 w-full max-w-xs sm:max-w-sm`}>
           {options.map((option, idx) => {
             const isSelected = selected === option.id
@@ -221,7 +222,6 @@ export function RecognitionExercise({ items, onComplete, onBack, moduleConfig, p
                     transform: showStar ? 'scale(1.06)' : 'scale(1)',
                   }}
                 >
-                  {/* Sunburst */}
                   <div className="absolute inset-0" style={{ background: `conic-gradient(${SUNBURST})` }} />
 
                   <div className="relative z-10 flex flex-col items-center gap-1.5 p-2">
@@ -239,8 +239,8 @@ export function RecognitionExercise({ items, onComplete, onBack, moduleConfig, p
                         {option.text_en[0]?.toUpperCase()}
                       </span>
                     )}
-                    <div className="rounded-full px-2.5 py-0.5" style={{ background: 'rgba(255,255,255,0.88)' }}>
-                      <span className="text-gray-700 font-bold text-[11px] sm:text-xs leading-tight capitalize">
+                    <div className="rounded-full px-2 py-0.5" style={{ background: 'rgba(255,255,255,0.88)' }}>
+                      <span className="text-gray-700 font-bold text-[10px] sm:text-[11px] leading-tight capitalize">
                         {option.text_en}
                       </span>
                     </div>

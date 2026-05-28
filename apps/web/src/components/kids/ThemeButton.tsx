@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { KIDS_THEMES, type KidsTheme } from '@strides/core/kids'
 import { useMusicContext } from './MusicProvider'
 import { useClickSoundContext } from './ClickSoundProvider'
@@ -10,8 +11,15 @@ interface Props {
 }
 
 export function ThemeButton({ currentTheme }: Props) {
+  const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(currentTheme)
+
+  // Ocultar durante gameplay — la ruta de lección tiene la forma
+  // /kids/play/[moduleSlug]/[lessonSlug] (4 segmentos después de /kids)
+  const segments = pathname.split('/').filter(Boolean)
+  const isInLesson = segments[0] === 'kids' && segments[1] === 'play' && segments.length >= 4
+  if (isInLesson) return null
   const { muted: musicMuted, toggleMute: toggleMusic, volume: musicVolume, setVolume: setMusicVolume } = useMusicContext()
   const { muted: soundMuted, toggleMute: toggleSound, volume: soundVolume, setVolume: setSoundVolume } = useClickSoundContext()
 
@@ -32,7 +40,7 @@ export function ThemeButton({ currentTheme }: Props) {
       <button
         onClick={() => setOpen(true)}
         aria-label="Ajustes"
-        className="fixed bottom-6 right-5 z-40 w-10 h-10 rounded-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+        className="fixed top-4 right-4 z-40 w-10 h-10 rounded-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
         style={{
           background: 'var(--kids-surface-alt)',
           border: '1.5px solid var(--kids-border-color)',

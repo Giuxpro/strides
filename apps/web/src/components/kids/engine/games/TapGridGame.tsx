@@ -43,10 +43,6 @@ const PAIR_COLORS = [
   '#55EFC4', '#FDCB6E', '#E84393', '#00CEC9', '#FF7675',
 ]
 
-const COL_CLASS: Record<number, string> = {
-  3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5',
-}
-
 export function TapGridGame({ items, onComplete, onBack, moduleConfig, progress }: Props) {
   const { reportCorrect, reportWrong, isTerminated } = useGameEvents()
 
@@ -100,9 +96,10 @@ export function TapGridGame({ items, onComplete, onBack, moduleConfig, progress 
     }
   }
 
-  const cols     = bestCols(cards.length)
-  const colClass = COL_CLASS[cols] ?? 'grid-cols-4'
-  const rows     = Math.ceil(cards.length / cols)
+  // Desktop: layout óptimo; móvil: máx 3 cols para que cards/texto sean legibles
+  const desktopCols = bestCols(cards.length)
+  const mobileCols  = Math.min(desktopCols, 3)
+  const desktopRows = Math.ceil(cards.length / desktopCols)
 
   const instruction = !selected
     ? 'Toca la imagen o palabra para empezar'
@@ -111,14 +108,14 @@ export function TapGridGame({ items, onComplete, onBack, moduleConfig, progress 
       : '¿Cuál es la imagen que corresponde a esta palabra?'
 
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden">
+    <div className="relative min-h-screen flex flex-col overflow-x-hidden">
       <div
         className="absolute top-[-20%] right-[-20%] w-[350px] h-[350px] rounded-full opacity-20 blur-[100px] pointer-events-none"
         style={{ background: `radial-gradient(circle, ${moduleConfig.gradientFrom}, transparent)` }}
       />
 
-      <header className="relative z-10 px-6 pt-6 pb-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <header className="relative z-10 px-4 sm:px-6 pt-5 sm:pt-6 pb-4 flex items-center justify-between">
+        <div className="flex items-center gap-3 sm:gap-4">
           <button onClick={onBack} className="text-sm font-bold transition-opacity hover:opacity-70" style={{ color: moduleConfig.accent }}>
             ← Volver
           </button>
@@ -126,7 +123,7 @@ export function TapGridGame({ items, onComplete, onBack, moduleConfig, progress 
             <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
               Toca los pares
             </p>
-            <p className="font-bold text-lg" style={{ color: 'var(--kids-text)' }}>
+            <p className="font-bold text-base sm:text-lg" style={{ color: 'var(--kids-text)' }}>
               {pairsFound}/{items.length} parejas
             </p>
           </div>
@@ -139,30 +136,42 @@ export function TapGridGame({ items, onComplete, onBack, moduleConfig, progress 
         </div>
       </header>
 
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 gap-5">
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 gap-4 sm:gap-5 py-4">
 
         <p
-          className="text-base font-semibold text-center transition-all duration-300"
+          className="text-sm sm:text-base font-semibold text-center transition-all duration-300 px-2"
           style={{ color: selected ? moduleConfig.accent : 'var(--kids-text-faint)' }}
         >
           {instruction}
         </p>
 
         <div
-          className={`grid ${colClass} gap-3 w-full`}
-          style={{ maxWidth: `min(calc(100vw - 32px), calc((100vh - 260px) * ${cols} / ${rows}))`, margin: '0 auto' }}
+          className="tg-grid gap-2 sm:gap-3 w-full"
+          style={{
+            '--tg-cols':    desktopCols,
+            '--tg-cols-sm': mobileCols,
+            maxWidth: `min(calc(100vw - 32px), calc((100vh - 240px) * ${desktopCols} / ${desktopRows}))`,
+            margin: '0 auto',
+          } as React.CSSProperties}
         >
           {cards.map(card => {
             const isMatched  = matchedIds.has(card.vocabId)
             const isSelected = selected?.uid === card.uid
             const isWrong    = wrongUids.has(card.uid)
 
+            // Texto adaptado al tamaño de card: más corto en móvil si es palabra larga
+            const wordFontSize = card.text_en.length > 8
+              ? '0.7rem'
+              : card.text_en.length > 5
+                ? '0.85rem'
+                : '1rem'
+
             return (
               <button
                 key={card.uid}
                 onClick={() => tapCard(card)}
                 disabled={isMatched}
-                className="aspect-square rounded-3xl flex items-center justify-center transition-all duration-200 active:scale-90 select-none relative overflow-hidden"
+                className="aspect-square rounded-2xl sm:rounded-3xl flex items-center justify-center transition-all duration-200 active:scale-90 select-none relative overflow-hidden"
                 style={{
                   background: card.type === 'image'
                     ? card.color
@@ -199,25 +208,24 @@ export function TapGridGame({ items, onComplete, onBack, moduleConfig, progress 
                       <img
                         src={card.imageUrl}
                         alt={card.text_en}
-                        className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 object-contain drop-shadow-lg"
+                        className="w-10 h-10 sm:w-14 sm:h-14 md:w-20 md:h-20 lg:w-24 lg:h-24 object-contain drop-shadow-lg"
                         draggable={false}
                       />
                     ) : (
-                      <span className="font-extrabold text-white text-sm text-center px-2">{card.text_en}</span>
+                      <span className="font-extrabold text-white text-xs sm:text-sm text-center px-1 break-words leading-tight">{card.text_en}</span>
                     )}
-                    {/* Checkmark overlay on match */}
                     {isMatched && (
-                      <div className="absolute inset-0 flex items-center justify-center rounded-3xl"
+                      <div className="absolute inset-0 flex items-center justify-center rounded-2xl sm:rounded-3xl"
                         style={{ background: 'rgba(0,0,0,0.18)' }}>
-                        <span className="text-3xl font-black drop-shadow" style={{ color: '#22c55e' }}>✓</span>
+                        <span className="text-2xl sm:text-3xl font-black drop-shadow" style={{ color: '#22c55e' }}>✓</span>
                       </div>
                     )}
                   </>
                 ) : (
                   <span
-                    className="font-extrabold text-center leading-tight capitalize px-2"
+                    className="font-extrabold text-center leading-tight capitalize px-1.5 sm:px-2 break-words"
                     style={{
-                      fontSize: card.text_en.length > 8 ? '0.8rem' : '1rem',
+                      fontSize: wordFontSize,
                       color: isMatched ? card.color : isWrong ? '#ef4444' : 'var(--kids-text)',
                     }}
                   >
@@ -238,6 +246,15 @@ export function TapGridGame({ items, onComplete, onBack, moduleConfig, progress 
           40%     { transform: translateX(8px) }
           60%     { transform: translateX(-5px) }
           80%     { transform: translateX(5px) }
+        }
+        .tg-grid {
+          display: grid;
+          grid-template-columns: repeat(var(--tg-cols-sm), 1fr);
+        }
+        @media (min-width: 640px) {
+          .tg-grid {
+            grid-template-columns: repeat(var(--tg-cols), 1fr);
+          }
         }
       `}</style>
     </div>

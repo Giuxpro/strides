@@ -11,6 +11,11 @@ import { WordSearchGame } from './games/WordSearchGame'
 import { DragMatchGame } from './games/DragMatchGame'
 import { TapGridGame } from './games/TapGridGame'
 import { PuzzleGame } from './games/PuzzleGame'
+import { LetterOrderGame }   from './games/LetterOrderGame'
+import { VowelsOrderGame }   from './games/VowelsOrderGame'
+import { AlphabetGame }      from './games/AlphabetGame'
+import { VowelsSequenceGame } from './games/VowelsSequenceGame'
+import { ListeningSpellGame } from './games/ListeningSpellGame'
 import type { WordResult } from '@strides/core/kids'
 
 export type { GameConfigs } from '@strides/core/kids'
@@ -43,6 +48,11 @@ const COMPONENT_MAP: Record<string, ComponentType<GameProps>> = {
   dragmatch:   DragMatchGame as ComponentType<GameProps>,
   tapgrid:     TapGridGame   as ComponentType<GameProps>,
   puzzle:      PuzzleGame    as ComponentType<GameProps>,
+  letterorder: LetterOrderGame  as ComponentType<GameProps>,
+  vowels:      VowelsOrderGame  as ComponentType<GameProps>,
+  alphabet:    AlphabetGame     as ComponentType<GameProps>,
+  'vowels-order':     VowelsSequenceGame  as ComponentType<GameProps>,
+  'listening-spell':  ListeningSpellGame  as ComponentType<GameProps>,
 }
 
 export const GAME_POOL: PoolEntry[] = GAME_REGISTRY.map(g => ({

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef } from 'react'
 import type { VocabItem, ModuleConfig, WordResult } from '@strides/core/kids'
 import { useGameEvents } from '../modifiers/ModifierContext'
 import { useSpeak } from '@/components/kids/VoicePresetProvider'
@@ -77,9 +77,18 @@ export function WordSearchGame({ items, onComplete, onBack, moduleConfig, progre
   const { reportCorrect, reportWrong, isTerminated } = useGameEvents()
   const speakFn = useSpeak()
 
-  const words = items.map(v => v.text_en)
+  // Subconjunto aleatorio: 4–7 palabras de los items disponibles
+  const [selectedItems] = useState(() => {
+    const shuffled = [...items].sort(() => Math.random() - 0.5)
+    const max = Math.min(shuffled.length, 7)
+    const min = Math.min(shuffled.length, 4)
+    const count = Math.floor(Math.random() * (max - min + 1)) + min
+    return shuffled.slice(0, count)
+  })
+
+  const words = selectedItems.map(v => v.text_en)
   const gridSize = Math.max(8, Math.ceil(Math.max(...words.map(w => w.length)) * 1.5))
-  const clampedSize = Math.min(gridSize, 12)
+  const clampedSize = Math.min(gridSize, 10)
 
   const [{ grid, placements }] = useState(() => buildGrid(words, clampedSize))
 
@@ -87,10 +96,13 @@ export function WordSearchGame({ items, onComplete, onBack, moduleConfig, progre
   const [selecting, setSelecting] = useState<Array<{ r: number; c: number }>>([])
   const [wrongFlash, setWrongFlash] = useState(false)
   const [correct, setCorrect] = useState(0)
-  const cellRefs = useRef<Record<string, HTMLButtonElement | null>>({})
   const isDragging = useRef(false)
 
-  function cellKey(r: number, c: number) { return `${r}-${c}` }
+  // Necesario para evitar closure stale en onPointerUp
+  const selectingRef = useRef(selecting)
+  selectingRef.current = selecting
+  const foundIdsRef = useRef(foundIds)
+  foundIdsRef.current = foundIds
 
   const cellsToWord = (cells: Array<{ r: number; c: number }>) =>
     cells.map(({ r, c }) => grid[r]![c]).join('')
@@ -101,37 +113,28 @@ export function WordSearchGame({ items, onComplete, onBack, moduleConfig, progre
     const formedRev = formed.split('').reverse().join('')
 
     for (const p of placements) {
-      if (foundIds.has(p.id)) continue
+      if (foundIdsRef.current.has(p.id)) continue
       if (p.word === formed || p.word === formedRev) {
         reportCorrect()
-        speakFn(items.find(v => v.text_en.toUpperCase() === p.word)?.text_en ?? p.word)
-        setFoundIds(prev => {
-          const next = new Set([...prev, p.id])
-          const nextCount = correct + 1
-          if (nextCount === items.length) {
+        speakFn(selectedItems.find(v => v.text_en.toUpperCase() === p.word)?.text_en ?? p.word)
+        setFoundIds(prev => new Set([...prev, p.id]))
+        setCorrect(prev => {
+          const next = prev + 1
+          if (next === selectedItems.length) {
             setTimeout(() => {
-              const wordResults = items.map(v => ({
-                vocabId: v.id,
-                correct: true,
-              }))
-              onComplete(items.length, items.length, wordResults)
+              onComplete(selectedItems.length, selectedItems.length, selectedItems.map(v => ({ vocabId: v.id, correct: true })))
             }, 900)
           }
           return next
         })
-        setCorrect(c => c + 1)
         setSelecting([])
         return
       }
     }
 
-    // wrong
     setWrongFlash(true)
     reportWrong()
-    setTimeout(() => {
-      setWrongFlash(false)
-      setSelecting([])
-    }, 500)
+    setTimeout(() => { setWrongFlash(false); setSelecting([]) }, 500)
   }
 
   const getPlacementForCell = (r: number, c: number): Placement | null => {
@@ -146,17 +149,18 @@ export function WordSearchGame({ items, onComplete, onBack, moduleConfig, progre
     return selecting.some(s => s.r === r && s.c === c)
   }
 
-  function onCellPointerDown(r: number, c: number) {
-    if (isTerminated) return
-    isDragging.current = true
-    setSelecting([{ r, c }])
+  // Devuelve la celda bajo las coordenadas de pantalla, usando data-r/data-c
+  function getCellAt(clientX: number, clientY: number): { r: number; c: number } | null {
+    const el = document.elementFromPoint(clientX, clientY) as HTMLElement | null
+    const r = el?.dataset.r
+    const c = el?.dataset.c
+    if (r === undefined || c === undefined) return null
+    return { r: Number(r), c: Number(c) }
   }
 
-  function onCellPointerEnter(r: number, c: number) {
-    if (!isDragging.current || isTerminated) return
+  function extendSelection(r: number, c: number) {
     setSelecting(prev => {
       if (prev.some(s => s.r === r && s.c === c)) return prev
-      // Only allow straight lines
       if (prev.length >= 2) {
         const dr = prev[1]!.r - prev[0]!.r
         const dc = prev[1]!.c - prev[0]!.c
@@ -164,25 +168,38 @@ export function WordSearchGame({ items, onComplete, onBack, moduleConfig, progre
         const expectedC = prev[prev.length - 1]!.c + dc
         if (r !== expectedR || c !== expectedC) return prev
       } else if (prev.length === 1) {
-        const diffR = Math.abs(r - prev[0]!.r)
-        const diffC = Math.abs(c - prev[0]!.c)
-        if (diffR > 1 || diffC > 1) return prev
+        if (Math.abs(r - prev[0]!.r) > 1 || Math.abs(c - prev[0]!.c) > 1) return prev
       }
       return [...prev, { r, c }]
     })
   }
 
-  const onPointerUp = useCallback(() => {
+  // Todos los handlers van al contenedor del grid — así onPointerMove/Up
+  // llegan siempre aunque el touch haya empezado en otra celda (móvil)
+  function onGridPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (isTerminated) return
+    const cell = getCellAt(e.clientX, e.clientY)
+    if (!cell) return
+    e.currentTarget.setPointerCapture(e.pointerId)
+    isDragging.current = true
+    setSelecting([cell])
+  }
+
+  function onGridPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!isDragging.current || isTerminated) return
+    const cell = getCellAt(e.clientX, e.clientY)
+    if (cell) extendSelection(cell.r, cell.c)
+  }
+
+  function onGridPointerUp() {
     if (!isDragging.current) return
     isDragging.current = false
-    checkSelection(selecting)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selecting, foundIds])
+    checkSelection(selectingRef.current)
+  }
 
   return (
     <div
-      className="relative min-h-screen flex flex-col overflow-hidden"
-      onPointerUp={onPointerUp}
+      className="relative min-h-screen flex flex-col overflow-x-hidden"
     >
       <div
         className="absolute top-[-15%] right-[-10%] w-[340px] h-[340px] rounded-full opacity-20 blur-[90px] pointer-events-none"
@@ -193,8 +210,8 @@ export function WordSearchGame({ items, onComplete, onBack, moduleConfig, progre
         style={{ background: `radial-gradient(circle, ${moduleConfig.gradientTo}, transparent)` }}
       />
 
-      <header className="relative z-10 px-6 pt-6 pb-2 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <header className="relative z-10 px-4 sm:px-6 pt-5 sm:pt-6 pb-2 flex items-center justify-between">
+        <div className="flex items-center gap-3 sm:gap-4">
           <button onClick={onBack} className="text-sm font-bold transition-opacity hover:opacity-70" style={{ color: moduleConfig.accent }}>
             ← Volver
           </button>
@@ -202,8 +219,8 @@ export function WordSearchGame({ items, onComplete, onBack, moduleConfig, progre
             <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
               Sopa de letras
             </p>
-            <p className="font-bold text-lg" style={{ color: 'var(--kids-text)' }}>
-              {correct}/{items.length} palabras
+            <p className="font-bold text-base sm:text-lg" style={{ color: 'var(--kids-text)' }}>
+              {correct}/{selectedItems.length} palabras
             </p>
           </div>
         </div>
@@ -214,21 +231,21 @@ export function WordSearchGame({ items, onComplete, onBack, moduleConfig, progre
         </div>
       </header>
 
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 gap-5">
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 gap-4 sm:gap-5 py-4">
 
-        <p className="text-base font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
+        <p className="text-sm sm:text-base font-semibold text-center" style={{ color: 'var(--kids-text-faint)' }}>
           Arrastra sobre las letras para encontrar las palabras
         </p>
 
-        {/* Word list */}
-        <div className="flex flex-wrap gap-2 justify-center" style={{ maxWidth: 360 }}>
-          {items.map(item => {
+        {/* Word list — w-full evita desborde en teléfonos de 360px */}
+        <div className="flex flex-wrap gap-2 justify-center w-full">
+          {selectedItems.map(item => {
             const p = placements.find(pl => pl.word === item.text_en.toUpperCase())
             const isFound = p ? foundIds.has(p.id) : false
             return (
               <span
                 key={item.id}
-                className="px-3 py-1.5 rounded-full text-sm font-bold transition-all duration-200"
+                className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200"
                 style={{
                   background: isFound ? `${p?.color ?? moduleConfig.accent}22` : 'var(--kids-surface)',
                   color: isFound ? (p?.color ?? moduleConfig.accent) : 'var(--kids-text-muted)',
@@ -243,22 +260,25 @@ export function WordSearchGame({ items, onComplete, onBack, moduleConfig, progre
           })}
         </div>
 
-        {/* Grid */}
+        {/* Grid — todos los handlers en el contenedor; elementFromPoint detecta celda en móvil */}
         <div
-          className="rounded-2xl p-3 select-none"
+          className="rounded-2xl p-2 sm:p-3 select-none"
           style={{
             background: 'var(--kids-surface)',
             border: '2px solid var(--kids-border-color)',
             touchAction: 'none',
             width: '100%',
-            maxWidth: `min(calc(100vw - 32px), calc(100vh - 290px))`,
+            maxWidth: `min(calc(100vw - 32px), calc(100vh - 310px))`,
             margin: '0 auto',
           }}
+          onPointerDown={onGridPointerDown}
+          onPointerMove={onGridPointerMove}
+          onPointerUp={onGridPointerUp}
         >
           {grid.map((row, r) => (
             <div key={r} className="flex">
               {row.map((letter, c) => {
-                const foundP = getPlacementForCell(r, c)
+                const foundP     = getPlacementForCell(r, c)
                 const isSelected = inSelecting(r, c)
                 const bg = foundP
                   ? `${foundP.color}33`
@@ -272,12 +292,11 @@ export function WordSearchGame({ items, onComplete, onBack, moduleConfig, progre
                     : 'var(--kids-text)'
 
                 return (
-                  <button
+                  <div
                     key={c}
-                    ref={el => { cellRefs.current[cellKey(r, c)] = el }}
-                    onPointerDown={() => onCellPointerDown(r, c)}
-                    onPointerEnter={() => onCellPointerEnter(r, c)}
-                    className="flex items-center justify-center rounded-lg font-extrabold text-xs sm:text-sm transition-colors duration-100 touch-none"
+                    data-r={r}
+                    data-c={c}
+                    className="flex items-center justify-center rounded-md font-extrabold text-[11px] sm:text-xs transition-colors duration-100"
                     style={{
                       width: `${100 / clampedSize}%`,
                       aspectRatio: '1',
@@ -286,7 +305,7 @@ export function WordSearchGame({ items, onComplete, onBack, moduleConfig, progre
                     }}
                   >
                     {letter}
-                  </button>
+                  </div>
                 )
               })}
             </div>

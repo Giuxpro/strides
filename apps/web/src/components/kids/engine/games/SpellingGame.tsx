@@ -111,7 +111,7 @@ export function SpellingGame({ items, onComplete, onBack, moduleConfig, progress
           if (currentQ < questions.length - 1) {
             setCurrentQ(q => q + 1)
           } else {
-            const wordResults = questions.map((q, i) => ({ vocabId: q.id, correct: newResults[i] ?? false }))
+            const wordResults = questions.map((q, i) => ({ vocabId: q.id, correct: newResults[i] ?? false, skillType: 'spelling' as const }))
             onComplete(newResults.filter(Boolean).length, newResults.length, wordResults)
           }
         }, 1400)
@@ -151,7 +151,7 @@ export function SpellingGame({ items, onComplete, onBack, moduleConfig, progress
   const imgUrl = getVocabImageUrl(question)
 
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden">
+    <div className="relative min-h-screen flex flex-col overflow-x-hidden">
       <div
         className="absolute top-[-15%] right-[-15%] w-[380px] h-[380px] rounded-full opacity-20 blur-[100px] pointer-events-none"
         style={{ background: `radial-gradient(circle, ${moduleConfig.gradientFrom}, transparent)` }}
@@ -161,8 +161,8 @@ export function SpellingGame({ items, onComplete, onBack, moduleConfig, progress
         style={{ background: `radial-gradient(circle, ${moduleConfig.gradientTo}, transparent)` }}
       />
 
-      <header className="relative z-10 px-6 pt-6 pb-2 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <header className="relative z-10 px-4 sm:px-6 pt-5 sm:pt-6 pb-2 flex items-center justify-between">
+        <div className="flex items-center gap-3 sm:gap-4">
           <button onClick={onBack} className="text-sm font-bold transition-opacity hover:opacity-70" style={{ color: moduleConfig.accent }}>
             ← Volver
           </button>
@@ -170,7 +170,7 @@ export function SpellingGame({ items, onComplete, onBack, moduleConfig, progress
             <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
               Spelling
             </p>
-            <p className="font-bold text-lg" style={{ color: 'var(--kids-text)' }}>
+            <p className="font-bold text-base sm:text-lg" style={{ color: 'var(--kids-text)' }}>
               {currentQ + 1}/{questions.length}
             </p>
           </div>
@@ -182,17 +182,17 @@ export function SpellingGame({ items, onComplete, onBack, moduleConfig, progress
         </div>
       </header>
 
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 gap-8">
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 sm:px-6 gap-5 sm:gap-8 py-4">
 
         {/* Image card */}
-        <div className="flex flex-col items-center gap-3">
-          <p className="text-base font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
+        <div className="flex flex-col items-center gap-2 sm:gap-3">
+          <p className="text-sm sm:text-base font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
             Toca la imagen para escuchar la palabra
           </p>
-          <div className="relative w-40 md:w-52 lg:w-64">
+          <div className="relative">
             <button
               onClick={() => speakFn(question.text_en)}
-              className="relative w-40 h-40 md:w-52 md:h-52 lg:w-64 lg:h-64 rounded-3xl flex items-center justify-center overflow-hidden transition-all hover:scale-105 active:scale-95"
+              className="relative w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52 lg:w-64 lg:h-64 rounded-2xl sm:rounded-3xl flex items-center justify-center overflow-hidden transition-all hover:scale-105 active:scale-95"
               style={{
                 background: cardColor,
                 border: '4px solid rgba(255,255,255,0.65)',
@@ -203,7 +203,7 @@ export function SpellingGame({ items, onComplete, onBack, moduleConfig, progress
             >
               <div className="absolute inset-0" style={{ background: `conic-gradient(${SUNBURST})` }} />
               {burst && (
-                <div className="absolute inset-0 pointer-events-none rounded-3xl"
+                <div className="absolute inset-0 pointer-events-none rounded-2xl sm:rounded-3xl"
                   style={{ background: 'rgba(34,197,94,0.2)' }} />
               )}
               <div className="relative z-10 flex items-center justify-center">
@@ -212,11 +212,11 @@ export function SpellingGame({ items, onComplete, onBack, moduleConfig, progress
                   <img
                     src={imgUrl}
                     alt={question.text_en}
-                    className="w-24 h-24 md:w-32 md:h-32 lg:w-40 lg:h-40 object-contain drop-shadow-lg animate-levitate"
+                    className="w-20 h-20 sm:w-28 sm:h-28 md:w-32 md:h-32 lg:w-40 lg:h-40 object-contain drop-shadow-lg animate-levitate"
                     draggable={false}
                   />
                 ) : (
-                  <span className="text-6xl animate-levitate">🔊</span>
+                  <span className="text-5xl sm:text-6xl animate-levitate">🔊</span>
                 )}
               </div>
             </button>
@@ -232,9 +232,7 @@ export function SpellingGame({ items, onComplete, onBack, moduleConfig, progress
         </div>
 
         {/* Slots */}
-        <div
-          className={`flex gap-2 flex-wrap justify-center ${shaking ? 'animate-[shake_0.45s_ease]' : ''}`}
-        >
+        <div className={`flex gap-1.5 sm:gap-2 flex-wrap justify-center ${shaking ? 'animate-[shake_0.45s_ease]' : ''}`}>
           {slots.map((letter, i) => {
             const state = slotStates[i]!
             const isCorrect = state === 'correct'
@@ -244,7 +242,7 @@ export function SpellingGame({ items, onComplete, onBack, moduleConfig, progress
               <button
                 key={i}
                 onClick={() => removeSlot(i)}
-                className="w-[52px] h-[52px] md:w-[64px] md:h-[64px] rounded-2xl flex items-center justify-center font-extrabold text-xl md:text-2xl transition-all duration-150"
+                className="w-[46px] h-[46px] sm:w-[52px] sm:h-[52px] md:w-[64px] md:h-[64px] rounded-xl sm:rounded-2xl flex items-center justify-center font-extrabold text-lg sm:text-xl md:text-2xl transition-all duration-150"
                 style={{
                   background: isCorrect
                     ? 'rgba(34,197,94,0.18)'
@@ -272,9 +270,7 @@ export function SpellingGame({ items, onComplete, onBack, moduleConfig, progress
         </div>
 
         {/* Tile bank */}
-        <div
-          className="flex gap-3 flex-wrap justify-center"
-        >
+        <div className="flex gap-2 sm:gap-3 flex-wrap justify-center">
           {tiles.map((letter, i) => {
             const used = usedTileIdxs.has(i)
             return (
@@ -282,7 +278,7 @@ export function SpellingGame({ items, onComplete, onBack, moduleConfig, progress
                 key={i}
                 onClick={() => placeTile(i)}
                 disabled={used}
-                className="w-[56px] h-[56px] md:w-[68px] md:h-[68px] rounded-2xl font-extrabold text-xl md:text-2xl transition-all duration-100 active:scale-90 hover:scale-105"
+                className="w-[50px] h-[50px] sm:w-[56px] sm:h-[56px] md:w-[68px] md:h-[68px] rounded-xl sm:rounded-2xl font-extrabold text-lg sm:text-xl md:text-2xl transition-all duration-100 active:scale-90 hover:scale-105"
                 style={{
                   background: 'var(--kids-surface)',
                   border: `3px solid ${used ? 'transparent' : 'var(--kids-border-color)'}`,

@@ -43,14 +43,14 @@ const SUNBURST = [
 ].join(', ')
 
 const SPARKLE_POSITIONS = [
-  { top: '-16%',   left: '10%',   delay: '0s',    size: 22 },
-  { top: '-20%',   left: '48%',   delay: '0.15s', size: 28 },
-  { top: '-16%',   right: '10%',  delay: '0.05s', size: 20 },
-  { top: '38%',    left: '-14%',  delay: '0.25s', size: 24 },
-  { top: '38%',    right: '-14%', delay: '0.1s',  size: 26 },
-  { bottom: '-16%',left: '14%',   delay: '0.2s',  size: 22 },
-  { bottom: '-20%',left: '48%',   delay: '0.3s',  size: 28 },
-  { bottom: '-16%',right: '14%',  delay: '0.08s', size: 20 },
+  { top: '-16%',    left: '10%',   delay: '0s',    size: 22 },
+  { top: '-20%',    left: '48%',   delay: '0.15s', size: 28 },
+  { top: '-16%',    right: '10%',  delay: '0.05s', size: 20 },
+  { top: '38%',     left: '-14%',  delay: '0.25s', size: 24 },
+  { top: '38%',     right: '-14%', delay: '0.1s',  size: 26 },
+  { bottom: '-16%', left: '14%',   delay: '0.2s',  size: 22 },
+  { bottom: '-20%', left: '48%',   delay: '0.3s',  size: 28 },
+  { bottom: '-16%', right: '14%',  delay: '0.08s', size: 20 },
 ]
 
 type PieceId = string
@@ -171,14 +171,14 @@ export function PuzzleGame({ items, onComplete, onBack, moduleConfig, progress }
   }, [moveDrag, endDrag])
 
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden">
+    <div className="relative min-h-screen flex flex-col overflow-x-hidden">
       <div className="absolute top-[-15%] right-[-10%] w-[340px] h-[340px] rounded-full opacity-20 blur-[100px] pointer-events-none"
         style={{ background: `radial-gradient(circle, ${moduleConfig.gradientFrom}, transparent)` }} />
       <div className="absolute bottom-[-15%] left-[-10%] w-[280px] h-[280px] rounded-full opacity-15 blur-[80px] pointer-events-none"
         style={{ background: `radial-gradient(circle, ${moduleConfig.gradientTo}, transparent)` }} />
 
-      <header className="relative z-10 px-6 pt-6 pb-2 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <header className="relative z-10 px-4 sm:px-6 pt-5 sm:pt-6 pb-2 flex items-center justify-between">
+        <div className="flex items-center gap-3 sm:gap-4">
           <button onClick={onBack} className="text-sm font-bold transition-opacity hover:opacity-70" style={{ color: moduleConfig.accent }}>
             ← Volver
           </button>
@@ -186,7 +186,7 @@ export function PuzzleGame({ items, onComplete, onBack, moduleConfig, progress }
             <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
               Rompecabezas
             </p>
-            <p className="font-bold text-lg" style={{ color: 'var(--kids-text)' }}>
+            <p className="font-bold text-base sm:text-lg" style={{ color: 'var(--kids-text)' }}>
               {placedCount}/{ROWS * COLS} piezas
             </p>
           </div>
@@ -199,17 +199,17 @@ export function PuzzleGame({ items, onComplete, onBack, moduleConfig, progress }
         </div>
       </header>
 
-      <main ref={containerRef} className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 gap-3">
-        <p className="text-base font-semibold text-center" style={{ color: 'var(--kids-text-faint)' }}>
+      <main ref={containerRef} className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 gap-3 py-4">
+        <p className="text-sm sm:text-base font-semibold text-center" style={{ color: 'var(--kids-text-faint)' }}>
           Arrastra las piezas y arma la imagen
         </p>
 
-        {/* Board (60%) + Source (40%) side by side — constrained by viewport height on desktop */}
+        {/* Board (50%) + Source (50%) lado a lado — el 3×3 funciona bien en móvil: ~47px por pieza */}
         <div
           className="flex items-stretch gap-3"
           style={{
             width: '100%',
-            maxWidth: 'min(calc(100vw - 32px), 720px, calc((100vh - 210px) * 2))',
+            maxWidth: 'min(calc(100vw - 32px), 720px, calc((100vh - 200px) * 2))',
             marginLeft: 'auto',
             marginRight: 'auto',
             marginTop: revealing ? '20px' : '0px',
@@ -349,7 +349,7 @@ export function PuzzleGame({ items, onComplete, onBack, moduleConfig, progress }
         {/* Word reveal */}
         {showWord && (
           <div className="animate-pop-in flex flex-col items-center gap-1.5">
-            <div className="relative flex items-center gap-3 px-7 py-3 rounded-3xl overflow-hidden"
+            <div className="relative flex items-center gap-2 sm:gap-3 px-4 sm:px-7 py-2 sm:py-3 rounded-3xl overflow-hidden"
               style={{
                 background: cardColor,
                 border: '4px solid rgba(255,255,255,0.65)',
@@ -358,9 +358,9 @@ export function PuzzleGame({ items, onComplete, onBack, moduleConfig, progress }
               <div style={{ position: 'absolute', inset: 0, background: `conic-gradient(${SUNBURST})`, pointerEvents: 'none' }} />
               {imageUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={imageUrl} alt={item.text_en} className="relative w-10 h-10 object-contain drop-shadow-lg" draggable={false} />
+                <img src={imageUrl} alt={item.text_en} className="relative w-8 h-8 sm:w-10 sm:h-10 object-contain drop-shadow-lg" draggable={false} />
               )}
-              <span className="relative font-extrabold text-2xl text-white drop-shadow-md capitalize">
+              <span className="relative font-extrabold text-xl sm:text-2xl text-white drop-shadow-md capitalize">
                 {item.text_en}
               </span>
             </div>
@@ -369,7 +369,7 @@ export function PuzzleGame({ items, onComplete, onBack, moduleConfig, progress }
         )}
       </main>
 
-      {/* Drag ghost — uses actual piece size from element */}
+      {/* Drag ghost — usa el tamaño real de la pieza del DOM */}
       {drag && imageUrl && (() => {
         const { row, col } = parseId(drag.pieceId)
         const cr = containerRef.current?.getBoundingClientRect()

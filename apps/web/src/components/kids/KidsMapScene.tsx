@@ -93,14 +93,14 @@ export function KidsMapScene({ modules, childName, childAvatar, currentStreak, m
         />
 
         {/* Header */}
-        <header className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-[3%] py-[2%]">
+        <header className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between pl-5 pr-[3%] py-[2%]">
           <span
             className="font-bold tracking-widest uppercase text-white/70"
             style={{ fontSize: 'clamp(0.6rem, 1.2vw, 0.85rem)' }}
           >
             Strides
           </span>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 mr-14">
             <Link
               href="/select-profile"
               className="flex items-center gap-1.5 transition-opacity hover:opacity-70 text-white/80"

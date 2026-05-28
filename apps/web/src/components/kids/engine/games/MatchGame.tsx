@@ -133,14 +133,14 @@ export function MatchGame({ items, onComplete, onBack, moduleConfig, progress }:
   }, [updateDrag, endDrag])
 
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden">
+    <div className="relative min-h-screen flex flex-col overflow-x-hidden">
       <div
         className="absolute top-[-15%] left-[-10%] w-[350px] h-[350px] rounded-full opacity-20 blur-[90px] pointer-events-none"
         style={{ background: `radial-gradient(circle, ${moduleConfig.gradientFrom}, transparent)` }}
       />
 
-      <header className="relative z-10 px-6 pt-6 pb-2 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <header className="relative z-10 px-4 sm:px-6 pt-5 sm:pt-6 pb-2 flex items-center justify-between">
+        <div className="flex items-center gap-3 sm:gap-4">
           <button onClick={onBack} className="text-sm font-bold transition-opacity hover:opacity-70" style={{ color: moduleConfig.accent }}>
             ← Volver
           </button>
@@ -148,7 +148,7 @@ export function MatchGame({ items, onComplete, onBack, moduleConfig, progress }:
             <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
               Trazado
             </p>
-            <p className="font-bold text-lg" style={{ color: 'var(--kids-text)' }}>
+            <p className="font-bold text-base sm:text-lg" style={{ color: 'var(--kids-text)' }}>
               {correct}/{items.length} parejas
             </p>
           </div>
@@ -162,10 +162,11 @@ export function MatchGame({ items, onComplete, onBack, moduleConfig, progress }:
       </header>
 
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4">
-        <p className="text-base font-semibold mb-6" style={{ color: 'var(--kids-text-faint)' }}>
+        <p className="text-sm sm:text-base font-semibold mb-5 sm:mb-6" style={{ color: 'var(--kids-text-faint)' }}>
           Arrastra cada imagen hasta su palabra
         </p>
 
+        {/* containerRef debe cubrir toda el área de interacción para el SVG y los cálculos de posición */}
         <div ref={containerRef} className="relative w-full max-w-sm">
           {/* SVG lines */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-20" style={{ overflow: 'visible' }}>
@@ -179,8 +180,8 @@ export function MatchGame({ items, onComplete, onBack, moduleConfig, progress }:
               const from = getCenter(`left-${l.fromId}`)
               const to   = getCenter(`right-${l.toId}`)
               if (!from || !to) return null
-              const isWrong    = wrongPair?.fromId === l.fromId && wrongPair?.toId === l.toId
-              const lineColor  = l.correct
+              const isWrong   = wrongPair?.fromId === l.fromId && wrongPair?.toId === l.toId
+              const lineColor = l.correct
                 ? (leftCards.find(c => c.id === l.fromId)?.color ?? '#22c55e')
                 : '#ef4444'
               return (
@@ -209,9 +210,9 @@ export function MatchGame({ items, onComplete, onBack, moduleConfig, progress }:
             )}
           </svg>
 
-          <div className="flex justify-between items-center gap-4">
+          <div className="flex justify-between items-center gap-3 sm:gap-4">
             {/* Left: image cards */}
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2 sm:gap-3">
               {leftCards.map(item => {
                 const isMatched = matchedIds.has(item.id)
                 const isWrong   = wrongPair?.fromId === item.id
@@ -222,10 +223,10 @@ export function MatchGame({ items, onComplete, onBack, moduleConfig, progress }:
                     key={item.id}
                     ref={el => { anchorRefs.current[`left-${item.id}`] = el }}
                     onPointerDown={() => startDrag(item.id)}
-                    className="relative w-24 h-24 rounded-3xl flex flex-col items-center justify-center overflow-hidden select-none touch-none"
+                    className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl sm:rounded-3xl flex flex-col items-center justify-center overflow-hidden select-none touch-none"
                     style={{
                       background: item.color,
-                      border: `4px solid ${isMatched ? 'rgba(255,255,255,0.3)' : isWrong ? '#ef4444' : 'rgba(255,255,255,0.65)'}`,
+                      border: `3px solid ${isMatched ? 'rgba(255,255,255,0.3)' : isWrong ? '#ef4444' : 'rgba(255,255,255,0.65)'}`,
                       boxShadow: isMatched
                         ? `0 0 18px ${item.color}55`
                         : isWrong
@@ -240,12 +241,12 @@ export function MatchGame({ items, onComplete, onBack, moduleConfig, progress }:
                     <div className="relative z-10 flex flex-col items-center gap-1 p-1">
                       {imgUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={imgUrl} alt={item.text_en} className="w-14 h-14 object-contain drop-shadow-md" draggable={false} />
+                        <img src={imgUrl} alt={item.text_en} className="w-12 h-12 sm:w-14 sm:h-14 object-contain drop-shadow-md" draggable={false} />
                       ) : (
-                        <span className="font-extrabold text-white text-xs text-center px-1">{item.text_en}</span>
+                        <span className="font-extrabold text-white text-xs text-center px-1 break-words leading-tight">{item.text_en}</span>
                       )}
                       {isMatched && (
-                        <div className="absolute inset-0 flex items-center justify-center rounded-3xl" style={{ background: 'rgba(0,0,0,0.18)' }}>
+                        <div className="absolute inset-0 flex items-center justify-center rounded-2xl sm:rounded-3xl" style={{ background: 'rgba(0,0,0,0.18)' }}>
                           <span className="text-2xl font-black" style={{ color: '#22c55e' }}>✓</span>
                         </div>
                       )}
@@ -256,7 +257,7 @@ export function MatchGame({ items, onComplete, onBack, moduleConfig, progress }:
             </div>
 
             {/* Right: word cards */}
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2 sm:gap-3">
               {rightCards.map(item => {
                 const isMatched   = matchedIds.has(item.id)
                 const isWrongDest = wrongPair?.toId === item.id
@@ -265,10 +266,10 @@ export function MatchGame({ items, onComplete, onBack, moduleConfig, progress }:
                   <div
                     key={item.id}
                     ref={el => { anchorRefs.current[`right-${item.id}`] = el }}
-                    className="h-24 px-5 rounded-3xl flex items-center justify-center min-w-[130px]"
+                    className="h-20 sm:h-24 px-3 sm:px-5 rounded-2xl sm:rounded-3xl flex items-center justify-center min-w-[110px] sm:min-w-[130px]"
                     style={{
                       background: isMatched ? `${item.color}22` : 'var(--kids-surface)',
-                      border: `4px solid ${isMatched ? item.color : isWrongDest ? '#ef4444' : 'var(--kids-border-color)'}`,
+                      border: `3px solid ${isMatched ? item.color : isWrongDest ? '#ef4444' : 'var(--kids-border-color)'}`,
                       boxShadow: isMatched
                         ? `0 0 18px ${item.color}55`
                         : isWrongDest
@@ -279,7 +280,7 @@ export function MatchGame({ items, onComplete, onBack, moduleConfig, progress }:
                     }}
                   >
                     <span
-                      className="font-extrabold text-sm text-center capitalize"
+                      className="font-extrabold text-xs sm:text-sm text-center capitalize break-words leading-tight"
                       style={{ color: isMatched ? item.color : isWrongDest ? '#ef4444' : 'var(--kids-text)' }}
                     >
                       {item.text_en}

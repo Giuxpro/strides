@@ -6,7 +6,7 @@ import type { LandingCopy } from '@/lib/templates/landing/types'
 function buildCopy(flow: string, trialDays: number): LandingCopy {
   const isTrial = flow === 'b'
   return {
-    badge:    isTrial ? `${trialDays} días de prueba · Sin tarjeta de crédito` : 'Precio de fundadores · El precio sube al lanzamiento',
+    badge:    isTrial ? `${trialDays} días de prueba · Sin tarjeta de crédito` : 'Aprende inglés jugando · Para niños de 4 a 12 años',
     ctaLabel: isTrial ? `Empezar prueba de ${trialDays} días →` : 'Obtener acceso ahora →',
     ctaSub:   isTrial ? 'Sin tarjeta de crédito · Cancela cuando quieras' : 'Acceso completo desde el primer día',
     navCta:   isTrial ? 'Empezar gratis' : 'Obtener acceso',

@@ -2,10 +2,10 @@ import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import { KidsModuleTabs } from '@/components/kids/KidsModuleTabs'
+import { KidsModuleTabs } from '@/components/kids/tabs/KidsModuleTabs'
 import { getModuleConfig, isSpeechProvider, DEFAULT_SPEECH_PROVIDER } from '@strides/core/kids'
 import type { ModifierConfig } from '@strides/core/kids'
-import type { AvailableModifiers } from '@/components/kids/ModifierPickerModal'
+import type { AvailableModifiers } from '@/components/kids/ui/ModifierPickerModal'
 import type { GameConfigs } from '@/components/kids/engine/gamePool'
 import {
   computeProgressiveUnlock,

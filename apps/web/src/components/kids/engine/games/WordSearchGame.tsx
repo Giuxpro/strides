@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import type { VocabItem, ModuleConfig, WordResult } from '@strides/core/kids'
 import { useGameEvents } from '../modifiers/ModifierContext'
-import { useSpeak } from '@/components/kids/VoicePresetProvider'
+import { useSpeak } from '@/components/kids/audio/VoicePresetProvider'
 
 interface Props {
   items: VocabItem[]
@@ -77,18 +77,14 @@ export function WordSearchGame({ items, onComplete, onBack, moduleConfig, progre
   const { reportCorrect, reportWrong, isTerminated } = useGameEvents()
   const speakFn = useSpeak()
 
-  // Subconjunto aleatorio: 4–7 palabras de los items disponibles
   const [selectedItems] = useState(() => {
     const shuffled = [...items].sort(() => Math.random() - 0.5)
-    const max = Math.min(shuffled.length, 7)
-    const min = Math.min(shuffled.length, 4)
-    const count = Math.floor(Math.random() * (max - min + 1)) + min
-    return shuffled.slice(0, count)
+    return shuffled.slice(0, Math.min(shuffled.length, 4))
   })
 
   const words = selectedItems.map(v => v.text_en)
-  const gridSize = Math.max(8, Math.ceil(Math.max(...words.map(w => w.length)) * 1.5))
-  const clampedSize = Math.min(gridSize, 10)
+  const gridSize = Math.max(6, Math.ceil(Math.max(...words.map(w => w.length)) * 1.2))
+  const clampedSize = Math.min(gridSize, 7)
 
   const [{ grid, placements }] = useState(() => buildGrid(words, clampedSize))
 
@@ -97,8 +93,9 @@ export function WordSearchGame({ items, onComplete, onBack, moduleConfig, progre
   const [wrongFlash, setWrongFlash] = useState(false)
   const [correct, setCorrect] = useState(0)
   const isDragging = useRef(false)
+  const dragStart = useRef<{ r: number; c: number } | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  // Necesario para evitar closure stale en onPointerUp
   const selectingRef = useRef(selecting)
   selectingRef.current = selecting
   const foundIdsRef = useRef(foundIds)
@@ -149,51 +146,72 @@ export function WordSearchGame({ items, onComplete, onBack, moduleConfig, progre
     return selecting.some(s => s.r === r && s.c === c)
   }
 
-  // Devuelve la celda bajo las coordenadas de pantalla, usando data-r/data-c
+  // Calcula la celda desde la posición del pointer relativa al bounding rect del contenedor.
+  // Más fiable que elementFromPoint, que con setPointerCapture puede devolver el contenedor.
   function getCellAt(clientX: number, clientY: number): { r: number; c: number } | null {
-    const el = document.elementFromPoint(clientX, clientY) as HTMLElement | null
-    const r = el?.dataset.r
-    const c = el?.dataset.c
-    if (r === undefined || c === undefined) return null
-    return { r: Number(r), c: Number(c) }
+    const container = containerRef.current
+    if (!container) return null
+    const rect = container.getBoundingClientRect()
+    const style = window.getComputedStyle(container)
+    const pl = parseFloat(style.paddingLeft)
+    const pt = parseFloat(style.paddingTop)
+    // Usar innerW para ambos ejes: el grid es cuadrado (celdas con aspectRatio 1)
+    const innerW = rect.width - pl - parseFloat(style.paddingRight)
+    const x = clientX - rect.left - pl
+    const y = clientY - rect.top  - pt
+    if (x < 0 || y < 0 || x > innerW || y > innerW) return null
+    const c = Math.min(Math.floor((x / innerW) * clampedSize), clampedSize - 1)
+    const r = Math.min(Math.floor((y / innerW) * clampedSize), clampedSize - 1)
+    return { r, c }
   }
 
-  function extendSelection(r: number, c: number) {
-    setSelecting(prev => {
-      if (prev.some(s => s.r === r && s.c === c)) return prev
-      if (prev.length >= 2) {
-        const dr = prev[1]!.r - prev[0]!.r
-        const dc = prev[1]!.c - prev[0]!.c
-        const expectedR = prev[prev.length - 1]!.r + dr
-        const expectedC = prev[prev.length - 1]!.c + dc
-        if (r !== expectedR || c !== expectedC) return prev
-      } else if (prev.length === 1) {
-        if (Math.abs(r - prev[0]!.r) > 1 || Math.abs(c - prev[0]!.c) > 1) return prev
-      }
-      return [...prev, { r, c }]
-    })
+  // Calcula todas las celdas desde start hasta end, snapeando al ángulo más cercano (8 dirs × 45°).
+  // Así la diagonal siempre se detecta correctamente aunque el mouse se desvíe un poco.
+  function getSnappedSelection(
+    start: { r: number; c: number },
+    end: { r: number; c: number },
+  ): Array<{ r: number; c: number }> {
+    const dr = end.r - start.r
+    const dc = end.c - start.c
+    if (dr === 0 && dc === 0) return [start]
+    const angle = Math.atan2(dr, dc)
+    const sector = Math.round(angle / (Math.PI / 4))
+    const SNAP: Array<[number, number]> = [
+      [0,1],[1,1],[1,0],[1,-1],[0,-1],[-1,-1],[-1,0],[-1,1],
+    ]
+    const [sdr, sdc] = SNAP[((sector % 8) + 8) % 8]!
+    const steps = Math.max(Math.abs(dr), Math.abs(dc))
+    const cells: Array<{ r: number; c: number }> = []
+    for (let i = 0; i <= steps; i++) {
+      const nr = start.r + sdr * i
+      const nc = start.c + sdc * i
+      if (nr < 0 || nr >= clampedSize || nc < 0 || nc >= clampedSize) break
+      cells.push({ r: nr, c: nc })
+    }
+    return cells
   }
 
-  // Todos los handlers van al contenedor del grid — así onPointerMove/Up
-  // llegan siempre aunque el touch haya empezado en otra celda (móvil)
   function onGridPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (isTerminated) return
     const cell = getCellAt(e.clientX, e.clientY)
     if (!cell) return
     e.currentTarget.setPointerCapture(e.pointerId)
     isDragging.current = true
+    dragStart.current = cell
     setSelecting([cell])
   }
 
   function onGridPointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    if (!isDragging.current || isTerminated) return
+    if (!isDragging.current || isTerminated || !dragStart.current) return
     const cell = getCellAt(e.clientX, e.clientY)
-    if (cell) extendSelection(cell.r, cell.c)
+    if (!cell) return
+    setSelecting(getSnappedSelection(dragStart.current, cell))
   }
 
   function onGridPointerUp() {
     if (!isDragging.current) return
     isDragging.current = false
+    dragStart.current = null
     checkSelection(selectingRef.current)
   }
 
@@ -260,8 +278,8 @@ export function WordSearchGame({ items, onComplete, onBack, moduleConfig, progre
           })}
         </div>
 
-        {/* Grid — todos los handlers en el contenedor; elementFromPoint detecta celda en móvil */}
         <div
+          ref={containerRef}
           className="rounded-2xl p-2 sm:p-3 select-none"
           style={{
             background: 'var(--kids-surface)',
@@ -294,9 +312,7 @@ export function WordSearchGame({ items, onComplete, onBack, moduleConfig, progre
                 return (
                   <div
                     key={c}
-                    data-r={r}
-                    data-c={c}
-                    className="flex items-center justify-center rounded-md font-extrabold text-[11px] sm:text-xs transition-colors duration-100"
+                    className="flex items-center justify-center rounded-md font-extrabold text-base sm:text-lg transition-colors duration-100"
                     style={{
                       width: `${100 / clampedSize}%`,
                       aspectRatio: '1',

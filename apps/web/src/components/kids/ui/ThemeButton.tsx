@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { KIDS_THEMES, type KidsTheme } from '@strides/core/kids'
-import { useMusicContext } from './MusicProvider'
-import { useClickSoundContext } from './ClickSoundProvider'
+import { useMusicContext } from '../audio/MusicProvider'
+import { useClickSoundContext } from '../audio/ClickSoundProvider'
 
 interface Props {
   currentTheme: string

@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef, type ComponentType } from 'react'
-import type { VocabItem, ModuleConfig, ModifierConfig, GameResult, ModifierState, WordResult } from '@strides/core/kids'
+import type { VocabItem, ModuleConfig, ModifierConfig, GameResult, WordResult } from '@strides/core/kids'
 import type { GameProps } from '../gamePool'
 import { GameEventsContext } from './ModifierContext'
+import { playWrongSound, playVictoryFanfare } from '@/lib/gameAudio'
 
 interface Props {
   game: ComponentType<GameProps>
@@ -18,12 +19,10 @@ interface Props {
 export function ModifierStack({ game: Game, items, modifiers, onGameEnd, onBack, moduleConfig, progress }: Props) {
   const timerCfg  = modifiers.find((m): m is { type: 'timer'; seconds: number } => m.type === 'timer')
   const livesCfg  = modifiers.find((m): m is { type: 'lives'; count: number } => m.type === 'lives')
-  const hasMultiplier = modifiers.some(m => m.type === 'multiplier') && (!!timerCfg || !!livesCfg)
 
-  const [isTerminated, setIsTerminated]   = useState(false)
-  const [endReason, setEndReason]         = useState<GameResult['reason'] | null>(null)
-  const [modifierState, setModifierState] = useState<ModifierState>({ optionCount: 4 })
-  const [timeLeft, setTimeLeft]           = useState(timerCfg?.seconds ?? 0)
+  const [isTerminated, setIsTerminated] = useState(false)
+  const [endReason, setEndReason]       = useState<GameResult['reason'] | null>(null)
+  const [timeLeft, setTimeLeft]         = useState(timerCfg?.seconds ?? 0)
   const livesRef                          = useRef(livesCfg?.count ?? 0)
   const [livesLeft, setLivesLeft]         = useState(livesCfg?.count ?? 0)
   const statsRef                          = useRef({ correct: 0, total: 0 })
@@ -35,7 +34,9 @@ export function ModifierStack({ game: Game, items, modifiers, onGameEnd, onBack,
     endedRef.current = true
     setIsTerminated(true)
     setEndReason(result.reason)
-    setTimeout(() => onGameEnd({ ...result, wordResults: wordResultsRef.current }), 1000)
+    // Más tiempo para 'completed' para que el overlay de celebración sea visible
+    const delay = result.reason === 'completed' ? 1600 : 1000
+    setTimeout(() => onGameEnd({ ...result, wordResults: wordResultsRef.current }), delay)
   }
 
   // Timer countdown
@@ -53,14 +54,12 @@ export function ModifierStack({ game: Game, items, modifiers, onGameEnd, onBack,
   function reportCorrect() {
     if (isTerminated) return
     statsRef.current = { correct: statsRef.current.correct + 1, total: statsRef.current.total + 1 }
-    if (hasMultiplier) {
-      setModifierState(ms => ({ ...ms, optionCount: ms.optionCount * 2 }))
-    }
   }
 
   function reportWrong() {
     if (isTerminated) return
     statsRef.current = { ...statsRef.current, total: statsRef.current.total + 1 }
+    playWrongSound()
     if (livesCfg) {
       const next = Math.max(0, livesRef.current - 1)
       livesRef.current = next
@@ -73,6 +72,7 @@ export function ModifierStack({ game: Game, items, modifiers, onGameEnd, onBack,
 
   function handleNaturalComplete(correct: number, total: number, wordResults?: WordResult[]) {
     wordResultsRef.current = wordResults
+    playVictoryFanfare()
     end({ correct, total, reason: 'completed' })
   }
 
@@ -80,7 +80,7 @@ export function ModifierStack({ game: Game, items, modifiers, onGameEnd, onBack,
   const timerColor = ratio > 0.5 ? '#22c55e' : ratio > 0.25 ? '#f59e0b' : '#ef4444'
 
   return (
-    <GameEventsContext.Provider value={{ reportCorrect, reportWrong, isTerminated, modifierState }}>
+    <GameEventsContext.Provider value={{ reportCorrect, reportWrong, isTerminated }}>
       <div className="relative">
         <Game
           items={items}
@@ -116,15 +116,20 @@ export function ModifierStack({ game: Game, items, modifiers, onGameEnd, onBack,
           </div>
         )}
 
-        {/* Multiplier badge */}
-        {hasMultiplier && !endReason && modifierState.optionCount > 4 && (
-          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[70] pointer-events-none">
-            <span
-              className="font-extrabold text-white px-3 py-1 rounded-full text-sm"
-              style={{ background: moduleConfig.gradient }}
+        {/* Celebración al completar */}
+        {endReason === 'completed' && (
+          <div className="fixed inset-0 z-[75] flex items-center justify-center pointer-events-none">
+            <div
+              className="flex flex-col items-center gap-2 px-10 py-7 rounded-3xl"
+              style={{
+                background: moduleConfig.gradient,
+                boxShadow: `0 12px 48px ${moduleConfig.gradientFrom}88`,
+                animation: 'achievement-pop 0.38s cubic-bezier(0.34,1.56,0.64,1) forwards',
+              }}
             >
-              ×{modifierState.optionCount} opciones
-            </span>
+              <span style={{ fontSize: '3.2rem', lineHeight: 1 }}>⭐</span>
+              <p className="font-extrabold text-white text-2xl tracking-tight">¡Muy bien!</p>
+            </div>
           </div>
         )}
 
@@ -139,6 +144,14 @@ export function ModifierStack({ game: Game, items, modifiers, onGameEnd, onBack,
             </p>
           </div>
         )}
+
+        <style>{`
+          @keyframes achievement-pop {
+            0%   { transform: scale(0.55); opacity: 0 }
+            70%  { transform: scale(1.06); opacity: 1 }
+            100% { transform: scale(1);   opacity: 1 }
+          }
+        `}</style>
       </div>
     </GameEventsContext.Provider>
   )

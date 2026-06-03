@@ -10,7 +10,7 @@ import { SlideStep } from './steps/SlideStep'
 import { completeLesson } from '@/app/kids/play/_actions'
 import { SpeechConfigProvider } from './SpeechConfigContext'
 import { PronunciationResultPanel } from './PronunciationResultPanel'
-import { useMusicContext } from '@/components/kids/MusicProvider'
+import { useMusicContext } from '@/components/kids/audio/MusicProvider'
 import type { SpeechProvider } from '@strides/core/kids'
 
 export type { VocabItem, ExerciseData }

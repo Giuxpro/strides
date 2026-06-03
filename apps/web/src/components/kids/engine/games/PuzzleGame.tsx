@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { VocabItem, ModuleConfig, WordResult } from '@strides/core/kids'
 import { useGameEvents } from '../modifiers/ModifierContext'
+import { useSpeak } from '@/components/kids/audio/VoicePresetProvider'
 import { getVocabImageUrl } from '@strides/core/kids'
 
 interface Props {
@@ -77,6 +78,7 @@ interface DragState { pieceId: PieceId; x: number; y: number; size: number }
 
 export function PuzzleGame({ items, onComplete, onBack, moduleConfig, progress }: Props) {
   const { reportCorrect, reportWrong, isTerminated } = useGameEvents()
+  const speakFn = useSpeak()
 
   const [item] = useState(() => items[Math.floor(Math.random() * items.length)]!)
   const imageUrl = getVocabImageUrl(item)
@@ -100,7 +102,7 @@ export function PuzzleGame({ items, onComplete, onBack, moduleConfig, progress }
   useEffect(() => {
     if (!done) return
     const t1 = setTimeout(() => { setShowSparkles(true); setRevealing(true) }, 120)
-    const t2 = setTimeout(() => setShowWord(true), 700)
+    const t2 = setTimeout(() => { setShowWord(true); speakFn(item.text_en) }, 700)
     const t3 = setTimeout(() => setShowSparkles(false), 1600)
     const t4 = setTimeout(() => onComplete(1, 1, [{ vocabId: item.id, correct: true }]), 2800)
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4) }

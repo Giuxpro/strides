@@ -2,10 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { VocabItem } from './engine/LessonEngine'
+import type { VocabItem } from '../engine/LessonEngine'
 import type { ModuleConfig, GameResult } from '@strides/core/kids'
-import { GAME_POOL, type PoolEntry, type GameConfigs } from './engine/gamePool'
-import { ModifierStack } from './engine/modifiers/ModifierStack'
+import { GAME_POOL, type PoolEntry, type GameConfigs } from '../engine/gamePool'
+import { ModifierStack } from '../engine/modifiers/ModifierStack'
 import { recordVocabMastery, recordGamePlay } from '@/app/kids/play/_actions'
 import {
   ModifierPickerModal,
@@ -14,9 +14,9 @@ import {
   DEFAULT_MODIFIER_SELECTION,
   toModifierConfigs,
   modifierLabel,
-} from './ModifierPickerModal'
-import { PronunciationResultPanel } from './engine/PronunciationResultPanel'
-import { useMusicContext } from './MusicProvider'
+} from '../ui/ModifierPickerModal'
+import { PronunciationResultPanel } from '../engine/PronunciationResultPanel'
+import { useMusicContext } from '../audio/MusicProvider'
 import { NpsPrompt } from '@/components/feedback/NpsPrompt'
 
 interface Props {
@@ -52,9 +52,8 @@ export function KidsJugarTab({ vocab, moduleConfig, selectedChildId, availableMo
 
   // Mask out modifiers disabled by admin
   const effectiveModSel: ModifierSelection = {
-    timer:      (!availableModifiers || availableModifiers.timer      !== false) ? modSel.timer      : null,
-    lives:      (!availableModifiers || availableModifiers.lives      !== false) ? modSel.lives      : null,
-    multiplier: (!availableModifiers || availableModifiers.multiplier !== false) ? modSel.multiplier : false,
+    timer:  (!availableModifiers || availableModifiers.timer  !== false) ? modSel.timer  : null,
+    lives:  (!availableModifiers || availableModifiers.lives  !== false) ? modSel.lives  : null,
   }
   const effectivePool = GAME_POOL
     .filter(g => !activeGameIds || activeGameIds.includes(g.id))

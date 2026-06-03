@@ -4,10 +4,10 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { resolveThemeId, isVoicePreset, DEFAULT_VOICE_PRESET, isAudioConfig, DEFAULT_AUDIO_CONFIG } from '@strides/core/kids'
 import { getStorageUrl } from '@strides/core'
-import { ThemeButton } from '@/components/kids/ThemeButton'
-import { VoicePresetProvider } from '@/components/kids/VoicePresetProvider'
-import { MusicProvider } from '@/components/kids/MusicProvider'
-import { ClickSoundProvider } from '@/components/kids/ClickSoundProvider'
+import { ThemeButton } from '@/components/kids/ui/ThemeButton'
+import { VoicePresetProvider } from '@/components/kids/audio/VoicePresetProvider'
+import { MusicProvider } from '@/components/kids/audio/MusicProvider'
+import { ClickSoundProvider } from '@/components/kids/audio/ClickSoundProvider'
 
 const baloo = Baloo_2({
   subsets: ['latin'],

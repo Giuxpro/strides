@@ -20,14 +20,11 @@ const GAME_OPTIONS = [
 
 export function RetoConfigForm({ moduleId, initialGameId, initialModifiers, initialDiarioGameId }: Props) {
   const mods = initialModifiers ?? []
-  const initTimer      = mods.find((m): m is Extract<ModifierConfig, { type: 'timer' }> => m.type === 'timer')
-  const initLives      = mods.find((m): m is Extract<ModifierConfig, { type: 'lives' }> => m.type === 'lives')
-  const initMultiplier = mods.some(m => m.type === 'multiplier')
+  const initTimer = mods.find((m): m is Extract<ModifierConfig, { type: 'timer' }> => m.type === 'timer')
+  const initLives = mods.find((m): m is Extract<ModifierConfig, { type: 'lives' }> => m.type === 'lives')
 
-  const [timerOn,      setTimerOn]      = useState(!!initTimer)
-  const [livesOn,      setLivesOn]      = useState(!!initLives)
-  const [multiplierOn, setMultiplierOn] = useState(initMultiplier)
-  const hasTermination = timerOn || livesOn
+  const [timerOn, setTimerOn] = useState(!!initTimer)
+  const [livesOn, setLivesOn] = useState(!!initLives)
 
   const inputCls = 'bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-violet-500'
   const labelCls = 'text-sm text-gray-400'
@@ -107,23 +104,6 @@ export function RetoConfigForm({ moduleId, initialGameId, initialModifiers, init
           )}
         </div>
 
-        {/* Multiplier */}
-        <div className="space-y-1">
-          <label className={`flex items-center gap-2 ${hasTermination ? 'cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}>
-            <input
-              type="checkbox"
-              name="multiplier_enabled"
-              checked={multiplierOn && hasTermination}
-              onChange={e => setMultiplierOn(e.target.checked)}
-              disabled={!hasTermination}
-              className="accent-violet-500 w-4 h-4"
-            />
-            <span className="text-sm text-gray-300">⚡ Multiplicador</span>
-          </label>
-          {!hasTermination && (
-            <p className="text-xs text-gray-600 pl-6">Requiere temporizador o vidas activados</p>
-          )}
-        </div>
       </div>
 
       <div className="flex items-center gap-4 pt-2">

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import type { ModuleConfig } from '@strides/core/kids'
-import { useSpeak } from '@/components/kids/VoicePresetProvider'
+import { useSpeak } from '@/components/kids/audio/VoicePresetProvider'
 
 interface Props {
   title: string | null

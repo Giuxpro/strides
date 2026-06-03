@@ -1,9 +1,9 @@
 'use client'
 
-import type { VocabItem } from './engine/LessonEngine'
+import type { VocabItem } from '../engine/LessonEngine'
 import type { ModuleConfig } from '@strides/core/kids'
 import { getVocabImageUrl } from '@strides/core/kids'
-import { useSpeak } from './VoicePresetProvider'
+import { useSpeak } from '../audio/VoicePresetProvider'
 
 interface Props {
   vocab: VocabItem[]

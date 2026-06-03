@@ -12,7 +12,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { VocabItem, ModuleConfig, WordResult } from '@strides/core/kids'
 import { useGameEvents } from '../modifiers/ModifierContext'
-import { useSpeak } from '@/components/kids/VoicePresetProvider'
+import { useSpeak } from '@/components/kids/audio/VoicePresetProvider'
 
 interface Props {
   items: VocabItem[]

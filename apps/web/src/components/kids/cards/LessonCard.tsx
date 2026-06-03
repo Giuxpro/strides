@@ -3,7 +3,7 @@
 import { useRef } from 'react'
 import Link from 'next/link'
 import type { Lesson } from '@strides/db'
-import { AnimatedStar } from './AnimatedStar'
+import { AnimatedStar } from '../ui/AnimatedStar'
 import type { LessonLockState } from '@strides/core'
 import { getStorageUrl } from '@strides/core'
 
@@ -133,8 +133,8 @@ export function LessonCard({ lesson, moduleSlug, stars, previousStars, animation
     return (
       <Link
         href={href}
-        className="block shrink-0 group animate-pop-in select-none"
-        style={{ animationDelay, width: CARD_W, flex: `0 0 ${CARD_W}px` }}
+        className="block shrink-0 group animate-pop-in select-none w-full sm:w-[220px]"
+        style={{ animationDelay, flex: `0 0 ${CARD_W}px` }}
         onPointerDown={() => !isLocked && audioUrl && playAudio(audioUrl)}
       >
         {cardContent}
@@ -144,8 +144,8 @@ export function LessonCard({ lesson, moduleSlug, stars, previousStars, animation
 
   return (
     <div
-      className="block shrink-0 animate-pop-in select-none cursor-not-allowed"
-      style={{ animationDelay, width: CARD_W, flex: `0 0 ${CARD_W}px` }}
+      className="block shrink-0 animate-pop-in select-none cursor-not-allowed w-full sm:w-[220px]"
+      style={{ animationDelay, flex: `0 0 ${CARD_W}px` }}
     >
       {cardContent}
     </div>

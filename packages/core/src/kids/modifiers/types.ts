@@ -1,7 +1,6 @@
 export type ModifierConfig =
   | { type: 'timer'; seconds: number }
   | { type: 'lives'; count: number }
-  | { type: 'multiplier' }
 
 export type VocabSkillType = 'recognition' | 'pronunciation' | 'spelling'
 
@@ -19,8 +18,4 @@ export interface GameResult {
   total: number
   reason: 'completed' | 'timeout' | 'no-lives'
   wordResults?: WordResult[]
-}
-
-export interface ModifierState {
-  optionCount: number
 }

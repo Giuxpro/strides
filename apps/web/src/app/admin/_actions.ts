@@ -419,9 +419,8 @@ export async function updateSettings(formData: FormData) {
       } as Json },
     { key: 'voice_preset',    value: formData.get('voice_preset') as string },
     { key: 'available_modifiers', value: {
-        timer:      formData.get('modifier_timer') === 'on',
-        lives:      formData.get('modifier_lives') === 'on',
-        multiplier: formData.get('modifier_multiplier') === 'on',
+        timer: formData.get('modifier_timer') === 'on',
+        lives: formData.get('modifier_lives') === 'on',
       } as Json },
     { key: 'feedback_prompt_config', value: {
         enabled:         formData.get('nps_enabled') === 'true',
@@ -580,10 +579,6 @@ export async function updateModuleRetoConfig(formData: FormData) {
   if (formData.get('lives_enabled') === 'on') {
     modifiers.push({ type: 'lives', count: Number(formData.get('lives_count')) })
   }
-  if (formData.get('multiplier_enabled') === 'on' && modifiers.length > 0) {
-    modifiers.push({ type: 'multiplier' })
-  }
-
   const diarioRaw = formData.get('diario_game_id') as string
   const diario_game_id = diarioRaw === 'auto' ? null : diarioRaw
 

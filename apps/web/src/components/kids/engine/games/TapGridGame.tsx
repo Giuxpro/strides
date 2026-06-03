@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { VocabItem, ModuleConfig, WordResult } from '@strides/core/kids'
 import { useGameEvents } from '../modifiers/ModifierContext'
+import { useSpeak } from '@/components/kids/audio/VoicePresetProvider'
 import { getVocabImageUrl } from '@strides/core/kids'
 
 interface Card {
@@ -45,6 +46,7 @@ const PAIR_COLORS = [
 
 export function TapGridGame({ items, onComplete, onBack, moduleConfig, progress }: Props) {
   const { reportCorrect, reportWrong, isTerminated } = useGameEvents()
+  const speakFn = useSpeak()
 
   const [cards] = useState<Card[]>(() =>
     shuffle([
@@ -82,6 +84,7 @@ export function TapGridGame({ items, onComplete, onBack, moduleConfig, progress 
 
     if (isCorrect) {
       reportCorrect()
+      speakFn(card.text_en)
       const next = pairsFound + 1
       setMatchedIds(prev => new Set([...prev, card.vocabId]))
       setSelected(null)

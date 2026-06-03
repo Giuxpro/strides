@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
-import { KidsMapScene } from '@/components/kids/KidsMapScene'
+import { KidsMapScene } from '@/components/kids/map/KidsMapScene'
 import {
   computeProgressiveUnlock,
   type LockConfig,

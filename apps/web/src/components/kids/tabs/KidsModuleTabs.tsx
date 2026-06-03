@@ -2,16 +2,16 @@
 
 import { useState } from 'react'
 import type { Lesson } from '@strides/db'
-import type { VocabItem } from './engine/LessonEngine'
+import type { VocabItem } from '../engine/LessonEngine'
 import type { ModuleConfig, ModifierConfig } from '@strides/core/kids'
-import { LessonCard } from './LessonCard'
+import { LessonCard } from '../cards/LessonCard'
 import { KidsJugarTab } from './KidsJugarTab'
 import { KidsRetosTab } from './KidsRetosTab'
 import { KidsPalabrasTab } from './KidsPalabrasTab'
-import { KidsBottomNav, type TabId } from './KidsBottomNav'
-import type { AvailableModifiers } from './ModifierPickerModal'
-import type { GameConfigs } from './engine/gamePool'
-import { SpeechConfigProvider } from './engine/SpeechConfigContext'
+import { KidsBottomNav, type TabId } from '../ui/KidsBottomNav'
+import type { AvailableModifiers } from '../ui/ModifierPickerModal'
+import type { GameConfigs } from '../engine/gamePool'
+import { SpeechConfigProvider } from '../engine/SpeechConfigContext'
 import type { SpeechProvider } from '@strides/core/kids'
 import { NpsPrompt } from '@/components/feedback/NpsPrompt'
 import type { LessonLockState } from '@strides/core'
@@ -61,8 +61,8 @@ export function KidsModuleTabs({
 
       {tab === 'aprender' && (
         <div
-          className="flex flex-wrap gap-4 justify-center items-start"
-          style={{ padding: '1rem 2rem 3rem' }}
+          className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:gap-4 sm:justify-center sm:items-start"
+          style={{ padding: '1rem 1rem 3rem' }}
         >
           {lessons.map((lesson, index) => (
             <LessonCard

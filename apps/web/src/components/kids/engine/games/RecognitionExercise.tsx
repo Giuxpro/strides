@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import type { VocabItem } from '../LessonEngine'
 import type { ModuleConfig, WordResult } from '@strides/core/kids'
 import { useGameEvents } from '../modifiers/ModifierContext'
-import { useSpeak } from '@/components/kids/VoicePresetProvider'
+import { useSpeak } from '@/components/kids/audio/VoicePresetProvider'
 import { getVocabImageUrl } from '@strides/core/kids'
 
 interface Props {
@@ -49,7 +49,7 @@ const SUNBURST = [
 ].join(', ')
 
 export function RecognitionExercise({ items, onComplete, onBack, moduleConfig, progress }: Props) {
-  const { reportCorrect, reportWrong, isTerminated, modifierState } = useGameEvents()
+  const { reportCorrect, reportWrong, isTerminated } = useGameEvents()
   const speakFn   = useSpeak()
   const [questions] = useState(() => shuffle([...items]))
   const [currentQ,  setCurrentQ]  = useState(0)
@@ -59,7 +59,7 @@ export function RecognitionExercise({ items, onComplete, onBack, moduleConfig, p
   const [speaking,  setSpeaking]  = useState(false)
 
   const question    = questions[currentQ]
-  const optionCount = Math.min(modifierState.optionCount, items.length)
+  const optionCount = Math.min(4, items.length)
 
   function speak(text: string, slow = false) {
     setSpeaking(true)
@@ -97,10 +97,7 @@ export function RecognitionExercise({ items, onComplete, onBack, moduleConfig, p
 
   if (!question || options.length === 0) return null
 
-  // Móvil: siempre 2 cols para cards grandes y cómodas; desktop: 4 si hay muchas opciones
-  const colClass = optionCount <= 4
-    ? 'grid-cols-2'
-    : 'grid-cols-2 sm:grid-cols-4'
+  const colClass = 'grid-cols-2'
 
   return (
     <div className="relative min-h-screen flex flex-col overflow-x-hidden">

@@ -6,20 +6,17 @@ import type { ModuleConfig, ModifierConfig } from '@strides/core/kids'
 export interface ModifierSelection {
   timer: number | null    // null = off; 30 | 60 | 120 segundos
   lives: number | null    // null = off; 1 | 3 | 5
-  multiplier: boolean
 }
 
 export const DEFAULT_MODIFIER_SELECTION: ModifierSelection = {
   timer: null,
   lives: null,
-  multiplier: false,
 }
 
 export function toModifierConfigs(sel: ModifierSelection): ModifierConfig[] {
   const configs: ModifierConfig[] = []
   if (sel.timer !== null) configs.push({ type: 'timer', seconds: sel.timer })
   if (sel.lives !== null) configs.push({ type: 'lives', count: sel.lives })
-  if (sel.multiplier && (sel.timer !== null || sel.lives !== null)) configs.push({ type: 'multiplier' })
   return configs
 }
 
@@ -27,14 +24,12 @@ export function modifierLabel(sel: ModifierSelection): string {
   const parts: string[] = []
   if (sel.timer !== null) parts.push(sel.timer >= 60 ? `⏱️ ${sel.timer / 60}min` : `⏱️ ${sel.timer}s`)
   if (sel.lives !== null) parts.push(`❤️ ×${sel.lives}`)
-  if (sel.multiplier && (sel.timer !== null || sel.lives !== null)) parts.push('⚡')
   return parts.length > 0 ? parts.join(' · ') : 'Normal'
 }
 
 export type AvailableModifiers = {
   timer?: boolean
   lives?: boolean
-  multiplier?: boolean
 }
 
 interface Props {
@@ -60,9 +55,8 @@ const LIVES_OPTIONS: { label: string; value: number | null }[] = [
 ]
 
 export function ModifierPickerModal({ value, onChange, onClose, moduleConfig, availableModifiers }: Props) {
-  const timerOn      = !availableModifiers || availableModifiers.timer      !== false
-  const livesOn      = !availableModifiers || availableModifiers.lives      !== false
-  const multiplierOn = !availableModifiers || availableModifiers.multiplier !== false
+  const timerOn = !availableModifiers || availableModifiers.timer !== false
+  const livesOn = !availableModifiers || availableModifiers.lives !== false
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
@@ -74,8 +68,6 @@ export function ModifierPickerModal({ value, onChange, onClose, moduleConfig, av
     setVisible(false)
     setTimeout(onClose, 280)
   }
-
-  const hasTermination = value.timer !== null || value.lives !== null
 
   function pillStyle(active: boolean) {
     return {
@@ -146,38 +138,6 @@ export function ModifierPickerModal({ value, onChange, onClose, moduleConfig, av
                 onTap={() => onChange({ ...value, lives: opt.value })}
               />
             ))}
-          </Section>
-        )}
-
-        {/* Multiplier */}
-        {multiplierOn && (
-          <Section label="⚡ Multiplicador">
-            <div className="flex items-center gap-2">
-              {(['off', 'on'] as const).map(v => {
-                const active = v === 'on' ? value.multiplier : !value.multiplier
-                const disabled = v === 'on' && !hasTermination
-                return (
-                  <button
-                    key={v}
-                    disabled={disabled}
-                    onClick={() => !disabled && onChange({ ...value, multiplier: v === 'on' })}
-                    className="px-4 py-1.5 rounded-xl font-bold text-xs transition-all active:scale-95"
-                    style={{
-                      ...pillStyle(active && !disabled),
-                      opacity: disabled ? 0.35 : 1,
-                      cursor: disabled ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    {v === 'off' ? 'Off' : 'On ⚡'}
-                  </button>
-                )
-              })}
-            </div>
-            {!hasTermination && (
-              <p className="text-xs mt-1.5 w-full" style={{ color: 'var(--kids-text-muted)' }}>
-                Requiere tiempo o vidas activados
-              </p>
-            )}
           </Section>
         )}
 

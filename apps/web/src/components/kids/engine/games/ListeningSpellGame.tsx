@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { VocabItem, ModuleConfig, WordResult } from '@strides/core/kids'
 import { useGameEvents } from '../modifiers/ModifierContext'
-import { useSpeak } from '@/components/kids/VoicePresetProvider'
+import { useSpeak } from '@/components/kids/audio/VoicePresetProvider'
 import { getVocabImageUrl } from '@strides/core/kids'
 
 interface Props {

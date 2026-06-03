@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import type { VocabItem, ModuleConfig, WordResult } from '@strides/core/kids'
 import { useGameEvents } from '../modifiers/ModifierContext'
+import { useSpeak } from '@/components/kids/audio/VoicePresetProvider'
 import { getVocabImageUrl } from '@strides/core/kids'
 
 interface Card {
@@ -79,6 +80,7 @@ const PAIR_COLORS = [
 
 export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }: Props) {
   const { reportCorrect, reportWrong, isTerminated } = useGameEvents()
+  const speakFn = useSpeak()
 
   const [cards] = useState<Card[]>(() =>
     shuffle([
@@ -111,6 +113,7 @@ export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }
 
       if (a.pairId === b.pairId && a.lang !== b.lang) {
         reportCorrect()
+        speakFn(a.enText)
         setTimeout(() => {
           setMatched(prev => new Set([...prev, a.pairId]))
           setFlipped([])

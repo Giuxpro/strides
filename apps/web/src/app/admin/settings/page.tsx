@@ -31,8 +31,8 @@ export default async function AdminSettingsPage() {
   const previewConfig = (s['preview_config'] as { scope: 'module' | 'lessons'; lessons_count: number }) ?? { scope: 'module' as const, lessons_count: 3 }
   const lockConfig = (s['lock_config'] as { enabled: boolean; applies_to: string[] }) ?? { enabled: false, applies_to: ['preview', 'trial'] }
   const feedbackPrompt = (s['feedback_prompt_config'] as { enabled: boolean; trigger: 'lesson' | 'module' | 'games' | 'admin_test'; games_threshold: number; cooldown_days: number }) ?? { enabled: false, trigger: 'lesson' as const, games_threshold: 10, cooldown_days: 30 }
-  const availMods = (s['available_modifiers'] as { timer?: boolean; lives?: boolean; multiplier?: boolean }) ??
-    { timer: true, lives: true, multiplier: true }
+  const availMods = (s['available_modifiers'] as { timer?: boolean; lives?: boolean }) ??
+    { timer: true, lives: true }
   const gameConfigs = (s['game_configs'] as Record<string, { minItems?: number; maxItems?: number }>) ?? {}
   const voicePreset = isVoicePreset(s['voice_preset']) ? s['voice_preset'] : DEFAULT_VOICE_PRESET
   const speechProvider = isSpeechProvider(s['speech_provider']) ? s['speech_provider'] : DEFAULT_SPEECH_PROVIDER
@@ -263,7 +263,6 @@ export default async function AdminSettingsPage() {
                   {([
                     { name: 'modifier_timer', label: 'Temporizador', hint: 'Partidas con cuenta atrás' },
                     { name: 'modifier_lives', label: 'Vidas', hint: 'Número de errores permitidos' },
-                    { name: 'modifier_multiplier', label: 'Multiplicador', hint: 'Duplica opciones (requiere tiempo o vidas)' },
                   ] as const).map(({ name, label, hint }) => (
                     <label key={name} className="flex items-start gap-3 cursor-pointer group">
                       <input

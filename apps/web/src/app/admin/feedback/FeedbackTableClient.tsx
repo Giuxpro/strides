@@ -1,7 +1,7 @@
 'use client'
 
-import { AdminSearch } from '@/components/admin/AdminSearch'
-import { AdminPagination } from '@/components/admin/AdminPagination'
+import { AdminSearch } from '@/components/admin/layout/AdminSearch'
+import { AdminPagination } from '@/components/admin/layout/AdminPagination'
 import { updateFeedbackStatus } from '@/app/admin/_actions'
 
 const TYPE_META: Record<string, { emoji: string; label: string; color: string }> = {

@@ -207,14 +207,14 @@ export function KidsJugarTab({ vocab, moduleConfig, selectedChildId, availableMo
 
         {/* Game cards */}
         <div className="flex flex-wrap gap-5 justify-center">
-          {effectivePool.map(game => {
+          {effectivePool.map((game, idx) => {
             const enough = vocab.length >= game.minItems
             return (
               <button
                 key={game.id}
                 onClick={() => enough && startGame(game)}
                 disabled={!enough}
-                className="flex flex-col items-center gap-3 p-6 rounded-3xl transition-all duration-150 hover:-translate-y-1 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="relative flex flex-col items-center gap-3 p-6 rounded-3xl transition-all duration-150 hover:-translate-y-1 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{
                   background: 'rgba(255,253,245,0.85)',
                   backdropFilter: 'blur(10px)',
@@ -222,12 +222,22 @@ export function KidsJugarTab({ vocab, moduleConfig, selectedChildId, availableMo
                   width: 160,
                 }}
               >
+                {/* Numeral */}
+                <span
+                  className="absolute top-2.5 right-3 font-bold text-[10px] leading-none"
+                  style={{ color: '#c0a080' }}
+                >
+                  #{idx + 1}
+                </span>
                 <span style={{ fontSize: '3rem', lineHeight: 1 }}>{game.emoji}</span>
                 <div className="text-center">
                   <p className="font-extrabold text-base" style={{ color: '#4a3728' }}>
+                    {game.titleEn}
+                  </p>
+                  <p className="text-xs font-semibold mt-0.5" style={{ color: '#9e8e7e' }}>
                     {game.title}
                   </p>
-                  <p className="text-xs mt-0.5" style={{ color: '#9e8e7e' }}>
+                  <p className="text-[10px] mt-1" style={{ color: '#b8a898' }}>
                     {game.description}
                   </p>
                 </div>

@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { AdminSearch } from '@/components/admin/AdminSearch'
-import { AdminPagination } from '@/components/admin/AdminPagination'
+import { AdminSearch } from '@/components/admin/layout/AdminSearch'
+import { AdminPagination } from '@/components/admin/layout/AdminPagination'
 
 const TYPE_LABELS: Record<string, string> = {
   trial:               'Trial',

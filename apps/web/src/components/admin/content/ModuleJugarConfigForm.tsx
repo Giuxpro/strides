@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import { updateModuleJugarConfig } from '@/app/admin/_actions'
 import { GAME_REGISTRY as GAME_POOL } from '@strides/core/kids'
-import { SubmitButton } from './SubmitButton'
-import { AdminPagination } from './AdminPagination'
+import { SubmitButton } from '@/components/admin/shared/SubmitButton'
+import { AdminPagination } from '@/components/admin/layout/AdminPagination'
 
 const PAGE_SIZE = 10
 

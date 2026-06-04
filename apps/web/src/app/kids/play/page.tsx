@@ -69,12 +69,14 @@ export default async function KidsPlayPage() {
   }
 
   return (
-    <KidsMapScene
-      modules={sortedModules}
-      childName={child?.name ?? null}
-      childAvatar={child?.avatar_url ?? '🧒'}
-      currentStreak={streak?.current_streak ?? 0}
-      moduleLockStates={moduleLockStates}
-    />
+    <>
+      <KidsMapScene
+        modules={sortedModules}
+        childName={child?.name ?? null}
+        childAvatar={child?.avatar_url ?? '🧒'}
+        currentStreak={streak?.current_streak ?? 0}
+        moduleLockStates={moduleLockStates}
+      />
+    </>
   )
 }

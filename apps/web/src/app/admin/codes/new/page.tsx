@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { NewCodeForm } from '@/components/admin/NewCodeForm'
+import { NewCodeForm } from '@/components/admin/codes/NewCodeForm'
 
 export default function NewCodePage() {
   return (

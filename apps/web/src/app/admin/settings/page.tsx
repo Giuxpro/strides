@@ -1,15 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { updateSettings } from '@/app/admin/_actions'
-import { AIModelSelector } from '@/components/admin/AIModelSelector'
-import { SpeechProviderSelector } from '@/components/admin/SpeechProviderSelector'
-import { AcquisitionSelector } from '@/components/admin/AcquisitionSelector'
-import { SubmitButton } from '@/components/admin/SubmitButton'
+import { AIModelSelector } from '@/components/admin/ai/AIModelSelector'
+import { SpeechProviderSelector } from '@/components/admin/ai/SpeechProviderSelector'
+import { AcquisitionSelector } from '@/components/admin/codes/AcquisitionSelector'
+import { SubmitButton } from '@/components/admin/shared/SubmitButton'
 import { GAME_REGISTRY, VOICE_PRESET_CONFIGS, isVoicePreset, DEFAULT_VOICE_PRESET, isSpeechProvider, DEFAULT_SPEECH_PROVIDER, isAudioConfig, DEFAULT_AUDIO_CONFIG } from '@strides/core/kids'
-import { MusicUploaderPanel } from '@/components/admin/MusicUploaderPanel'
-import { GlobalDiscountPanel } from '@/components/admin/GlobalDiscountPanel'
-import { FeedbackPromptPanel } from '@/components/admin/FeedbackPromptPanel'
+import { MusicUploaderPanel } from '@/components/admin/settings/MusicUploaderPanel'
+import { GlobalDiscountPanel } from '@/components/admin/codes/GlobalDiscountPanel'
+import { FeedbackPromptPanel } from '@/components/admin/settings/FeedbackPromptPanel'
 import { getAllFlows, getAIUsageToday, getAllSettings } from '@strides/db'
+import { getModel } from '@strides/core'
 
 export default async function AdminSettingsPage() {
   const supabase = createClient()
@@ -19,6 +20,12 @@ export default async function AdminSettingsPage() {
 
   const { data: allFlows } = await getAllFlows(supabase)
   const aiUsageToday = await getAIUsageToday(createAdminClient())
+
+  const whisperRow = aiUsageToday.byModel.find(m => m.model === 'whisper-1')
+  const whisperUsage = whisperRow
+    ? { requestsToday: whisperRow.requests, inputTokensToday: 0, outputTokensToday: 0, totalDurationMsToday: whisperRow.totalDurationMs, byModel: [whisperRow] }
+    : { requestsToday: 0, inputTokensToday: 0, outputTokensToday: 0, totalDurationMsToday: 0, byModel: [] }
+  const whisperModel = getModel('whisper-1')!
 
   const aiProvider = (s['ai_provider'] as string) ?? 'anthropic'
   const aiModel    = (s['ai_model']    as string) ?? 'claude-haiku-4-5'
@@ -76,7 +83,11 @@ export default async function AdminSettingsPage() {
             {/* Reconocimiento de voz */}
             <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-5">
               <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Reconocimiento de voz</h2>
-              <SpeechProviderSelector initialProvider={speechProvider} />
+              <SpeechProviderSelector
+                initialProvider={speechProvider}
+                whisperUsage={whisperUsage}
+                whisperModel={whisperModel}
+              />
             </section>
 
             {/* Bloqueo progresivo */}

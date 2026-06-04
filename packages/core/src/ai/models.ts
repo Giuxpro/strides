@@ -4,6 +4,8 @@ export interface ModelMetadata {
   displayName: string
   inputCostPerMTok: number
   outputCostPerMTok: number
+  /** Para modelos de audio (ej. Whisper): costo por minuto en USD */
+  costPerMinute?: number
   contextWindow: number
   hasReasoning: boolean
   hasFreeTier: boolean
@@ -162,6 +164,23 @@ export const MODELS: ModelMetadata[] = [
     bestFor: ['máxima calidad', 'razonamiento complejo', 'currículos educativos avanzados'],
     limitations: ['el más caro de Google', 'latencia mayor'],
     description: 'El modelo más capaz de Google. Para contenido educativo de primer nivel.',
+  },
+
+  // ── OpenAI Audio ───────────────────────────────────────────────────────────
+  {
+    id: 'whisper-1',
+    provider: 'openai',
+    displayName: 'Whisper-1',
+    inputCostPerMTok: 0,
+    outputCostPerMTok: 0,
+    costPerMinute: 0.006,
+    contextWindow: 0,
+    hasReasoning: false,
+    hasFreeTier: false,
+    speed: 'fast',
+    bestFor: ['reconocimiento de voz', 'evaluación de pronunciación'],
+    limitations: ['solo audio, no texto'],
+    description: 'Modelo de transcripción de OpenAI. Se usa para evaluar pronunciación de los niños.',
   },
 
   // ── Groq (open-source, siempre gratuito) ──────────────────────────────────

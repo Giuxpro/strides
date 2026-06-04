@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getFlowById, getScreensByFlowId } from '@strides/db'
 import { updateOnboardingFlow, toggleOnboardingPublished, deleteOnboardingScreen } from '../_actions'
-import { SubmitButton } from '@/components/admin/SubmitButton'
+import { SubmitButton } from '@/components/admin/shared/SubmitButton'
 
 const I = 'w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500'
 const L = 'block text-sm text-gray-400 mb-1.5'

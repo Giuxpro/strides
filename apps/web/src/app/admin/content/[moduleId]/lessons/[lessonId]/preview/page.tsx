@@ -3,9 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { getModuleConfig } from '@strides/core/kids'
 import { LessonEngine, type LessonStep, type ExerciseData, type VocabItem } from '@/components/kids/engine/LessonEngine'
 import { VoicePresetProvider } from '@/components/kids/audio/VoicePresetProvider'
-import { LessonPreviewFrame } from '@/components/admin/LessonPreviewFrame'
-import { LessonPreviewControls } from '@/components/admin/LessonPreviewControls'
-import type { PreviewDevice, PreviewView } from '@/components/admin/LessonPreviewControls'
+import { LessonPreviewFrame } from '@/components/admin/content/LessonPreviewFrame'
+import { LessonPreviewControls } from '@/components/admin/content/LessonPreviewControls'
+import type { PreviewDevice, PreviewView } from '@/components/admin/content/LessonPreviewControls'
 
 interface Props {
   params: { moduleId: string; lessonId: string }

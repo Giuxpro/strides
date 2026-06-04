@@ -1,5 +1,6 @@
 'use server'
 
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
@@ -164,4 +165,15 @@ export async function completeDailyChallenge(
       { child_id: childId, module_id: moduleId, date, stars },
       { onConflict: 'child_id,module_id,date' },
     )
+}
+
+export async function logKidSession(
+  childId: string | undefined,
+  deviceType: 'mobile' | 'tablet' | 'desktop',
+) {
+  const db = createAdminClient()
+  await db.from('kid_sessions').insert({
+    child_id: childId ?? null,
+    device_type: deviceType,
+  })
 }

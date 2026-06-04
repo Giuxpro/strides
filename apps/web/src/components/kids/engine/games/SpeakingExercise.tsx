@@ -294,6 +294,7 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
   const [cardColor, setCardColor] = useState(() => PAIR_COLORS[Math.floor(Math.random() * PAIR_COLORS.length)]!)
   const recognitionRef = useRef<RecognitionInstance | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recordingStartRef = useRef<number>(0)
   const sessionRef = useRef(0)
   const lowConfListRef = useRef<(boolean | undefined)[]>([])
 
@@ -349,8 +350,10 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
     const chunks: Blob[] = []
     const recorder = new MediaRecorder(stream)
     mediaRecorderRef.current = recorder
+    recordingStartRef.current = Date.now()
     recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data) }
     recorder.onstop = async () => {
+      const durationMs = Date.now() - recordingStartRef.current
       stream.getTracks().forEach(t => t.stop())
       setMicState('processing')
       const blob = new Blob(chunks, { type: recorder.mimeType })
@@ -359,6 +362,7 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
       const body = new FormData()
       body.append('audio', file)
       body.append('expected', question.text_en)
+      body.append('duration_ms', String(durationMs))
       try {
         const res = await fetch('/api/speech/evaluate', { method: 'POST', body })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)

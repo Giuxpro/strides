@@ -48,8 +48,9 @@ function Row({ label, value }: { label: string; value: string }) {
 export function AIUsageRing({ usage, model }: Props) {
   const [open, setOpen] = useState(false)
 
+  const isAudioModel = !!model.costPerMinute
   const isFreeTier = model.hasFreeTier && model.freeTierLimits
-  const isFree = model.inputCostPerMTok === 0
+  const isFree = model.inputCostPerMTok === 0 && !model.costPerMinute
 
   const limit = isFreeTier ? model.freeTierLimits!.requestsPerDay : null
   const current = usage.requestsToday
@@ -58,10 +59,13 @@ export function AIUsageRing({ usage, model }: Props) {
   const color = pct > 0.85 ? '#ef4444' : pct > 0.6 ? '#f59e0b' : '#8b5cf6'
 
   const totalTokens = usage.inputTokensToday + usage.outputTokensToday
-  const estimatedCost = isFree
-    ? 0
-    : ((usage.inputTokensToday / 1_000_000) * model.inputCostPerMTok) +
-      ((usage.outputTokensToday / 1_000_000) * model.outputCostPerMTok)
+  const totalDurationMin = (usage.totalDurationMsToday ?? 0) / 60_000
+  const estimatedCost = isAudioModel
+    ? totalDurationMin * model.costPerMinute!
+    : isFree
+      ? 0
+      : ((usage.inputTokensToday / 1_000_000) * model.inputCostPerMTok) +
+        ((usage.outputTokensToday / 1_000_000) * model.outputCostPerMTok)
 
   return (
     <div className="relative">
@@ -96,9 +100,15 @@ export function AIUsageRing({ usage, model }: Props) {
 
           <div className="space-y-1.5">
             <Row label="Requests hoy" value={limit ? `${current} / ${limit}` : String(current)} />
-            <Row label="Tokens entrada" value={formatTokens(usage.inputTokensToday)} />
-            <Row label="Tokens salida" value={formatTokens(usage.outputTokensToday)} />
-            <Row label="Total tokens" value={formatTokens(totalTokens)} />
+            {isAudioModel ? (
+              <Row label="Duración total" value={`${totalDurationMin.toFixed(1)} min`} />
+            ) : (
+              <>
+                <Row label="Tokens entrada" value={formatTokens(usage.inputTokensToday)} />
+                <Row label="Tokens salida" value={formatTokens(usage.outputTokensToday)} />
+                <Row label="Total tokens" value={formatTokens(totalTokens)} />
+              </>
+            )}
           </div>
 
           <div className="border-t border-gray-800 pt-2">

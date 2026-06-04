@@ -31,6 +31,7 @@ export interface GameProps {
 export interface PoolEntry {
   id: string
   emoji: string
+  titleEn: string
   title: string
   description: string
   minItems: number

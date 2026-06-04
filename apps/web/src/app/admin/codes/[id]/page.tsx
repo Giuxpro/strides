@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getAccessCodeById, getRedemptionsByCodeId } from '@strides/db'
 import { toggleCodeActive, deleteAccessCode } from '@/app/admin/codes/_actions'
-import { CodesRealtimeRefresher } from '@/components/admin/CodesRealtimeRefresher'
+import { CodesRealtimeRefresher } from '@/components/admin/codes/CodesRealtimeRefresher'
 
 const TYPE_LABELS: Record<string, string> = {
   trial:               'Trial',

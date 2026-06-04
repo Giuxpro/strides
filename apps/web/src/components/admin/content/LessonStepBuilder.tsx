@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { addLessonStep, updateLessonStep, deleteLessonStep, reorderLessonSteps } from '@/app/admin/_actions'
 import { VocabPicker, type VocabItemWithUsage } from './VocabPicker'
 import { GAME_REGISTRY as GAME_POOL } from '@strides/core/kids'
-import { SubmitButton } from './SubmitButton'
+import { SubmitButton } from '@/components/admin/shared/SubmitButton'
 
 type StepType = 'video' | 'slide' | 'exercise'
 

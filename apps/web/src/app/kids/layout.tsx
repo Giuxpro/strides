@@ -8,6 +8,7 @@ import { ThemeButton } from '@/components/kids/ui/ThemeButton'
 import { VoicePresetProvider } from '@/components/kids/audio/VoicePresetProvider'
 import { MusicProvider } from '@/components/kids/audio/MusicProvider'
 import { ClickSoundProvider } from '@/components/kids/audio/ClickSoundProvider'
+import { PresenceTracker } from '@/components/kids/PresenceTracker'
 
 const baloo = Baloo_2({
   subsets: ['latin'],
@@ -40,6 +41,7 @@ export default async function KidsLayout({ children }: { children: React.ReactNo
   }
 
   const themeId = resolveThemeId(cookies().get('kids_theme')?.value)
+  const selectedChildId = cookies().get('selected_child_id')?.value
 
   const [{ data: voiceRow }, { data: audioRow }] = await Promise.all([
     supabase.from('settings').select('value').eq('key', 'voice_preset').maybeSingle(),
@@ -72,6 +74,7 @@ export default async function KidsLayout({ children }: { children: React.ReactNo
         >
           <VoicePresetProvider preset={voicePreset}>
             {children}
+            <PresenceTracker childId={selectedChildId} />
           </VoicePresetProvider>
           <ThemeButton currentTheme={themeId} />
         </ClickSoundProvider>

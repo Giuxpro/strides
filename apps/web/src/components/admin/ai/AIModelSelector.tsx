@@ -85,14 +85,15 @@ interface Props {
 }
 
 function filterUsageForModel(all: AIUsageSummary | undefined, modelId: string): AIUsageSummary {
-  const empty: AIUsageSummary = { requestsToday: 0, inputTokensToday: 0, outputTokensToday: 0, byModel: [] }
+  const empty: AIUsageSummary = { requestsToday: 0, inputTokensToday: 0, outputTokensToday: 0, totalDurationMsToday: 0, byModel: [] }
   if (!all) return empty
   const row = all.byModel.find(m => m.model === modelId)
   if (!row) return empty
   return {
-    requestsToday:   row.requests,
-    inputTokensToday:  row.inputTokens,
-    outputTokensToday: row.outputTokens,
+    requestsToday:        row.requests,
+    inputTokensToday:     row.inputTokens,
+    outputTokensToday:    row.outputTokens,
+    totalDurationMsToday: row.totalDurationMs,
     byModel: [row],
   }
 }

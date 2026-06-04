@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { AdminSidebar } from '@/components/admin/AdminSidebar'
+import { AdminSidebar } from '@/components/admin/layout/AdminSidebar'
 
 const NAV = [
-  { href: '/admin',            label: 'Dashboard' },
+  { href: '/admin/dashboard',  label: 'Dashboard' },
   { href: '/admin/content',    label: 'Contenido' },
   { href: '/admin/onboarding', label: 'Onboarding' },
   { href: '/admin/templates',  label: 'Plantillas' },

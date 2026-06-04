@@ -46,8 +46,8 @@ export function LessonCard({ lesson, moduleSlug, stars, previousStars, animation
         className={`transition-all duration-150 ${!isLocked ? 'group-hover:-translate-y-2 group-hover:scale-[1.04] active:translate-y-1 active:scale-[0.97]' : ''}`}
         style={{
           position: 'relative',
-          width: CARD_W,
-          height: CARD_H,
+          width: '100%',
+          aspectRatio: `${CARD_W} / ${CARD_H}`,
           overflow: 'hidden',
           borderRadius: 14,
           filter: isLocked ? undefined : 'drop-shadow(0 10px 22px rgba(0,0,0,0.30))',
@@ -134,7 +134,7 @@ export function LessonCard({ lesson, moduleSlug, stars, previousStars, animation
       <Link
         href={href}
         className="block shrink-0 group animate-pop-in select-none w-full sm:w-[220px]"
-        style={{ animationDelay, flex: `0 0 ${CARD_W}px` }}
+        style={{ animationDelay }}
         onPointerDown={() => !isLocked && audioUrl && playAudio(audioUrl)}
       >
         {cardContent}
@@ -145,7 +145,7 @@ export function LessonCard({ lesson, moduleSlug, stars, previousStars, animation
   return (
     <div
       className="block shrink-0 animate-pop-in select-none cursor-not-allowed w-full sm:w-[220px]"
-      style={{ animationDelay, flex: `0 0 ${CARD_W}px` }}
+      style={{ animationDelay }}
     >
       {cardContent}
     </div>

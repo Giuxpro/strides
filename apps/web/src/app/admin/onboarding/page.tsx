@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getFlowsAdmin, getScreenCountsByFlowIds, getSetting } from '@strides/db'
-import { AdminSearch } from '@/components/admin/AdminSearch'
-import { AdminPagination } from '@/components/admin/AdminPagination'
+import { AdminSearch } from '@/components/admin/layout/AdminSearch'
+import { AdminPagination } from '@/components/admin/layout/AdminPagination'
 import { deleteOnboardingFlow } from './_actions'
 
 const PAGE_SIZE = 20

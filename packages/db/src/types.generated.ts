@@ -79,6 +79,7 @@ export type Database = {
       ai_usage_logs: {
         Row: {
           created_at: string
+          duration_ms: number | null
           id: string
           input_tokens: number
           model: string
@@ -87,6 +88,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          duration_ms?: number | null
           id?: string
           input_tokens?: number
           model: string
@@ -95,6 +97,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          duration_ms?: number | null
           id?: string
           input_tokens?: number
           model?: string
@@ -767,6 +770,35 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: true
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kid_sessions: {
+        Row: {
+          child_id: string | null
+          device_type: string
+          id: string
+          started_at: string
+        }
+        Insert: {
+          child_id?: string | null
+          device_type: string
+          id?: string
+          started_at?: string
+        }
+        Update: {
+          child_id?: string | null
+          device_type?: string
+          id?: string
+          started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kid_sessions_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
             referencedColumns: ["id"]
           },
         ]

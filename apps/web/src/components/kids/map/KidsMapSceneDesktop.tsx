@@ -89,6 +89,16 @@ export function KidsMapSceneDesktop({ modules, childName, childAvatar, currentSt
             Strides
           </span>
           <div className="flex items-center gap-4 mr-14">
+            {currentStreak > 0 && (
+              <div
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-orange-400/40"
+                style={{ background: 'rgba(251,146,60,0.2)', fontSize: 'clamp(0.65rem, 1.4vw, 0.9rem)' }}
+              >
+                <span style={{ fontSize: 'clamp(0.8rem, 1.6vw, 1.1rem)' }}>🔥</span>
+                <span className="font-bold text-white">{currentStreak}</span>
+                <span className="text-white/70">{currentStreak === 1 ? 'día seguido' : 'días seguidos'}</span>
+              </div>
+            )}
             <Link
               href="/select-profile"
               className="flex items-center gap-1.5 transition-opacity hover:opacity-70 text-white/80"
@@ -117,16 +127,6 @@ export function KidsMapSceneDesktop({ modules, childName, childAvatar, currentSt
             {greeting}{' '}
             <span className="inline-block animate-float origin-bottom-right">👋</span>
           </p>
-          {currentStreak > 0 && (
-            <div
-              className="inline-flex items-center gap-1.5 mt-1 px-3 py-1 rounded-2xl border border-orange-400/40 animate-pulse-glow pointer-events-auto"
-              style={{ background: 'rgba(251,146,60,0.2)', fontSize: 'clamp(0.65rem, 1.4vw, 0.9rem)' }}
-            >
-              <span style={{ fontSize: 'clamp(0.8rem, 1.6vw, 1.1rem)' }}>🔥</span>
-              <span className="font-bold text-white">{currentStreak}</span>
-              <span className="text-white/70">{currentStreak === 1 ? 'día seguido' : 'días seguidos'}</span>
-            </div>
-          )}
         </div>
 
         <div key={page}>

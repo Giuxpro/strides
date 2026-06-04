@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { createAccessCode } from '@/app/admin/codes/_actions'
-import { SubmitButton } from './SubmitButton'
+import { SubmitButton } from '@/components/admin/shared/SubmitButton'
 
 function Tip({ text }: { text: string }) {
   return (

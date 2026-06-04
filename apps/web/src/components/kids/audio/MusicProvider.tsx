@@ -130,6 +130,21 @@ export function MusicProvider({ config, children }: Props) {
     }
   }, [muted, userVolume])
 
+  // Pausa cuando la pantalla se apaga o el usuario sale de la app/pestaña
+  useEffect(() => {
+    function handleVisibility() {
+      const audio = audioRef.current
+      if (!audio) return
+      if (document.hidden) {
+        audio.pause()
+      } else if (readyRef.current && !mutedRef.current) {
+        audio.play().catch(() => {})
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [])
+
   // Fallback: primer gesto si el autoplay fue bloqueado
   // (el audio ya está en buffer → play es instantáneo)
   function onFirstGesture() {

@@ -3,8 +3,8 @@
 import Link from 'next/link'
 import { useTransition } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { AdminSearch } from '@/components/admin/AdminSearch'
-import { AdminPagination } from '@/components/admin/AdminPagination'
+import { AdminSearch } from '@/components/admin/layout/AdminSearch'
+import { AdminPagination } from '@/components/admin/layout/AdminPagination'
 
 const PLAN_BADGE: Record<string, { label: string; color: string }> = {
   trial:         { label: 'Trial',    color: 'bg-blue-500/10 text-blue-400' },

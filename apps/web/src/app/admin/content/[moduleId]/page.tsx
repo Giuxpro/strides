@@ -3,12 +3,12 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getVocabImageUrl } from '@strides/core/kids'
 import { deleteVocabItem } from '@/app/admin/_actions'
-import { VocabUsagePopover } from '@/components/admin/VocabUsagePopover'
-import { RetoConfigForm } from '@/components/admin/RetoConfigForm'
-import { ModuleJugarConfigForm } from '@/components/admin/ModuleJugarConfigForm'
-import { SortableLessonList } from '@/components/admin/SortableLessonList'
-import { AdminSearch } from '@/components/admin/AdminSearch'
-import { AdminPagination } from '@/components/admin/AdminPagination'
+import { VocabUsagePopover } from '@/components/admin/content/VocabUsagePopover'
+import { RetoConfigForm } from '@/components/admin/content/RetoConfigForm'
+import { ModuleJugarConfigForm } from '@/components/admin/content/ModuleJugarConfigForm'
+import { SortableLessonList } from '@/components/admin/content/SortableLessonList'
+import { AdminSearch } from '@/components/admin/layout/AdminSearch'
+import { AdminPagination } from '@/components/admin/layout/AdminPagination'
 import {
   getLessonsAdmin,
   getLessonsAdminCount,

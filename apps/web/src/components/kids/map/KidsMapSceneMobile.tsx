@@ -51,7 +51,7 @@ export function KidsMapSceneMobile({ modules, childName, childAvatar, currentStr
       {/* Header */}
       <header className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-5 py-3">
         <span className="font-bold tracking-widest uppercase text-white/60 text-[0.6rem]">Strides</span>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mr-14">
           {currentStreak > 0 && (
             <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-400/20 border border-orange-400/40">
               <span className="text-base">🔥</span>

@@ -1,10 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { SortableModuleList } from '@/components/admin/SortableModuleList'
-import { AdminSearch } from '@/components/admin/AdminSearch'
-import { AdminPagination } from '@/components/admin/AdminPagination'
+import { SortableModuleList } from '@/components/admin/content/SortableModuleList'
+import { AdminSearch } from '@/components/admin/layout/AdminSearch'
+import { AdminPagination } from '@/components/admin/layout/AdminPagination'
 import { getModulesAdmin, getLessonCountsForModules, getAllModulesForAdmin } from '@strides/db'
-import { AIGenerateDialog } from '@/components/admin/AIGenerateDialog'
+import { AIGenerateDialog } from '@/components/admin/ai/AIGenerateDialog'
 
 const PAGE_SIZE = 20
 

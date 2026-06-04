@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { getAllAccessCodes } from '@strides/db'
-import { CodesRealtimeRefresher } from '@/components/admin/CodesRealtimeRefresher'
+import { CodesRealtimeRefresher } from '@/components/admin/codes/CodesRealtimeRefresher'
 import { CodesTableClient } from './CodesTableClient'
 
 const PAGE_SIZE = 25

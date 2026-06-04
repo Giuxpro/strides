@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { updateModuleRetoConfig } from '@/app/admin/_actions'
 import type { ModifierConfig } from '@strides/core/kids'
 import { GAME_REGISTRY as GAME_POOL } from '@strides/core/kids'
-import { SubmitButton } from './SubmitButton'
+import { SubmitButton } from '@/components/admin/shared/SubmitButton'
 
 interface Props {
   moduleId: string

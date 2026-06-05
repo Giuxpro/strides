@@ -23,6 +23,7 @@ type MicState =
   | 'processing'
   | 'correct'
   | 'wrong'
+  | 'retry'
   | 'unsupported'
   | 'no-speech'
 
@@ -46,9 +47,33 @@ function getSpeechRecognition(): RecognitionCtor | null {
 }
 
 function normalize(t: string) { return t.toLowerCase().trim().replace(/[^a-z0-9\s]/g, '') }
-function isSpeechMatch(transcript: string, expected: string) {
-  const h = normalize(transcript), target = normalize(expected)
-  return h === target || h.split(/\s+/).includes(target)
+
+function levenshtein(a: string, b: string): number {
+  const dp = Array.from({ length: b.length + 1 }, (_, i) => i)
+  for (let i = 1; i <= a.length; i++) {
+    let prev = i
+    for (let j = 1; j <= b.length; j++) {
+      const curr = a[i - 1] === b[j - 1]
+        ? dp[j - 1]!
+        : 1 + Math.min(dp[j]!, dp[j - 1]!, prev)
+      dp[j - 1] = prev
+      prev = curr
+    }
+    dp[b.length] = prev
+  }
+  return dp[b.length]!
+}
+
+function isSpeechMatch(transcript: string, expected: string): boolean {
+  const heard = normalize(transcript)
+  const target = normalize(expected)
+  if (!heard) return false
+  if (heard === target) return true
+  for (const word of heard.split(/\s+/)) {
+    if (word === target) return true
+    if (target.length >= 6 && levenshtein(word, target) <= 1) return true
+  }
+  return false
 }
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -297,6 +322,10 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
   const recordingStartRef = useRef<number>(0)
   const sessionRef = useRef(0)
   const lowConfListRef = useRef<(boolean | undefined)[]>([])
+  const attemptRef = useRef(0)
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const vadIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const question = questions[currentQ]
 
@@ -305,12 +334,15 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
     return () => {
       try { recognitionRef.current?.abort() } catch { /* ignore */ }
       try { mediaRecorderRef.current?.stop() } catch { /* ignore */ }
+      if (vadIntervalRef.current) clearInterval(vadIntervalRef.current)
+      audioCtxRef.current?.close().catch(() => {})
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
     setCardColor(PAIR_COLORS[Math.floor(Math.random() * PAIR_COLORS.length)]!)
+    attemptRef.current = 0
   }, [currentQ])
 
   function advanceWith(newResults: boolean[], isCorrect: boolean, heardTranscript: string | null, sessionGuard?: number) {
@@ -337,9 +369,40 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
     }, isCorrect ? 2200 : 2800)
   }
 
+  function handleSpeechResult(
+    isCorrect: boolean,
+    transcript: string | null,
+    lowConf: boolean,
+    session?: number,
+  ) {
+    if (isCorrect) {
+      reportCorrect()
+      setHeard(transcript)
+      setMicState('correct')
+      lowConfListRef.current = [...lowConfListRef.current, lowConf]
+      advanceWith([...results, true], true, transcript, session)
+    } else if (attemptRef.current === 0) {
+      attemptRef.current = 1
+      setMicState('retry')
+      if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current)
+      resetTimeoutRef.current = setTimeout(() => {
+        resetTimeoutRef.current = null
+        if (session !== undefined && session !== sessionRef.current) return
+        setMicState('idle')
+      }, 1600)
+    } else {
+      reportWrong()
+      setHeard(transcript)
+      setMicState('wrong')
+      lowConfListRef.current = [...lowConfListRef.current, lowConf]
+      advanceWith([...results, false], false, transcript, session)
+    }
+  }
+
   // ── Whisper ───────────────────────────────────────────────────────────────
   async function startListeningWhisper() {
-    if (micState !== 'idle' || !question || isTerminated) return
+    if ((micState !== 'idle' && micState !== 'no-speech' && micState !== 'retry') || !question || isTerminated) return
+    const whisperSession = ++sessionRef.current
     setMicState('recording')
     setHeard(null)
 
@@ -347,21 +410,77 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
     try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }) }
     catch { setMicState('unsupported'); return }
 
+    // ── VAD setup ──────────────────────────────────────────────────────────
+    let speechDetected = false
+    let silenceStart = 0
+    let vadDone = false
+    let vadWorking = false
+    const capturedQuestion = question
+
+    function stopVAD() {
+      if (vadDone) return
+      vadDone = true
+      if (vadIntervalRef.current) { clearInterval(vadIntervalRef.current); vadIntervalRef.current = null }
+      audioCtxRef.current?.close().catch(() => {}); audioCtxRef.current = null
+    }
+
+    const VAD_ENABLED = false
+
+    if (VAD_ENABLED) {
+      try {
+        const audioCtx = new AudioContext()
+        audioCtxRef.current = audioCtx
+        const analyser = audioCtx.createAnalyser()
+        analyser.fftSize = 512
+        audioCtx.createMediaStreamSource(stream).connect(analyser)
+        const freqData = new Uint8Array(analyser.frequencyBinCount)
+
+        vadIntervalRef.current = setInterval(() => {
+          vadWorking = true
+          analyser.getByteFrequencyData(freqData)
+          let sum = 0
+          for (let i = 0; i < freqData.length; i++) sum += freqData[i]!
+          const avg = sum / freqData.length
+          const elapsed = Date.now() - recordingStartRef.current
+
+          if (avg > 20) {
+            speechDetected = true
+            silenceStart = 0
+          } else if (speechDetected && elapsed > 400) {
+            if (silenceStart === 0) silenceStart = Date.now()
+            else if (Date.now() - silenceStart > 800) {
+              stopVAD()
+              if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop()
+            }
+          }
+        }, 80)
+      } catch { /* AudioContext not available, fall through to max-duration timeout */ }
+    }
+    // ── End VAD ────────────────────────────────────────────────────────────
+
     const chunks: Blob[] = []
     const recorder = new MediaRecorder(stream)
     mediaRecorderRef.current = recorder
     recordingStartRef.current = Date.now()
     recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data) }
     recorder.onstop = async () => {
-      const durationMs = Date.now() - recordingStartRef.current
+      stopVAD()
       stream.getTracks().forEach(t => t.stop())
+
+      if (vadWorking && !speechDetected) {
+        setMicState('no-speech')
+        setTimeout(() => setMicState('idle'), 1400)
+        return
+      }
+
+      const durationMs = Date.now() - recordingStartRef.current
       setMicState('processing')
       const blob = new Blob(chunks, { type: recorder.mimeType })
       const ext = recorder.mimeType.includes('ogg') ? 'audio.ogg' : 'audio.webm'
       const file = new File([blob], ext, { type: blob.type })
       const body = new FormData()
       body.append('audio', file)
-      body.append('expected', question.text_en)
+      body.append('expected', capturedQuestion.text_en)
       body.append('duration_ms', String(durationMs))
       try {
         const res = await fetch('/api/speech/evaluate', { method: 'POST', body })
@@ -369,18 +488,21 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
         const data = (await res.json()) as { transcript: string; correct: boolean; noSpeech: boolean; lowConfidence: boolean }
         if (data.noSpeech) {
           setMicState('no-speech')
-          setTimeout(() => setMicState('idle'), 1400)
+          if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current)
+          resetTimeoutRef.current = setTimeout(() => {
+            resetTimeoutRef.current = null
+            if (sessionRef.current === whisperSession) setMicState('idle')
+          }, 1400)
           return
         }
-        setHeard(data.transcript)
-        if (data.correct) reportCorrect(); else reportWrong()
-        setMicState(data.correct ? 'correct' : 'wrong')
-        lowConfListRef.current = [...lowConfListRef.current, data.lowConfidence]
-        advanceWith([...results, data.correct], data.correct, data.transcript)
+        handleSpeechResult(data.correct, data.transcript, data.lowConfidence, whisperSession)
       } catch { setMicState('idle') }
     }
     recorder.start()
+
+    // Safety max duration (VAD no disponible o usuario no habla)
     setTimeout(() => {
+      stopVAD()
       if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop()
     }, 3000)
   }
@@ -424,18 +546,12 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
           if (normalize(alt) === normalize(currentQuestion.text_en)) { transcript = alt; break }
         }
         const isCorrect = isSpeechMatch(transcript, currentQuestion.text_en)
-        if (isCorrect) reportCorrect(); else reportWrong()
-        setHeard(transcript)
-        setMicState(isCorrect ? 'correct' : 'wrong')
-        lowConfListRef.current = [...lowConfListRef.current, false]
-        advanceWith([...results, isCorrect], isCorrect, transcript, session)
+        handleSpeechResult(isCorrect, transcript, false, session)
       }
       rec.onnomatch = () => {
         if (session !== sessionRef.current) return
         gotResult = true; handled = true; clearTimeout(safetyTimer)
-        reportWrong(); setMicState('wrong')
-        lowConfListRef.current = [...lowConfListRef.current, false]
-        advanceWith([...results, false], false, null, session)
+        handleSpeechResult(false, null, false, session)
       }
       rec.onerror = (e: { error: string }) => {
         if (session !== sessionRef.current) return
@@ -498,8 +614,13 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
   const isProcessing = micState === 'processing'
   const isActive     = isListening || isRecording || isProcessing
   const isFlipped    = micState === 'correct' || micState === 'wrong'
+  const isRetry      = micState === 'retry'
 
   function handleMicPress() {
+    if (resetTimeoutRef.current) {
+      clearTimeout(resetTimeoutRef.current)
+      resetTimeoutRef.current = null
+    }
     if (speechProvider === 'whisper') void startListeningWhisper()
     else startListening()
   }
@@ -509,7 +630,7 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
     if (isListening)  return 'Escuchando…'
     if (isRecording)  return 'Grabando…'
     if (isProcessing) return 'Procesando…'
-    if (isFlipped)    return ''
+    if (isFlipped || isRetry) return ''
     return '¡Toca para hablar!'
   }
 
@@ -539,7 +660,7 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
             </p>
           </div>
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 items-center">
           {Array.from({ length: progress.total }).map((_, i) => (
             <div key={i} className="rounded-full transition-all duration-300" style={{
               width: i === currentQ ? 10 : 7, height: i === currentQ ? 10 : 7,
@@ -582,7 +703,7 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
           <MicButton
             isActive={isActive}
             isProcessing={isProcessing}
-            disabled={isActive || isFlipped}
+            disabled={isActive || isFlipped || isRetry}
             onClick={handleMicPress}
             color={cardColor}
           />
@@ -590,6 +711,12 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
           {micLabel() && (
             <p className="text-sm sm:text-base font-semibold" style={{ color: 'var(--kids-text-muted)' }}>
               {micLabel()}
+            </p>
+          )}
+
+          {isRetry && (
+            <p className="text-sm sm:text-base font-bold animate-pulse" style={{ color: '#F59E0B' }}>
+              ¡Casi! Try again. 🎤
             </p>
           )}
 

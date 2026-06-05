@@ -12,11 +12,47 @@ function normalize(text: string): string {
   return text.toLowerCase().trim().replace(/[^a-z0-9\s]/g, '')
 }
 
+function levenshtein(a: string, b: string): number {
+  const dp = Array.from({ length: b.length + 1 }, (_, i) => i)
+  for (let i = 1; i <= a.length; i++) {
+    let prev = i
+    for (let j = 1; j <= b.length; j++) {
+      const curr = a[i - 1] === b[j - 1]
+        ? dp[j - 1]!
+        : 1 + Math.min(dp[j]!, dp[j - 1]!, prev)
+      dp[j - 1] = prev
+      prev = curr
+    }
+    dp[b.length] = prev
+  }
+  return dp[b.length]!
+}
+
 function isSpeechMatch(transcript: string, expected: string): boolean {
   const heard = normalize(transcript)
   const target = normalize(expected)
-  return heard === target || heard.split(/\s+/).includes(target)
+  if (!heard) return false
+  if (heard === target) return true
+  for (const word of heard.split(/\s+/)) {
+    if (word === target) return true
+    if (target.length >= 6 && levenshtein(word, target) <= 1) return true
+  }
+  return false
 }
+
+// Frases que Whisper alucina cuando el audio es corto, silencioso o ambiguo.
+// Tratar como noSpeech para dar al niño un reintento en vez de marcar wrong.
+const WHISPER_HALLUCINATIONS = new Set([
+  'i dont know', 'i dont know what', 'i dont know what to say',
+  'thank you', 'thank you so much', 'thanks', 'thanks for watching',
+  'um', 'uh', 'hmm', 'okay', 'ok', 'alright',
+  'bye', 'goodbye', 'see you later', 'all right bye', 'all right',
+  'please subscribe', 'like and subscribe',
+  'subtitles by', 'captions by', 'subs by',
+])
+
+// Prefijos de alucinaciones parciales (Whisper a veces agrega texto)
+const HALLUCINATION_PREFIXES = ['subs by', 'subtitles by', 'captions by', 'www.', 'http']
 
 export async function evaluateSpeech(
   audio: File,
@@ -53,6 +89,16 @@ export async function evaluateSpeech(
   const lowConfidence = confidence < 35
 
   const transcript = raw.text.trim()
-  const correct    = isSpeechMatch(transcript, expected)
+
+  const normalizedTranscript = normalize(transcript)
+  const isHallucination =
+    WHISPER_HALLUCINATIONS.has(normalizedTranscript) ||
+    HALLUCINATION_PREFIXES.some(p => normalizedTranscript.includes(p))
+
+  if (isHallucination) {
+    return { transcript: '', correct: false, noSpeech: true, lowConfidence: false }
+  }
+
+  const correct = isSpeechMatch(transcript, expected)
   return { transcript, correct, noSpeech: false, lowConfidence }
 }

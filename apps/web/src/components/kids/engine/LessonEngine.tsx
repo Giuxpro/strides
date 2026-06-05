@@ -241,15 +241,11 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, speechPr
   const canGoForward = currentDone
 
   const navOverlay = (
-    <div className="fixed bottom-6 left-0 right-0 z-[65] flex justify-center items-center gap-6 pointer-events-none">
-      <div className="pointer-events-auto">
-        <NavArrow
-          direction="back"
-          onClick={goBack}
-          show={canGoBack}
-          enabled={canGoBack}
-        />
-      </div>
+    <div className="fixed bottom-6 left-0 right-0 z-[65] flex justify-center items-center gap-4 pointer-events-none">
+      {canGoBack
+        ? <div className="pointer-events-auto"><NavArrow direction="back" onClick={goBack} show enabled /></div>
+        : <div style={{ width: 16 }} />
+      }
 
       {/* Step dots */}
       <div className="flex gap-1.5 items-center">

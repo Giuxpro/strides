@@ -5,13 +5,16 @@ import {
   getEngagementSeries,
   getTopGames,
   getAIUsageToday,
+  getAIUsageForMonth,
+  getAIUsageAllTime,
+  type AIUsagePeriod,
   getRetentionRate,
   getDeviceBreakdown,
   getSetting,
-  getAITotalRequests,
 } from '@strides/db'
 import { GAME_REGISTRY } from '@strides/core/kids'
 import { Suspense } from 'react'
+import { AIUsageChip }      from '@/components/admin/dashboard/AIUsageChip'
 import { OnlineNow }        from '@/components/admin/dashboard/OnlineNow'
 import { StatCard }         from '@/components/admin/dashboard/StatCard'
 import { GrowthChart }      from '@/components/admin/dashboard/GrowthChart'
@@ -97,25 +100,44 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   const db = createAdminClient()
 
-  const [summary, growth, engagement, topGames, aiUsage, priceResult, retention, devices, aiTotalRequests] = await Promise.all([
+  const now = new Date()
+  const thisYear = now.getFullYear()
+  const thisMonth = now.getMonth() + 1
+  const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const lastYear = lastMonthDate.getFullYear()
+  const lastMonth = lastMonthDate.getMonth() + 1
+
+  const [summary, growth, engagement, topGames, aiUsage, aiThisMonth, aiAllTime, priceResult, retention, devices] = await Promise.all([
     getAnalyticsSummary(db),
     getUserGrowthSeries(db, period),
     getEngagementSeries(db, Math.min(period, 30)),
     getTopGames(db, GAME_REGISTRY.length),
     getAIUsageToday(db),
+    getAIUsageForMonth(db, thisYear, thisMonth),
+    getAIUsageAllTime(db),
     getSetting(db, 'monthly_price'),
     getRetentionRate(db),
     getDeviceBreakdown(db),
-    getAITotalRequests(db),
   ])
 
   const monthlyPrice = (priceResult.data?.value as number | undefined) ?? 0
   const mrr = summary.paidActive * monthlyPrice
+  const daysInMonth = new Date(thisYear, thisMonth, 0).getDate()
+  const fmtMrr = (n: number) => monthlyPrice === 0 ? 'Sin precio' : `$${n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const mrrToday = fmtMrr(mrr / daysInMonth)
+  const mrrMonth = fmtMrr(mrr)
+  const mrrAnnual = fmtMrr(mrr * 12)
 
-  const totalAiCost = aiUsage.byModel.reduce((sum, m) => {
-    if (m.totalDurationMs) return sum + (m.totalDurationMs / 60_000) * 0.006
-    return sum + (m.inputTokens / 1_000_000) * 0.002 + (m.outputTokens / 1_000_000) * 0.01
-  }, 0)
+  function calcCost(byModel: AIUsagePeriod['byModel']): number {
+    return byModel.reduce((sum, m) => {
+      if (m.totalDurationMs > 0) return sum + (m.totalDurationMs / 60_000) * 0.006
+      return sum + (m.inputTokens / 1_000_000) * 0.002 + (m.outputTokens / 1_000_000) * 0.01
+    }, 0)
+  }
+
+  const costToday = calcCost(aiUsage.byModel)
+  const costMonth = calcCost(aiThisMonth.byModel)
+  const costTotal = calcCost(aiAllTime.byModel)
 
   const dateLabel = new Date().toLocaleDateString('es-AR', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
@@ -272,23 +294,30 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
       {/* ── Info row ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <InfoChip
+        <AIUsageChip
           label="MRR"
-          value={mrr > 0 ? `$${mrr.toLocaleString('es-AR')}` : monthlyPrice > 0 ? '$0' : 'Sin precio'}
           color="#34D399"
-          tooltip="Ingresos mensuales recurrentes. Solo incluye suscripciones activas con pago real. No cuenta trials, accesos por código ni cuentas gratuitas."
+          defaultPeriod="month"
+          today={mrrToday}
+          month={mrrMonth}
+          total={mrrAnnual}
+          tooltip="Hoy: ingreso diario estimado (MRR ÷ días del mes). Mes: MRR actual, suscripciones pagas activas × precio. Total: ARR proyectado (MRR × 12). No incluye trials ni accesos gratuitos."
         />
-        <InfoChip
-          label="Costo IA hoy"
-          value={`$${totalAiCost.toFixed(4)}`}
+        <AIUsageChip
+          label="Costo IA"
           color="#F59E0B"
-          tooltip="Costo estimado de todas las llamadas a la IA realizadas hoy. Incluye generación de ejercicios y evaluaciones de pronunciación. Se calcula en base a tokens de entrada/salida o duración de audio según el modelo usado."
+          today={`$${costToday.toFixed(4)}`}
+          month={`$${costMonth.toFixed(4)}`}
+          total={`$${costTotal.toFixed(4)}`}
+          tooltip="Costo estimado de llamadas a la IA. Token-based: $0.002/M entrada · $0.010/M salida. Audio: $0.006/min. Seleccioná el período con los botones."
         />
-        <InfoChip
+        <AIUsageChip
           label="Peticiones IA"
-          value={aiTotalRequests.toLocaleString('es-AR')}
           color="#A78BFA"
-          tooltip="Total de llamadas a la IA desde el inicio de la plataforma (generación de ejercicios, evaluaciones de pronunciación, etc.). Útil para proyectar costos a medida que escala el uso."
+          today={aiUsage.requestsToday.toLocaleString('es-AR')}
+          month={aiThisMonth.requests.toLocaleString('es-AR')}
+          total={aiAllTime.requests.toLocaleString('es-AR')}
+          tooltip="Cantidad de llamadas a la IA (generación de ejercicios, evaluaciones de pronunciación, etc.). Seleccioná el período con los botones."
         />
         <InfoChip
           label="Precisión pronunciación"

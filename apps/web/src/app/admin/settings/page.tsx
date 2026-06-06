@@ -41,6 +41,7 @@ export default async function AdminSettingsPage() {
   const availMods = (s['available_modifiers'] as { timer?: boolean; lives?: boolean }) ??
     { timer: true, lives: true }
   const gameConfigs = (s['game_configs'] as Record<string, { minItems?: number; maxItems?: number }>) ?? {}
+  const adminOnlyGames = (s['admin_only_games'] as string[]) ?? []
   const voicePreset = isVoicePreset(s['voice_preset']) ? s['voice_preset'] : DEFAULT_VOICE_PRESET
   const speechProvider = isSpeechProvider(s['speech_provider']) ? s['speech_provider'] : DEFAULT_SPEECH_PROVIDER
   const audioConfig_ = isAudioConfig(s['audio_config']) ? s['audio_config'] : DEFAULT_AUDIO_CONFIG
@@ -294,34 +295,47 @@ export default async function AdminSettingsPage() {
               <div className="border-t border-gray-800 pt-6">
                 <p className="text-xs text-gray-400 font-medium mb-1">Límites de palabras por juego</p>
                 <p className="text-xs text-gray-600 mb-4">Mín: palabras para habilitar · Máx: palabras por partida</p>
-                <div className="flex flex-col gap-3">
-                  {GAME_REGISTRY.map(game => (
-                    <div key={game.id} className="flex items-center gap-3">
-                      <span className="text-sm text-gray-300 flex-1 min-w-0 truncate">{game.emoji} {game.title}</span>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <label className="text-xs text-gray-500">Mín</label>
-                        <input
-                          type="number"
-                          name={`min_${game.id}`}
-                          min={1}
-                          max={50}
-                          defaultValue={gameConfigs[game.id]?.minItems ?? game.minItems}
-                          className="w-14 bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                        />
+                <div className="flex flex-col gap-3 max-h-[280px] overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-gray-800/50 [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-600">
+                  {GAME_REGISTRY.map(game => {
+                    const isAdminOnly = adminOnlyGames.includes(game.id)
+                    return (
+                      <div key={game.id} className="flex items-center gap-3">
+                        <span className="text-sm text-gray-300 flex-1 min-w-0 truncate">{game.emoji} {game.title}</span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <label className="text-xs text-gray-500">Mín</label>
+                          <input
+                            type="number"
+                            name={`min_${game.id}`}
+                            min={1}
+                            max={50}
+                            defaultValue={gameConfigs[game.id]?.minItems ?? game.minItems}
+                            className="w-14 bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                          />
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <label className="text-xs text-gray-500">Máx</label>
+                          <input
+                            type="number"
+                            name={`max_${game.id}`}
+                            min={1}
+                            max={50}
+                            defaultValue={gameConfigs[game.id]?.maxItems ?? game.maxItems}
+                            className="w-14 bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                          />
+                        </div>
+                        <label className="flex items-center gap-1.5 shrink-0 cursor-pointer" title="Solo visible para admin">
+                          <input
+                            type="checkbox"
+                            name={`admin_only_${game.id}`}
+                            defaultChecked={isAdminOnly}
+                            className="sr-only peer"
+                          />
+                          <div className="w-7 h-4 rounded-full bg-gray-700 transition-colors peer-checked:bg-amber-500 relative after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-3 after:h-3 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-3" />
+                          <span className="text-xs text-gray-600 peer-checked:text-amber-500 transition-colors">🔒</span>
+                        </label>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <label className="text-xs text-gray-500">Máx</label>
-                        <input
-                          type="number"
-                          name={`max_${game.id}`}
-                          min={1}
-                          max={50}
-                          defaultValue={gameConfigs[game.id]?.maxItems ?? game.maxItems}
-                          className="w-14 bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                        />
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             </section>

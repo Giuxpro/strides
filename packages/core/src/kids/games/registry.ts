@@ -8,7 +8,7 @@ export interface GameMeta {
   maxItems: number
 }
 
-export type GameConfigs = Record<string, { minItems?: number; maxItems?: number }>
+export type GameConfigs = Record<string, { minItems?: number; maxItems?: number; adminOnly?: boolean; showAlways?: boolean; disabledForUsers?: boolean }>
 
 export const GAME_REGISTRY: GameMeta[] = [
   {

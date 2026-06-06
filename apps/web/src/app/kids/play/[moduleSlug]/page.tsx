@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { KidsModuleTabs } from '@/components/kids/tabs/KidsModuleTabs'
-import { getModuleConfig, isSpeechProvider, DEFAULT_SPEECH_PROVIDER } from '@strides/core/kids'
+import { getModuleConfig, isSpeechProvider, DEFAULT_SPEECH_PROVIDER, GAME_REGISTRY } from '@strides/core/kids'
 import type { ModifierConfig } from '@strides/core/kids'
 import type { AvailableModifiers } from '@/components/kids/ui/ModifierPickerModal'
 import type { GameConfigs } from '@/components/kids/engine/gamePool'
@@ -44,7 +44,7 @@ export default async function ModulePage({ params, searchParams }: Props) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [{ data: lessons }, { data: completions }, { data: vocab }, { data: dailyRow }, { count: countdownCount }, { data: availModRow }, { data: gameConfigsRow }, { data: speechRow }, { data: npsConfigRow }, { data: masteryRows }, { data: profile }, { data: subscription }, { data: lockConfigRow }, { data: previewConfigRow }, { data: allModules }, { data: allLessons }] = await Promise.all([
+  const [{ data: lessons }, { data: completions }, { data: vocab }, { data: dailyRow }, { count: countdownCount }, { data: availModRow }, { data: gameConfigsRow }, { data: speechRow }, { data: npsConfigRow }, { data: masteryRows }, { data: profile }, { data: subscription }, { data: lockConfigRow }, { data: previewConfigRow }, { data: adminOnlyGamesRow }, { data: allModules }, { data: allLessons }] = await Promise.all([
     supabase
       .from('lessons')
       .select('*')
@@ -96,13 +96,15 @@ export default async function ModulePage({ params, searchParams }: Props) {
       : Promise.resolve({ data: null }),
     supabase.from('settings').select('value').eq('key', 'lock_config').maybeSingle(),
     supabase.from('settings').select('value').eq('key', 'preview_config').maybeSingle(),
+    supabase.from('settings').select('value').eq('key', 'admin_only_games').maybeSingle(),
     supabase.from('modules').select('id, order').eq('is_published', true).order('order'),
     supabase.from('lessons').select('id, module_id, order').eq('is_published', true),
   ])
 
   const config = getModuleConfig(moduleSlug)
   const availableModifiers = (availModRow?.value as AvailableModifiers | null) ?? null
-  const gameConfigs = (gameConfigsRow?.value as GameConfigs | null) ?? null
+  const adminOnlyGameIds = (adminOnlyGamesRow?.value as string[] | null) ?? []
+  const rawGameConfigs = (gameConfigsRow?.value as GameConfigs | null) ?? null
   const speechProvider = isSpeechProvider(speechRow?.value) ? speechRow.value : DEFAULT_SPEECH_PROVIDER
   const npsConfig = npsConfigRow?.value as { enabled: boolean; trigger: string; games_threshold: number } | null
 
@@ -122,6 +124,26 @@ export default async function ModulePage({ params, searchParams }: Props) {
 
   // ── Acceso y bloqueo progresivo ──
   const isAdmin         = profile?.role === 'admin'
+
+  // Admin ve todos los juegos siempre. Para usuarios, los juegos fuera de active_game_ids
+  // o en admin_only_games se muestran como card bloqueada (no desaparecen).
+  const moduleActiveIds = (module.active_game_ids as string[] | null) ?? null
+  const gameConfigs: GameConfigs | null = (() => {
+    const lockedIds = new Set([
+      ...adminOnlyGameIds,
+      ...(moduleActiveIds !== null
+        ? GAME_REGISTRY.map(g => g.id).filter(id => !moduleActiveIds.includes(id))
+        : []),
+    ])
+    if (lockedIds.size === 0) return rawGameConfigs
+    const overrides = Object.fromEntries([...lockedIds].map(id => [id, {
+      ...(rawGameConfigs?.[id] ?? {}),
+      ...(isAdmin
+        ? { disabledForUsers: true }
+        : { adminOnly: true }),
+    }]))
+    return { ...rawGameConfigs, ...overrides }
+  })()
   const acquisitionType = subscription?.acquisition_type ?? 'trial'
   const lockConfig      = (lockConfigRow?.value as unknown as LockConfig) ?? { enabled: false, applies_to: [] }
   const previewConfig   = (previewConfigRow?.value as unknown as PreviewConfig) ?? { scope: 'module' as const, lessons_count: 3 }
@@ -278,7 +300,7 @@ export default async function ModulePage({ params, searchParams }: Props) {
             retoModifiers={(module.reto_modifiers as ModifierConfig[] | null) ?? null}
             diarioGameId={module.diario_game_id ?? null}
             availableModifiers={availableModifiers}
-            activeGameIds={(module.active_game_ids as string[] | null) ?? null}
+            activeGameIds={null}
             gameConfigs={gameConfigs}
             vocabMasteryMap={vocabMasteryMap}
             speechProvider={speechProvider}

@@ -14,9 +14,20 @@ interface Props {
 }
 
 export function ModuleJugarConfigForm({ moduleId, initialActiveGameIds }: Props) {
-  const allActive = initialActiveGameIds === null
   const [q, setQ] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [activeIds, setActiveIds] = useState<Set<string>>(
+    () => new Set(initialActiveGameIds ?? GAME_POOL.map(g => g.id))
+  )
+
+  function toggle(id: string) {
+    setActiveIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const filtered = q.trim()
     ? GAME_POOL.filter(g =>
@@ -31,6 +42,10 @@ export function ModuleJugarConfigForm({ moduleId, initialActiveGameIds }: Props)
   return (
     <form action={updateModuleJugarConfig} className="space-y-4">
       <input type="hidden" name="module_id" value={moduleId} />
+      {/* Hidden inputs para TODOS los IDs activos — independiente de la página visible */}
+      {[...activeIds].map(id => (
+        <input key={id} type="hidden" name="active_game_id" value={id} />
+      ))}
 
       {/* Buscador */}
       <div className="relative">
@@ -55,32 +70,38 @@ export function ModuleJugarConfigForm({ moduleId, initialActiveGameIds }: Props)
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
-              <th className="w-10 px-5 py-3"></th>
+              <th className="hidden sm:table-cell text-left px-5 py-3 w-8">#</th>
               <th className="text-left px-5 py-3">Juego</th>
               <th className="hidden sm:table-cell text-left px-5 py-3">Descripción</th>
               <th className="hidden md:table-cell text-center px-5 py-3">Items</th>
+              <th className="text-center px-5 py-3">Activo</th>
             </tr>
           </thead>
           <tbody>
             {paginated.map(game => {
-              const checked = allActive || initialActiveGameIds.includes(game.id)
+              const checked = activeIds.has(game.id)
+              const globalIndex = GAME_POOL.findIndex(g => g.id === game.id) + 1
               return (
                 <tr key={game.id} className="border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors">
+                  <td className="hidden sm:table-cell px-5 py-3 text-xs text-gray-600 tabular-nums">{globalIndex}</td>
                   <td className="px-5 py-3">
-                    <input
-                      type="checkbox"
-                      name="active_game_id"
-                      value={game.id}
-                      defaultChecked={checked}
-                      className="accent-violet-500 w-4 h-4"
-                    />
-                  </td>
-                  <td className="px-5 py-3">
-                    <span className="font-medium text-gray-200">{game.emoji} {game.title}</span>
+                    <span className="font-medium text-gray-200">{game.emoji} {game.titleEn}</span>
+                    <span className="block text-xs text-gray-500">{game.title}</span>
                   </td>
                   <td className="hidden sm:table-cell px-5 py-3 text-gray-500 text-xs">{game.description}</td>
                   <td className="hidden md:table-cell px-5 py-3 text-center text-xs text-gray-500 tabular-nums">
                     {game.minItems}–{game.maxItems}
+                  </td>
+                  <td className="px-5 py-3 text-center">
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={checked}
+                      onClick={() => toggle(game.id)}
+                      className={`relative inline-flex w-9 h-5 rounded-full transition-colors shrink-0 ${checked ? 'bg-violet-500' : 'bg-gray-700'}`}
+                    >
+                      <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </button>
                   </td>
                 </tr>
               )
@@ -103,7 +124,7 @@ export function ModuleJugarConfigForm({ moduleId, initialActiveGameIds }: Props)
       </div>
 
       <p className="text-xs text-gray-600">
-        Desactiva los juegos que no aplican a este módulo. Si todos están activos, se muestran todos.
+        Desactiva los juegos que no quieras mostrar a los usuarios en este módulo.
       </p>
 
       <SubmitButton label="Guardar cambios" pendingLabel="Guardando…" />

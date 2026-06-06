@@ -57,9 +57,16 @@ export function KidsJugarTab({ vocab, moduleConfig, selectedChildId, availableMo
   }
   const effectivePool = GAME_POOL
     .filter(g => !activeGameIds || activeGameIds.includes(g.id))
-    .map(g => {
+    .map((g, _, arr) => {
       const cfg = gameConfigs?.[g.id]
-      return cfg ? { ...g, minItems: cfg.minItems ?? g.minItems, maxItems: cfg.maxItems ?? g.maxItems } : g
+      return {
+        ...g,
+        minItems:        cfg?.minItems        ?? g.minItems,
+        maxItems:        cfg?.maxItems        ?? g.maxItems,
+        adminOnly:       cfg?.adminOnly       ?? false,
+        disabledForUsers: cfg?.disabledForUsers ?? false,
+        globalIdx:       GAME_POOL.indexOf(g),
+      }
     })
 
   const activeModifiers = toModifierConfigs(effectiveModSel)
@@ -207,41 +214,69 @@ export function KidsJugarTab({ vocab, moduleConfig, selectedChildId, availableMo
 
         {/* Game cards */}
         <div className="flex flex-wrap gap-5 justify-center">
-          {effectivePool.map((game, idx) => {
+          {effectivePool.map((game) => {
             const enough = vocab.length >= game.minItems
+            const locked = game.adminOnly
+            const disabledTag = game.disabledForUsers
             return (
               <button
                 key={game.id}
-                onClick={() => enough && startGame(game)}
-                disabled={!enough}
-                className="relative flex flex-col items-center gap-3 p-6 rounded-3xl transition-all duration-150 hover:-translate-y-1 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={() => !locked && enough && startGame(game)}
+                disabled={locked || !enough}
+                className="relative flex flex-col items-center gap-3 p-6 rounded-3xl transition-all duration-150 disabled:cursor-not-allowed"
                 style={{
-                  background: 'rgba(255,253,245,0.85)',
+                  background: locked ? 'rgba(200,195,190,0.45)' : 'rgba(255,253,245,0.85)',
                   backdropFilter: 'blur(10px)',
-                  boxShadow: '0 6px 24px rgba(0,0,0,0.14)',
+                  boxShadow: locked ? 'none' : '0 6px 24px rgba(0,0,0,0.14)',
                   width: 160,
+                  opacity: locked ? 0.55 : 1,
                 }}
+                onMouseEnter={e => { if (!locked) (e.currentTarget as HTMLElement).style.transform = 'translateY(-4px) scale(1.05)' }}
+                onMouseLeave={e => { if (!locked) (e.currentTarget as HTMLElement).style.transform = '' }}
               >
                 {/* Numeral */}
                 <span
                   className="absolute top-2.5 right-3 font-bold text-[10px] leading-none"
-                  style={{ color: '#c0a080' }}
+                  style={{ color: locked ? '#a09080' : '#c0a080' }}
                 >
-                  #{idx + 1}
+                  #{game.globalIdx + 1}
                 </span>
-                <span style={{ fontSize: '3rem', lineHeight: 1 }}>{game.emoji}</span>
+
+                {locked && <span className="absolute top-2.5 left-3 text-sm">🔒</span>}
+
+                <span style={{ fontSize: '3rem', lineHeight: 1, filter: locked ? 'grayscale(1)' : 'none' }}>
+                  {game.emoji}
+                </span>
+
                 <div className="text-center">
-                  <p className="font-extrabold text-base" style={{ color: '#4a3728' }}>
+                  <p className="font-extrabold text-base" style={{ color: locked ? '#8a7a6a' : '#4a3728' }}>
                     {game.titleEn}
                   </p>
                   <p className="text-xs font-semibold mt-0.5" style={{ color: '#9e8e7e' }}>
                     {game.title}
                   </p>
-                  <p className="text-[10px] mt-1" style={{ color: '#b8a898' }}>
-                    {game.description}
-                  </p>
+                  {locked ? (
+                    <p className="text-[10px] mt-1 font-bold" style={{ color: '#e85d5d' }}>
+                      🚫 No disponible
+                    </p>
+                  ) : (
+                    <p className="text-[10px] mt-1" style={{ color: '#b8a898' }}>
+                      {game.description}
+                    </p>
+                  )}
                 </div>
-                {!enough && (
+
+                {/* Etiqueta admin: avisa que el juego está deshabilitado para users */}
+                {disabledTag && (
+                  <span
+                    className="absolute bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                    style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}
+                  >
+                    🚫 Deshabilitado para users
+                  </span>
+                )}
+
+                {!locked && !enough && (
                   <p className="text-xs" style={{ color: '#c0a080' }}>
                     Necesitas {game.minItems}+ palabras
                   </p>

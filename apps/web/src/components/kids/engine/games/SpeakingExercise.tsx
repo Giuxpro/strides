@@ -317,15 +317,17 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
   const [results, setResults] = useState<boolean[]>([])
   const [heardList, setHeardList] = useState<(string | null)[]>([])
   const [cardColor, setCardColor] = useState(() => PAIR_COLORS[Math.floor(Math.random() * PAIR_COLORS.length)]!)
-  const recognitionRef = useRef<RecognitionInstance | null>(null)
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recognitionRef    = useRef<RecognitionInstance | null>(null)
+  const mediaRecorderRef  = useRef<MediaRecorder | null>(null)
   const recordingStartRef = useRef<number>(0)
-  const sessionRef = useRef(0)
-  const lowConfListRef = useRef<(boolean | undefined)[]>([])
-  const attemptRef = useRef(0)
-  const audioCtxRef = useRef<AudioContext | null>(null)
-  const vadIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const sessionRef        = useRef(0)
+  const lowConfListRef    = useRef<(boolean | undefined)[]>([])
+  const attemptRef        = useRef(0)
+  const audioCtxRef       = useRef<AudioContext | null>(null)
+  const vadIntervalRef    = useRef<ReturnType<typeof setInterval> | null>(null)
+  const resetTimeoutRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const maxTimeoutRef     = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const volumeBarRef      = useRef<HTMLDivElement | null>(null)
 
   const question = questions[currentQ]
 
@@ -335,6 +337,7 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
       try { recognitionRef.current?.abort() } catch { /* ignore */ }
       try { mediaRecorderRef.current?.stop() } catch { /* ignore */ }
       if (vadIntervalRef.current) clearInterval(vadIntervalRef.current)
+      if (maxTimeoutRef.current)  clearTimeout(maxTimeoutRef.current)
       audioCtxRef.current?.close().catch(() => {})
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -399,96 +402,136 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
     }
   }
 
-  // ── Whisper ───────────────────────────────────────────────────────────────
+  // ── Whisper + VAD (RMS) ───────────────────────────────────────────────────
   async function startListeningWhisper() {
     if ((micState !== 'idle' && micState !== 'no-speech' && micState !== 'retry') || !question || isTerminated) return
+
     const whisperSession = ++sessionRef.current
     setMicState('recording')
     setHeard(null)
 
     let stream: MediaStream
-    try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }) }
-    catch { setMicState('unsupported'); return }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
+      })
+    } catch { setMicState('unsupported'); return }
 
-    // ── VAD setup ──────────────────────────────────────────────────────────
-    let speechDetected = false
-    let silenceStart = 0
-    let vadDone = false
-    let vadWorking = false
     const capturedQuestion = question
+    const chunks: Blob[] = []
+
+    // ── VAD state ──────────────────────────────────────────────────────────
+    // RMS sobre datos de tiempo (getByteTimeDomainData) — técnica más fiable
+    // que el promedio de frecuencias para detectar silencio.
+    const SPEECH_RMS_THRESHOLD = 0.012  // ~1.2% de amplitud máxima
+    const SILENCE_AFTER_SPEECH = 380    // ms de silencio tras hablar → cortar
+    const NO_SPEECH_MAX        = 3500   // ms sin detectar habla → abortar
+    const MIN_RECORD_AFTER_SPEECH = 250 // ms mínimos grabados tras detectar habla
+    const HARD_MAX             = 6000   // ms absoluto máximo
+
+    let speechDetected = false
+    let speechEndedAt  = 0
+    let vadWorking     = false
 
     function stopVAD() {
-      if (vadDone) return
-      vadDone = true
       if (vadIntervalRef.current) { clearInterval(vadIntervalRef.current); vadIntervalRef.current = null }
       audioCtxRef.current?.close().catch(() => {}); audioCtxRef.current = null
+      if (volumeBarRef.current) volumeBarRef.current.style.width = '0%'
     }
 
-    const VAD_ENABLED = false
+    function stopRecording() {
+      if (maxTimeoutRef.current) { clearTimeout(maxTimeoutRef.current); maxTimeoutRef.current = null }
+      stopVAD()
+      if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop()
+    }
 
-    if (VAD_ENABLED) {
-      try {
-        const audioCtx = new AudioContext()
+    try {
+      const AudioCtxCtor = (
+        window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+      )
+      if (AudioCtxCtor) {
+        const audioCtx   = new AudioCtxCtor()
         audioCtxRef.current = audioCtx
-        const analyser = audioCtx.createAnalyser()
-        analyser.fftSize = 512
+        const analyser   = audioCtx.createAnalyser()
+        analyser.fftSize = 256
         audioCtx.createMediaStreamSource(stream).connect(analyser)
-        const freqData = new Uint8Array(analyser.frequencyBinCount)
+        const timeData   = new Uint8Array(analyser.fftSize)
+        vadWorking       = true
+        const startTs    = Date.now()
 
         vadIntervalRef.current = setInterval(() => {
-          vadWorking = true
-          analyser.getByteFrequencyData(freqData)
+          if (mediaRecorderRef.current?.state !== 'recording') { stopVAD(); return }
+
+          // Calcular RMS
+          analyser.getByteTimeDomainData(timeData)
           let sum = 0
-          for (let i = 0; i < freqData.length; i++) sum += freqData[i]!
-          const avg = sum / freqData.length
-          const elapsed = Date.now() - recordingStartRef.current
+          for (const s of timeData) { const n = (s - 128) / 128; sum += n * n }
+          const rms = Math.sqrt(sum / timeData.length)
 
-          if (avg > 20) {
-            speechDetected = true
-            silenceStart = 0
-          } else if (speechDetected && elapsed > 400) {
-            if (silenceStart === 0) silenceStart = Date.now()
-            else if (Date.now() - silenceStart > 800) {
-              stopVAD()
-              if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop()
-            }
+          // Actualizar barra de volumen sin causar re-render de React
+          if (volumeBarRef.current) {
+            volumeBarRef.current.style.width = `${Math.min(100, rms * 6000)}%`
           }
-        }, 80)
-      } catch { /* AudioContext not available, fall through to max-duration timeout */ }
-    }
-    // ── End VAD ────────────────────────────────────────────────────────────
 
-    const chunks: Blob[] = []
+          const elapsed = Date.now() - startTs
+
+          if (rms > SPEECH_RMS_THRESHOLD) {
+            speechDetected = true
+            speechEndedAt  = 0
+          } else if (speechDetected) {
+            if (speechEndedAt === 0) speechEndedAt = Date.now()
+            const silenceDuration = Date.now() - speechEndedAt
+            const recordedAfterSpeech = elapsed - (speechEndedAt - startTs)
+            if (silenceDuration > SILENCE_AFTER_SPEECH && recordedAfterSpeech > MIN_RECORD_AFTER_SPEECH) {
+              stopRecording()
+            }
+          } else if (elapsed > NO_SPEECH_MAX) {
+            // Usuario no habló en 3.5s
+            stopRecording()
+          }
+        }, 50)
+      }
+    } catch { /* AudioContext no disponible — usa el hard max */ }
+
+    // Hard max absoluto
+    maxTimeoutRef.current = setTimeout(stopRecording, HARD_MAX)
+
+    recordingStartRef.current = Date.now()
     const recorder = new MediaRecorder(stream)
     mediaRecorderRef.current = recorder
-    recordingStartRef.current = Date.now()
     recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data) }
+
     recorder.onstop = async () => {
       stopVAD()
       stream.getTracks().forEach(t => t.stop())
 
+      // VAD activo pero sin habla detectada → no-speech
       if (vadWorking && !speechDetected) {
         setMicState('no-speech')
-        setTimeout(() => setMicState('idle'), 1400)
+        resetTimeoutRef.current = setTimeout(() => {
+          resetTimeoutRef.current = null
+          if (sessionRef.current === whisperSession) setMicState('idle')
+        }, 1400)
         return
       }
 
       const durationMs = Date.now() - recordingStartRef.current
       setMicState('processing')
+
       const blob = new Blob(chunks, { type: recorder.mimeType })
-      const ext = recorder.mimeType.includes('ogg') ? 'audio.ogg' : 'audio.webm'
+      const ext  = recorder.mimeType.includes('ogg') ? 'audio.ogg' : 'audio.webm'
       const file = new File([blob], ext, { type: blob.type })
       const body = new FormData()
       body.append('audio', file)
       body.append('expected', capturedQuestion.text_en)
       body.append('duration_ms', String(durationMs))
+
       try {
-        const res = await fetch('/api/speech/evaluate', { method: 'POST', body })
+        const res  = await fetch('/api/speech/evaluate', { method: 'POST', body })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data = (await res.json()) as { transcript: string; correct: boolean; noSpeech: boolean; lowConfidence: boolean }
+        const data = await res.json() as { transcript: string; correct: boolean; noSpeech: boolean; lowConfidence: boolean }
         if (data.noSpeech) {
           setMicState('no-speech')
-          if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current)
           resetTimeoutRef.current = setTimeout(() => {
             resetTimeoutRef.current = null
             if (sessionRef.current === whisperSession) setMicState('idle')
@@ -496,15 +539,12 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
           return
         }
         handleSpeechResult(data.correct, data.transcript, data.lowConfidence, whisperSession)
-      } catch { setMicState('idle') }
+      } catch {
+        if (sessionRef.current === whisperSession) setMicState('idle')
+      }
     }
-    recorder.start()
 
-    // Safety max duration (VAD no disponible o usuario no habla)
-    setTimeout(() => {
-      stopVAD()
-      if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop()
-    }, 3000)
+    recorder.start()
   }
 
   // ── Web Speech ────────────────────────────────────────────────────────────
@@ -707,6 +747,15 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
             onClick={handleMicPress}
             color={cardColor}
           />
+
+          {/* Barra de volumen — se actualiza via DOM ref sin re-render */}
+          <div className="w-40 h-2 rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.1)' }}>
+            <div
+              ref={volumeBarRef}
+              className="h-full rounded-full"
+              style={{ width: '0%', background: cardColor, transition: 'width 40ms linear' }}
+            />
+          </div>
 
           {micLabel() && (
             <p className="text-sm sm:text-base font-semibold" style={{ color: 'var(--kids-text-muted)' }}>

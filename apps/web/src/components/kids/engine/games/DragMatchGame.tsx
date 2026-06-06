@@ -218,7 +218,7 @@ export function DragMatchGame({ items, onComplete, onBack, moduleConfig, progres
                     )}
                   </div>
                   {isCorrectlyFilled && (
-                    <div className="absolute inset-0 flex items-center justify-center rounded-2xl sm:rounded-3xl" style={{ background: 'rgba(0,0,0,0.2)' }}>
+                    <div className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl sm:rounded-3xl" style={{ background: 'rgba(0,0,0,0.2)' }}>
                       <span className="text-3xl font-black drop-shadow" style={{ color: '#22c55e' }}>✓</span>
                     </div>
                   )}

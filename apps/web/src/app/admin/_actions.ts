@@ -434,6 +434,9 @@ export async function updateSettings(formData: FormData) {
           maxItems: Number(formData.get(`max_${g.id}`)),
         }])
       ) as Json },
+    { key: 'admin_only_games', value: GAME_REGISTRY
+        .filter(g => formData.get(`admin_only_${g.id}`) === 'on')
+        .map(g => g.id) as Json },
   ]
 
   // Actualizar volúmenes sin pisar tracks ni click_sound_url existentes

@@ -1144,11 +1144,27 @@ export type Database = {
           },
         ]
       }
+      payment_webhook_events: {
+        Row: {
+          event_id: string
+          received_at: string
+        }
+        Insert: {
+          event_id: string
+          received_at?: string
+        }
+        Update: {
+          event_id?: string
+          received_at?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           acquisition_type: string
           billing_cycle: string | null
           created_at: string
+          current_period_end: string | null
           id: string
           pending_discount_months: number | null
           pending_discount_percent: number | null
@@ -1164,6 +1180,7 @@ export type Database = {
           acquisition_type: string
           billing_cycle?: string | null
           created_at?: string
+          current_period_end?: string | null
           id?: string
           pending_discount_months?: number | null
           pending_discount_percent?: number | null
@@ -1179,6 +1196,7 @@ export type Database = {
           acquisition_type?: string
           billing_cycle?: string | null
           created_at?: string
+          current_period_end?: string | null
           id?: string
           pending_discount_months?: number | null
           pending_discount_percent?: number | null

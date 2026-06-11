@@ -6,7 +6,8 @@
     ".": "./src/index.ts",
     "./ai": "./src/ai/index.ts",
     "./exercises": "./src/exercises/index.ts",
-    "./kids": "./src/kids/index.ts"
+    "./kids": "./src/kids/index.ts",
+    "./payments": "./src/payments/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

@@ -203,6 +203,13 @@ function playStarDing(noteIndex: number) {
   noiseBurst(decay * 0.3, 0.04, (noteIndex - 1) * 0.2)
 }
 
+/** Arpegio de logro (3 notas ascendentes) — reutilizable fuera del componente */
+export function playSuccessSound() {
+  playStarDing(0)
+  setTimeout(() => playStarDing(1), 110)
+  setTimeout(() => playStarDing(2), 240)
+}
+
 interface Props {
   filled: boolean
   animate?: boolean // true = play animation + sound; false/undefined = show static

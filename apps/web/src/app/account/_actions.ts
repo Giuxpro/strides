@@ -7,7 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { toStoragePath } from '@strides/core'
 
-export async function selectChild(childId: string) {
+export async function selectChild(childId: string): Promise<void> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -30,7 +30,7 @@ export async function selectChild(childId: string) {
   redirect('/kids/play')
 }
 
-export async function selectSelf() {
+export async function selectSelf(): Promise<void> {
   cookies().delete('selected_child_id')
   redirect('/adult')
 }
@@ -90,7 +90,7 @@ export async function updateChild(childId: string, formData: FormData): Promise<
   redirect('/select-profile')
 }
 
-export async function deleteChild(childId: string) {
+export async function deleteChild(childId: string): Promise<void> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')

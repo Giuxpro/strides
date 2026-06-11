@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import type { WordResult, ModuleConfig } from '@strides/core/kids'
 import { getVocabImageUrl } from '@strides/core/kids'
+import { useSpeak } from '@/components/kids/audio/VoicePresetProvider'
 import type { VocabItem } from './LessonEngine'
 
 function getPronunciationTip(word: string): string {
@@ -32,10 +33,10 @@ function ScoreCircle({ percent }: { percent: number }) {
         transform="rotate(-90 56 56)"
         style={{ filter: `drop-shadow(0 0 10px ${color}99)` }}
       />
-      <text x={56} y={50} textAnchor="middle" dominantBaseline="central"
-        fill="white" fontSize={22} fontWeight={900}>{percent}%</text>
-      <text x={56} y={70} textAnchor="middle" dominantBaseline="central"
-        fill="rgba(255,255,255,0.55)" fontSize={9} fontWeight={700} letterSpacing={1}>
+      <text x={56} y={47} textAnchor="middle" dominantBaseline="central"
+        fill="white" fontSize={23} fontWeight={900}>{percent}%</text>
+      <text x={56} y={68} textAnchor="middle" dominantBaseline="central"
+        fill="rgba(255,255,255,0.55)" fontSize={8} fontWeight={700} letterSpacing={0.5}>
         PRONUNCIACIÓN
       </text>
     </svg>
@@ -44,6 +45,7 @@ function ScoreCircle({ percent }: { percent: number }) {
 
 function SpeakerButton({ word, audioUrl }: { word: string; audioUrl?: string | null }) {
   const [playing, setPlaying] = useState(false)
+  const speak = useSpeak()
 
   function play() {
     if (playing) return
@@ -57,13 +59,7 @@ function SpeakerButton({ word, audioUrl }: { word: string; audioUrl?: string | n
   }
 
   function tts() {
-    if (typeof window === 'undefined' || !window.speechSynthesis) { setPlaying(false); return }
-    window.speechSynthesis.cancel()
-    const u = new SpeechSynthesisUtterance(word)
-    u.lang = 'en-US'; u.rate = 0.8
-    u.onend = () => setPlaying(false)
-    u.onerror = () => setPlaying(false)
-    window.speechSynthesis.speak(u)
+    speak(word, { onEnd: () => setPlaying(false) })
   }
 
   return (
@@ -144,8 +140,13 @@ export function PronunciationResultPanel({ wordResults, vocabMap, moduleConfig }
         {/* ── Score ── */}
         <div className="flex flex-col items-center pt-5 pb-2 flex-shrink-0">
           <ScoreCircle percent={percent} />
-          {wrongWords.length === 0 && (
+          {wrongWords.length === 0 ? (
             <p className="text-white font-extrabold text-sm mt-2">¡Pronunciaste todo perfecto! 🎯</p>
+          ) : (
+            <div className="text-center mt-2 px-4">
+              <p className="text-white font-extrabold text-base">Practica estas palabras</p>
+              <p className="text-white/55 text-xs mt-0.5">Escúchalas y repite para mejorar 🎧</p>
+            </div>
           )}
         </div>
 

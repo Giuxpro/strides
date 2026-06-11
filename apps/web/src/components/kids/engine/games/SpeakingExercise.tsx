@@ -6,6 +6,8 @@ import type { ModuleConfig, WordResult } from '@strides/core/kids'
 import { getVocabImageUrl } from '@strides/core/kids'
 import { useGameEvents } from '../modifiers/ModifierContext'
 import { useSpeechProvider } from '../SpeechConfigContext'
+import { useSpeak } from '@/components/kids/audio/VoicePresetProvider'
+import { playSuccessSound } from '@/components/kids/ui/AnimatedStar'
 
 interface Props {
   items: VocabItem[]
@@ -310,6 +312,7 @@ function MicButton({ isActive, isProcessing, disabled, onClick, color }: {
 export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, progress }: Props) {
   const { reportCorrect, reportWrong, isTerminated } = useGameEvents()
   const speechProvider = useSpeechProvider()
+  const speak = useSpeak()
   const [questions] = useState(() => shuffle([...items]))
   const [currentQ, setCurrentQ] = useState(0)
   const [micState, setMicState] = useState<MicState>('idle')
@@ -369,7 +372,7 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
         }))
         onComplete(newResults.filter(Boolean).length, newResults.length, wordResults)
       }
-    }, isCorrect ? 2200 : 2800)
+    }, isCorrect ? 2600 : 2800)
   }
 
   function handleSpeechResult(
@@ -382,6 +385,9 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
       reportCorrect()
       setHeard(transcript)
       setMicState('correct')
+      playSuccessSound()
+      const word = question?.text_en
+      if (word) setTimeout(() => speak(word), 700)
       lowConfListRef.current = [...lowConfListRef.current, lowConf]
       advanceWith([...results, true], true, transcript, session)
     } else if (attemptRef.current === 0) {

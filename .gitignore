@@ -6,3 +6,5 @@ dist
 .env*.local
 *.tsbuildinfo
 .claude/settings.local.json
+apps/web/certificates/
+apps/web/mkcert/

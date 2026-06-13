@@ -17,14 +17,16 @@ export async function startSubscriptionCheckout(input: CheckoutInput): Promise<P
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('No autenticado')
 
-  const [{ data: priceRow }, { data: discountRow }] = await Promise.all([
+  const [{ data: priceRow }, { data: discountRow }, { data: currencyRow }] = await Promise.all([
     supabase.from('settings').select('value').eq('key', 'monthly_price').maybeSingle(),
     supabase.from('settings').select('value').eq('key', 'annual_discount_pct').maybeSingle(),
+    supabase.from('settings').select('value').eq('key', 'price_currency').maybeSingle(),
   ])
 
   const monthlyPrice = priceRow?.value as number | undefined
   if (!monthlyPrice || monthlyPrice <= 0) throw new Error('Precio no configurado')
   const annualDiscountPct = (discountRow?.value as number) ?? 0
+  const currency = currencyRow?.value === 'USD' ? 'USD' : 'PEN'
 
   const units =
     input.billingCycle === 'annual'
@@ -38,6 +40,7 @@ export async function startSubscriptionCheckout(input: CheckoutInput): Promise<P
     idempotencyKey: randomUUID(),
     externalRef: `sub:${input.billingCycle}:${user.id}`,
     amount,
+    currency,
     token: input.token,
     metadata: { kind: 'subscription', userId: user.id, billingCycle: input.billingCycle },
   })

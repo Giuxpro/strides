@@ -9,6 +9,7 @@ import { GAME_REGISTRY, VOICE_PRESET_CONFIGS, isVoicePreset, DEFAULT_VOICE_PRESE
 import { MusicUploaderPanel } from '@/components/admin/settings/MusicUploaderPanel'
 import { GlobalDiscountPanel } from '@/components/admin/codes/GlobalDiscountPanel'
 import { FeedbackPromptPanel } from '@/components/admin/settings/FeedbackPromptPanel'
+import { PricingPanel } from '@/components/admin/settings/PricingPanel'
 import { getAllFlows, getAIUsageToday, getAllSettings } from '@strides/db'
 import { getModel } from '@strides/core'
 
@@ -34,6 +35,7 @@ export default async function AdminSettingsPage() {
   const trialDays = (s['trial_days'] as number) ?? 7
   const monthlyPrice = (s['monthly_price'] as number | null) ?? null
   const annualDiscountPct = (s['annual_discount_pct'] as number | null) ?? null
+  const priceCurrency = (s['price_currency'] as string) === 'USD' ? 'USD' : 'PEN'
   const globalDiscount = (s['global_discount'] as { enabled: boolean; percent: number; label: string; duration_months: number | null }) ?? { enabled: false, percent: 10, label: '', duration_months: null }
   const previewConfig = (s['preview_config'] as { scope: 'module' | 'lessons'; lessons_count: number }) ?? { scope: 'module' as const, lessons_count: 3 }
   const lockConfig = (s['lock_config'] as { enabled: boolean; applies_to: string[] }) ?? { enabled: false, applies_to: ['preview', 'trial'] }
@@ -154,51 +156,11 @@ export default async function AdminSettingsPage() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="monthly_price" className="block text-sm text-gray-400 mb-1.5">
-                    Precio mensual (USD)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
-                    <input
-                      id="monthly_price"
-                      name="monthly_price"
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      defaultValue={monthlyPrice ?? ''}
-                      placeholder="9.99"
-                      className="w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg pl-7 pr-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="annual_discount_pct" className="block text-sm text-gray-400 mb-1.5">
-                    Descuento anual (%)
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="annual_discount_pct"
-                      name="annual_discount_pct"
-                      type="number"
-                      min={0}
-                      max={100}
-                      step={1}
-                      defaultValue={annualDiscountPct ?? ''}
-                      placeholder="20"
-                      className="w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-3 pr-8 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">%</span>
-                  </div>
-                </div>
-              </div>
-              {annualDiscountPct && monthlyPrice ? (
-                <p className="text-xs text-gray-600 -mt-1">
-                  Plan anual: ${(monthlyPrice * (1 - annualDiscountPct / 100)).toFixed(2)}/mes · ${(monthlyPrice * 12 * (1 - annualDiscountPct / 100)).toFixed(2)}/año
-                </p>
-              ) : null}
+              <PricingPanel
+                initialMonthlyPrice={monthlyPrice}
+                initialAnnualDiscount={annualDiscountPct}
+                initialCurrency={priceCurrency}
+              />
 
               <div className="border-t border-gray-800 pt-5">
                 <p className="text-xs text-gray-400 font-medium mb-3">Promoción global</p>

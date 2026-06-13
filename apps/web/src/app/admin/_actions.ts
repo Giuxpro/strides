@@ -404,6 +404,7 @@ export async function updateSettings(formData: FormData) {
     { key: 'trial_days',       value: Number(formData.get('trial_days')) },
     { key: 'monthly_price',       value: Number(formData.get('monthly_price')) || null },
     { key: 'annual_discount_pct', value: Number(formData.get('annual_discount_pct')) || null },
+    { key: 'price_currency',      value: formData.get('price_currency') === 'USD' ? 'USD' : 'PEN' },
     { key: 'preview_config', value: {
         scope:         (formData.get('preview_scope') as string) || 'module',
         lessons_count: Number(formData.get('preview_lessons_count')) || 3,

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@measured/puck": "^0.20.2",
+    "@mercadopago/sdk-react": "^1.0.7",
     "@strides/core": "workspace:*",
     "@strides/db": "workspace:*",
     "@strides/ui": "workspace:*",

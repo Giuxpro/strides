@@ -2,20 +2,22 @@
 
 import { randomUUID } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
-import { createPayment, type PaymentResult } from '@strides/core/payments'
+import { createPayment, type CardInput, type PaymentResult } from '@strides/core/payments'
 
 type BillingCycle = 'monthly' | 'annual'
 
-interface CheckoutInput {
-  token: string // token de tarjeta del widget de Culqi
-  billingCycle: BillingCycle
-}
+// Tarjeta: el Brick de Mercado Pago tokeniza en el cliente y entrega estos datos.
+// Billetera: sin tarjeta — el servicio crea una preferencia y devuelve action.redirect.
+type CheckoutInput =
+  | { billingCycle: BillingCycle; method: 'card'; card: CardInput }
+  | { billingCycle: BillingCycle; method: 'wallet' }
 
 // El monto SIEMPRE se calcula en el servidor desde settings — nunca se confía en el cliente.
 export async function startSubscriptionCheckout(input: CheckoutInput): Promise<PaymentResult> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('No autenticado')
+  if (!user.email) throw new Error('La cuenta no tiene email')
 
   const [{ data: priceRow }, { data: discountRow }, { data: currencyRow }] = await Promise.all([
     supabase.from('settings').select('value').eq('key', 'monthly_price').maybeSingle(),
@@ -41,7 +43,9 @@ export async function startSubscriptionCheckout(input: CheckoutInput): Promise<P
     externalRef: `sub:${input.billingCycle}:${user.id}`,
     amount,
     currency,
-    token: input.token,
+    paymentMethod: 'mercadopago',
+    card: input.method === 'card' ? input.card : undefined,
+    payer: { email: user.email },
     metadata: { kind: 'subscription', userId: user.id, billingCycle: input.billingCycle },
   })
 }

@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { PlanSelector } from '@/components/billing/PlanSelector'
+import { CheckoutPanel } from '@/components/billing/CheckoutPanel'
 
 export default async function TrialExpiredPage() {
   const supabase = createClient()
@@ -12,11 +12,13 @@ export default async function TrialExpiredPage() {
     { data: subscription },
     { data: priceRow },
     { data: discountRow },
+    { data: currencyRow },
   ] = await Promise.all([
     supabase.from('profiles').select('display_name').eq('id', user.id).single(),
     supabase.from('subscriptions').select('trial_ends_at').eq('user_id', user.id).maybeSingle(),
     supabase.from('settings').select('value').eq('key', 'monthly_price').maybeSingle(),
     supabase.from('settings').select('value').eq('key', 'annual_discount_pct').maybeSingle(),
+    supabase.from('settings').select('value').eq('key', 'price_currency').maybeSingle(),
   ])
 
   const expiredAt = subscription?.trial_ends_at
@@ -25,7 +27,9 @@ export default async function TrialExpiredPage() {
 
   const monthlyPrice      = (priceRow?.value as number) ?? null
   const annualDiscountPct = (discountRow?.value as number) ?? 0
-  const hasPricing        = monthlyPrice !== null && monthlyPrice > 0
+  const currency          = currencyRow?.value === 'USD' ? 'USD' : 'PEN'
+  const publicKey         = process.env.MERCADOPAGO_PUBLIC_KEY ?? ''
+  const canCheckout       = monthlyPrice !== null && monthlyPrice > 0 && publicKey !== ''
 
   return (
     <main
@@ -57,18 +61,23 @@ export default async function TrialExpiredPage() {
           </ul>
         </div>
 
-        {hasPricing ? (
-          <div className="mb-4 text-left">
-            <PlanSelector monthlyPrice={monthlyPrice!} annualDiscountPct={annualDiscountPct} />
+        {canCheckout ? (
+          <div className="mb-4">
+            <CheckoutPanel
+              monthlyPrice={monthlyPrice!}
+              annualDiscountPct={annualDiscountPct}
+              currency={currency}
+              publicKey={publicKey}
+            />
           </div>
-        ) : null}
-
-        <div
-          className="w-full py-4 rounded-2xl font-bold text-white text-base text-center opacity-60 cursor-not-allowed"
-          style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', boxShadow: '0 4px 0 #4338ca' }}
-        >
-          Suscribirme — próximamente
-        </div>
+        ) : (
+          <div
+            className="w-full py-4 rounded-2xl font-bold text-white text-base text-center opacity-60 cursor-not-allowed"
+            style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', boxShadow: '0 4px 0 #4338ca' }}
+          >
+            Suscribirme — próximamente
+          </div>
+        )}
 
         <p className="text-xs text-gray-400 mt-4">
           ¿Preguntas? Escríbenos a{' '}

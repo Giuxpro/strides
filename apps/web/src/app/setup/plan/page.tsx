@@ -2,25 +2,28 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { RedeemCodeForm } from '@/components/account/RedeemCodeForm'
-import { PlanSelector } from '@/components/billing/PlanSelector'
+import { CheckoutPanel } from '@/components/billing/CheckoutPanel'
 
 export default async function SetupPlanPage() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: subscription }, { data: priceRow }, { data: discountRow }, { data: annualDiscRow }] = await Promise.all([
+  const [{ data: subscription }, { data: priceRow }, { data: discountRow }, { data: annualDiscRow }, { data: currencyRow }] = await Promise.all([
     supabase.from('subscriptions').select('acquisition_type, status, trial_ends_at').eq('user_id', user.id).maybeSingle(),
     supabase.from('settings').select('value').eq('key', 'monthly_price').maybeSingle(),
     supabase.from('settings').select('value').eq('key', 'global_discount').maybeSingle(),
     supabase.from('settings').select('value').eq('key', 'annual_discount_pct').maybeSingle(),
+    supabase.from('settings').select('value').eq('key', 'price_currency').maybeSingle(),
   ])
 
   const monthlyPrice      = (priceRow?.value as number) ?? null
   const annualDiscountPct = (annualDiscRow?.value as number) ?? 0
+  const currency          = currencyRow?.value === 'USD' ? 'USD' : 'PEN'
+  const publicKey         = process.env.MERCADOPAGO_PUBLIC_KEY ?? ''
+  const canCheckout       = monthlyPrice !== null && monthlyPrice > 0 && publicKey !== ''
   const globalDiscount    = discountRow?.value as { enabled: boolean; percent: number; label: string; duration_months: number | null } | null
   const promoActive       = globalDiscount?.enabled && (globalDiscount.percent ?? 0) > 0
-  const promoPrice        = promoActive && monthlyPrice ? monthlyPrice * (1 - globalDiscount!.percent / 100) : null
 
   const isTrial = subscription?.acquisition_type === 'trial'
 
@@ -117,25 +120,29 @@ export default async function SetupPlanPage() {
           </ul>
         </div>
 
-        {/* Selector mensual / anual */}
-        {monthlyPrice && (
-          <div className="mb-4 text-left">
-            <PlanSelector monthlyPrice={monthlyPrice} annualDiscountPct={annualDiscountPct} />
+        {/* Selector de plan + pago */}
+        {canCheckout ? (
+          <div className="mb-4">
+            <CheckoutPanel
+              monthlyPrice={monthlyPrice!}
+              annualDiscountPct={annualDiscountPct}
+              currency={currency}
+              publicKey={publicKey}
+            />
             {promoActive && (
               <p className="text-xs text-center text-emerald-600 font-medium mt-2">
                 + promoción global -{globalDiscount!.percent}%{globalDiscount!.label ? ` · ${globalDiscount!.label}` : ''}
               </p>
             )}
           </div>
+        ) : (
+          <div
+            className="w-full py-4 rounded-2xl font-bold text-white text-base text-center opacity-60 cursor-not-allowed"
+            style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', boxShadow: '0 4px 0 #4338ca' }}
+          >
+            Activar acceso — próximamente
+          </div>
         )}
-
-        {/* Placeholder — se conectará al proveedor de pagos */}
-        <div
-          className="w-full py-4 rounded-2xl font-bold text-white text-base text-center opacity-60 cursor-not-allowed"
-          style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', boxShadow: '0 4px 0 #4338ca' }}
-        >
-          Activar acceso — próximamente
-        </div>
 
         <p className="text-center text-xs text-gray-400 mt-4">
           ¿Preguntas? Escríbenos a{' '}

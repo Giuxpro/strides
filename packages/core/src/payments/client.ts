@@ -1,5 +1,5 @@
 // Cliente del Payment Service. Strides habla el contrato normalizado del servicio,
-// nunca el de Culqi directamente. Solo se usa desde el servidor (lleva la API key).
+// nunca el de Culqi / Mercado Pago directamente. Solo se usa desde el servidor (lleva la API key).
 
 export type PaymentStatus =
   | 'pending'
@@ -9,6 +9,18 @@ export type PaymentStatus =
   | 'cancelled'
   | 'refunded'
 
+// 'card' enruta a Culqi; 'mercadopago' enruta a Mercado Pago (tarjeta o billetera).
+export type PaymentMethod = 'card' | 'mercadopago'
+
+// Datos de la tarjeta tokenizada en el cliente. Ausente en flujos de billetera/redirección.
+// Mercado Pago exige token + paymentMethodId + installments; Culqi solo token.
+export interface CardInput {
+  token: string
+  paymentMethodId?: string
+  installments?: number
+  issuerId?: string
+}
+
 export interface CreatePaymentParams {
   baseUrl: string // ej: http://localhost:3005/v1
   apiKey: string
@@ -16,8 +28,17 @@ export interface CreatePaymentParams {
   externalRef: string
   amount: number // en céntimos
   currency?: string
-  token: string // token de tarjeta generado en el cliente por el SDK del proveedor
+  paymentMethod: PaymentMethod
+  card?: CardInput // presente en cobros con tarjeta; ausente en billetera (redirección)
+  payer?: { email: string }
   metadata?: Record<string, unknown>
+}
+
+// Acción que el usuario debe completar para que el pago avance (billetera/QR).
+// Ausente en cobros síncronos como tarjeta.
+export interface PaymentAction {
+  type: 'redirect' | 'qr'
+  url: string
 }
 
 export interface PaymentResult {
@@ -27,10 +48,12 @@ export interface PaymentResult {
   amount: number
   currency: string
   createdAt: string
+  action?: PaymentAction
 }
 
 export async function createPayment(params: CreatePaymentParams): Promise<PaymentResult> {
-  const { baseUrl, apiKey, idempotencyKey, externalRef, amount, currency, token, metadata } = params
+  const { baseUrl, apiKey, idempotencyKey, externalRef, amount, currency, paymentMethod, card, payer, metadata } =
+    params
 
   const res = await fetch(`${baseUrl}/payments`, {
     method: 'POST',
@@ -39,7 +62,7 @@ export async function createPayment(params: CreatePaymentParams): Promise<Paymen
       Authorization: `Bearer ${apiKey}`,
       'Idempotency-Key': idempotencyKey,
     },
-    body: JSON.stringify({ externalRef, amount, currency, token, metadata }),
+    body: JSON.stringify({ externalRef, amount, currency, paymentMethod, card, payer, metadata }),
   })
 
   if (!res.ok) {

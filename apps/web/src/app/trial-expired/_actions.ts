@@ -2,15 +2,27 @@
 
 import { randomUUID } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
-import { createPayment, type CardInput, type PaymentResult } from '@strides/core/payments'
+import { createPayment, type CardInput, type PaymentMethod, type PaymentResult } from '@strides/core/payments'
 
 type BillingCycle = 'monthly' | 'annual'
 
 // Tarjeta: el Brick de Mercado Pago tokeniza en el cliente y entrega estos datos.
 // Billetera: sin tarjeta — el servicio crea una preferencia y devuelve action.redirect.
+// Yape: token generado por Culqi.js en el cliente (código de aprobación de la app).
+// PagoEfectivo: sin tarjeta — Culqi genera un CIP y devuelve action.voucher.
 type CheckoutInput =
   | { billingCycle: BillingCycle; method: 'card'; card: CardInput }
   | { billingCycle: BillingCycle; method: 'wallet' }
+  | { billingCycle: BillingCycle; method: 'yape'; card: CardInput }
+  | { billingCycle: BillingCycle; method: 'pagoefectivo' }
+
+// 'card'/'wallet' van por Mercado Pago; 'yape'/'pagoefectivo' por Culqi.
+const PAYMENT_METHOD: Record<CheckoutInput['method'], PaymentMethod> = {
+  card: 'mercadopago',
+  wallet: 'mercadopago',
+  yape: 'yape',
+  pagoefectivo: 'pagoefectivo',
+}
 
 // El monto SIEMPRE se calcula en el servidor desde settings — nunca se confía en el cliente.
 export async function startSubscriptionCheckout(input: CheckoutInput): Promise<PaymentResult> {
@@ -36,6 +48,8 @@ export async function startSubscriptionCheckout(input: CheckoutInput): Promise<P
       : monthlyPrice
   const amount = Math.round(units * 100) // céntimos
 
+  const card = input.method === 'card' || input.method === 'yape' ? input.card : undefined
+
   return createPayment({
     baseUrl: process.env.PAYMENTS_API_BASE_URL!,
     apiKey: process.env.PAYMENTS_API_KEY!,
@@ -43,8 +57,8 @@ export async function startSubscriptionCheckout(input: CheckoutInput): Promise<P
     externalRef: `sub:${input.billingCycle}:${user.id}`,
     amount,
     currency,
-    paymentMethod: 'mercadopago',
-    card: input.method === 'card' ? input.card : undefined,
+    paymentMethod: PAYMENT_METHOD[input.method],
+    card,
     payer: { email: user.email },
     metadata: { kind: 'subscription', userId: user.id, billingCycle: input.billingCycle },
   })

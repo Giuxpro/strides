@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { CheckoutPanel } from '@/components/billing/CheckoutPanel'
+import { DEFAULT_PAYMENT_METHODS, type PaymentMethodId } from '@strides/core/payments'
 
 export default async function TrialExpiredPage() {
   const supabase = createClient()
@@ -13,12 +14,14 @@ export default async function TrialExpiredPage() {
     { data: priceRow },
     { data: discountRow },
     { data: currencyRow },
+    { data: pmRow },
   ] = await Promise.all([
     supabase.from('profiles').select('display_name').eq('id', user.id).single(),
     supabase.from('subscriptions').select('trial_ends_at').eq('user_id', user.id).maybeSingle(),
     supabase.from('settings').select('value').eq('key', 'monthly_price').maybeSingle(),
     supabase.from('settings').select('value').eq('key', 'annual_discount_pct').maybeSingle(),
     supabase.from('settings').select('value').eq('key', 'price_currency').maybeSingle(),
+    supabase.from('settings').select('value').eq('key', 'payment_methods').maybeSingle(),
   ])
 
   const expiredAt = subscription?.trial_ends_at
@@ -29,6 +32,7 @@ export default async function TrialExpiredPage() {
   const annualDiscountPct = (discountRow?.value as number) ?? 0
   const currency          = currencyRow?.value === 'USD' ? 'USD' : 'PEN'
   const publicKey         = process.env.MERCADOPAGO_PUBLIC_KEY ?? ''
+  const enabledMethods    = (pmRow?.value as Partial<Record<PaymentMethodId, boolean>> | undefined) ?? DEFAULT_PAYMENT_METHODS
   const canCheckout       = monthlyPrice !== null && monthlyPrice > 0 && publicKey !== ''
 
   return (
@@ -68,6 +72,7 @@ export default async function TrialExpiredPage() {
               annualDiscountPct={annualDiscountPct}
               currency={currency}
               publicKey={publicKey}
+              enabledMethods={enabledMethods}
             />
           </div>
         ) : (

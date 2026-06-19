@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import type { Json } from '@strides/db'
 import { getAllSettings, insertGeneratedModule, insertGeneratedVocab, insertGeneratedLessons, logAIUsage } from '@strides/db'
 import { GAME_REGISTRY } from '@strides/core/kids'
+import { PAYMENT_METHOD_REGISTRY } from '@strides/core/payments'
 import { createAIProvider } from '@strides/core/ai'
 import { toStoragePath } from '@strides/core'
 
@@ -405,6 +406,10 @@ export async function updateSettings(formData: FormData) {
     { key: 'monthly_price',       value: Number(formData.get('monthly_price')) || null },
     { key: 'annual_discount_pct', value: Number(formData.get('annual_discount_pct')) || null },
     { key: 'price_currency',      value: formData.get('price_currency') === 'USD' ? 'USD' : 'PEN' },
+    { key: 'payment_methods', value: Object.fromEntries(
+        // Un método no implementado nunca puede quedar activo, aunque llegue el campo.
+        PAYMENT_METHOD_REGISTRY.map(m => [m.id, m.implemented && formData.get(`pm_${m.id}`) === 'on'])
+      ) as Json },
     { key: 'preview_config', value: {
         scope:         (formData.get('preview_scope') as string) || 'module',
         lessons_count: Number(formData.get('preview_lessons_count')) || 3,

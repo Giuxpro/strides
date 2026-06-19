@@ -1,23 +1,26 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { CheckoutPanel } from '@/components/billing/CheckoutPanel'
+import { DEFAULT_PAYMENT_METHODS, type PaymentMethodId } from '@strides/core/payments'
 
 export default async function UpgradePage() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: profile }, { data: priceRow }, { data: discountRow }, { data: currencyRow }] = await Promise.all([
+  const [{ data: profile }, { data: priceRow }, { data: discountRow }, { data: currencyRow }, { data: pmRow }] = await Promise.all([
     supabase.from('profiles').select('display_name').eq('id', user.id).single(),
     supabase.from('settings').select('value').eq('key', 'monthly_price').maybeSingle(),
     supabase.from('settings').select('value').eq('key', 'annual_discount_pct').maybeSingle(),
     supabase.from('settings').select('value').eq('key', 'price_currency').maybeSingle(),
+    supabase.from('settings').select('value').eq('key', 'payment_methods').maybeSingle(),
   ])
 
   const monthlyPrice      = (priceRow?.value as number) ?? null
   const annualDiscountPct = (discountRow?.value as number) ?? 0
   const currency          = currencyRow?.value === 'USD' ? 'USD' : 'PEN'
   const publicKey         = process.env.MERCADOPAGO_PUBLIC_KEY ?? ''
+  const enabledMethods    = (pmRow?.value as Partial<Record<PaymentMethodId, boolean>> | undefined) ?? DEFAULT_PAYMENT_METHODS
   const canCheckout       = monthlyPrice !== null && monthlyPrice > 0 && publicKey !== ''
 
   return (
@@ -56,6 +59,7 @@ export default async function UpgradePage() {
               annualDiscountPct={annualDiscountPct}
               currency={currency}
               publicKey={publicKey}
+              enabledMethods={enabledMethods}
             />
           </div>
         ) : (

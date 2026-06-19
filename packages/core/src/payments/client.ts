@@ -9,8 +9,9 @@ export type PaymentStatus =
   | 'cancelled'
   | 'refunded'
 
-// 'card' enruta a Culqi; 'mercadopago' enruta a Mercado Pago (tarjeta o billetera).
-export type PaymentMethod = 'card' | 'mercadopago'
+// 'mercadopago' enruta a Mercado Pago (tarjeta o billetera).
+// 'card' | 'yape' | 'pagoefectivo' enrutan a Culqi.
+export type PaymentMethod = 'card' | 'mercadopago' | 'yape' | 'pagoefectivo'
 
 // Datos de la tarjeta tokenizada en el cliente. Ausente en flujos de billetera/redirección.
 // Mercado Pago exige token + paymentMethodId + installments; Culqi solo token.
@@ -34,12 +35,14 @@ export interface CreatePaymentParams {
   metadata?: Record<string, unknown>
 }
 
-// Acción que el usuario debe completar para que el pago avance (billetera/QR).
-// Ausente en cobros síncronos como tarjeta.
-export interface PaymentAction {
-  type: 'redirect' | 'qr'
-  url: string
-}
+// Acción que el usuario debe completar para que el pago avance (flujos asíncronos).
+// Ausente en cobros síncronos como tarjeta o Yape.
+// - redirect/qr: billetera Mercado Pago.
+// - voucher: CIP de PagoEfectivo (código pagable en banca/agente) con su vencimiento.
+export type PaymentAction =
+  | { type: 'redirect'; url: string }
+  | { type: 'qr'; url: string }
+  | { type: 'voucher'; code: string; expiresAt: string }
 
 export interface PaymentResult {
   paymentId: string

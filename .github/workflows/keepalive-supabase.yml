@@ -1,0 +1,31 @@
+name: keepalive-supabase
+
+# Evita que Supabase (plan free) pause el proyecto por inactividad (~7 días sin requests).
+# Un cron EXTERNO es lo único que funciona: el cliente/Vercel/pg_cron no corren cuando no hay
+# tráfico, que es justo cuando se pausaría. Esto solo hace un request inocuo a la REST API.
+# Requiere dos secrets en el repo (Settings → Secrets and variables → Actions),
+# con los MISMOS nombres que en tu .env para copiar sin confundirte:
+#   NEXT_PUBLIC_SUPABASE_URL       -> https://<project-ref>.supabase.co
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY  -> la anon/public key (no es secreta; va aquí por comodidad)
+# Nota: el prefijo NEXT_PUBLIC_ no hace nada en Actions (solo importa en Next.js); es solo el nombre.
+
+on:
+  schedule:
+    # Diario 06:17 UTC. Diario da margen de sobra frente al límite de 7 días aunque
+    # un runner gratuito se retrase. Ajustable.
+    - cron: '17 6 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          curl -fsS "${SUPABASE_URL}/rest/v1/settings?select=key&limit=1" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" > /dev/null
+          echo "Supabase ping OK"

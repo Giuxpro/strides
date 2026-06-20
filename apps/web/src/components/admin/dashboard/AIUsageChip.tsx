@@ -13,9 +13,14 @@ interface Props {
   month: string
   total: string
   defaultPeriod?: Period
+  // Qué botones mostrar (default los tres) y etiquetas personalizadas por período.
+  periods?: Period[]
+  labels?: Partial<Record<Period, string>>
 }
 
-export function AIUsageChip({ label, color, tooltip, tooltipAlign = 'left', today, month, total, defaultPeriod = 'today' }: Props) {
+const DEFAULT_LABELS: Record<Period, string> = { today: 'Hoy', month: 'Mes', total: 'Total' }
+
+export function AIUsageChip({ label, color, tooltip, tooltipAlign = 'left', today, month, total, defaultPeriod = 'today', periods = ['today', 'month', 'total'], labels }: Props) {
   const [period, setPeriod] = useState<Period>(defaultPeriod)
 
   const value = period === 'today' ? today : period === 'month' ? month : total
@@ -27,7 +32,7 @@ export function AIUsageChip({ label, color, tooltip, tooltipAlign = 'left', toda
         <div className="relative group cursor-help flex items-center">
           <span className="text-[11px] leading-none select-none text-slate-400">ⓘ</span>
           <div
-            className={`absolute bottom-full mb-2 w-56 bg-gray-900 border border-gray-700 rounded-xl p-3 text-[11px] text-gray-400 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 z-[200] shadow-xl text-left whitespace-normal leading-relaxed ${tooltipAlign === 'right' ? 'right-0' : 'left-0'}`}
+            className={`absolute bottom-full mb-2 w-64 bg-gray-900 border border-gray-700 rounded-xl p-3 text-[11px] text-gray-300 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 z-[200] shadow-xl text-left whitespace-pre-line leading-relaxed ${tooltipAlign === 'right' ? 'right-0' : 'left-0'}`}
           >
             {tooltip}
           </div>
@@ -39,7 +44,7 @@ export function AIUsageChip({ label, color, tooltip, tooltipAlign = 'left', toda
       </p>
 
       <div className="flex gap-1">
-        {(['today', 'month', 'total'] as Period[]).map((p) => {
+        {periods.map((p) => {
           const active = period === p
           return (
             <button
@@ -52,7 +57,7 @@ export function AIUsageChip({ label, color, tooltip, tooltipAlign = 'left', toda
                   : { color: '#4B5563', background: 'transparent', border: '1px solid rgba(255,255,255,0.06)' }
               }
             >
-              {p === 'today' ? 'Hoy' : p === 'month' ? 'Mes' : 'Total'}
+              {labels?.[p] ?? DEFAULT_LABELS[p]}
             </button>
           )
         })}

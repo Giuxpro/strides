@@ -19,7 +19,7 @@ type ExerciseUsageRow = {
 type RawStep = {
   id: string
   position: number
-  step_type: 'video' | 'slide' | 'exercise'
+  step_type: 'video' | 'slide' | 'exercise' | 'evaluation'
   title: string | null
   config: Record<string, string>
   exercises: {
@@ -82,7 +82,7 @@ export default async function EditLessonPage({ params }: Props) {
   }))
 
   return (
-    <div className="p-8 max-w-2xl space-y-8">
+    <div className="p-8 space-y-8">
       <div>
         <Link
           href={`/admin/content/${params.moduleId}`}
@@ -102,6 +102,7 @@ export default async function EditLessonPage({ params }: Props) {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,32rem)_minmax(0,1fr)] gap-8 items-start">
       {/* Basic info */}
       <form action={updateLesson} className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-5">
         <input type="hidden" name="id" value={lesson.id} />
@@ -180,6 +181,7 @@ export default async function EditLessonPage({ params }: Props) {
           }))}
         />
       </section>
+      </div>
     </div>
   )
 }

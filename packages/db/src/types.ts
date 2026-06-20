@@ -24,9 +24,11 @@ export type CodeRedemption = SupaTables<'code_redemptions'>
 export type UserRole = Database['public']['Enums']['user_role']
 export type AccessType = Database['public']['Enums']['access_type']
 export type WordStatus = Database['public']['Enums']['word_status']
-export type ExerciseType = Database['public']['Enums']['exercise_type']
+// exercises.type es text en BD; el catálogo válido vive en GAME_REGISTRY (core).
+export type ExerciseType = string
 export type ExercisePhase = Database['public']['Enums']['exercise_phase']
 export type VocabularyType = Database['public']['Enums']['vocabulary_type']
 export type JobStatus = Database['public']['Enums']['job_status']
-export type StepType = Database['public']['Enums']['step_type']
+// lesson_steps.step_type es text en BD; el catálogo vive en STEP_REGISTRY (core).
+export type StepType = string
 export type LessonStep = SupaTables<'lesson_steps'>

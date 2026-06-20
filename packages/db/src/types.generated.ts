@@ -602,7 +602,7 @@ export type Database = {
           module_id: string
           order: number
           phase: Database["public"]["Enums"]["exercise_phase"]
-          type: Database["public"]["Enums"]["exercise_type"]
+          type: string
           updated_at: string
         }
         Insert: {
@@ -614,7 +614,7 @@ export type Database = {
           module_id: string
           order?: number
           phase?: Database["public"]["Enums"]["exercise_phase"]
-          type: Database["public"]["Enums"]["exercise_type"]
+          type: string
           updated_at?: string
         }
         Update: {
@@ -626,7 +626,7 @@ export type Database = {
           module_id?: string
           order?: number
           phase?: Database["public"]["Enums"]["exercise_phase"]
-          type?: Database["public"]["Enums"]["exercise_type"]
+          type?: string
           updated_at?: string
         }
         Relationships: [
@@ -811,7 +811,7 @@ export type Database = {
           id: string
           lesson_id: string
           position: number
-          step_type: Database["public"]["Enums"]["step_type"]
+          step_type: string
           title: string | null
           updated_at: string
         }
@@ -822,7 +822,7 @@ export type Database = {
           id?: string
           lesson_id: string
           position?: number
-          step_type: Database["public"]["Enums"]["step_type"]
+          step_type: string
           title?: string | null
           updated_at?: string
         }
@@ -833,7 +833,7 @@ export type Database = {
           id?: string
           lesson_id?: string
           position?: number
-          step_type?: Database["public"]["Enums"]["step_type"]
+          step_type?: string
           title?: string | null
           updated_at?: string
         }
@@ -1407,11 +1407,9 @@ export type Database = {
     Enums: {
       access_type: "free" | "purchased" | "subscription"
       exercise_phase: "practice" | "evaluation"
-      exercise_type: "memory" | "recognition" | "speaking"
       household_member_type: "owner" | "included" | "extra"
       household_status: "active" | "trial" | "inactive" | "cancelled"
       job_status: "pending" | "completed" | "failed"
-      step_type: "video" | "slide" | "exercise"
       user_role: "parent" | "admin"
       vocabulary_type: "word" | "phrase"
       word_status: "unseen" | "learning" | "mastered"
@@ -1544,11 +1542,9 @@ export const Constants = {
     Enums: {
       access_type: ["free", "purchased", "subscription"],
       exercise_phase: ["practice", "evaluation"],
-      exercise_type: ["memory", "recognition", "speaking"],
       household_member_type: ["owner", "included", "extra"],
       household_status: ["active", "trial", "inactive", "cancelled"],
       job_status: ["pending", "completed", "failed"],
-      step_type: ["video", "slide", "exercise"],
       user_role: ["parent", "admin"],
       vocabulary_type: ["word", "phrase"],
       word_status: ["unseen", "learning", "mastered"],

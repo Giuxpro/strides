@@ -82,6 +82,7 @@ export function RecognitionExercise({ items, onComplete, onBack, moduleConfig, p
     if (isCorrect) reportCorrect(); else reportWrong()
     setResults(prev => [...prev, isCorrect])
     setSelected(option.id)
+    speak(question.text_en)
 
     setTimeout(() => {
       setSelected(null)
@@ -158,9 +159,12 @@ export function RecognitionExercise({ items, onComplete, onBack, moduleConfig, p
               <span className="relative text-3xl sm:text-4xl" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' }}>
                 {speaking ? '🔊' : '🔉'}
               </span>
-              <span className="relative text-white font-extrabold text-sm sm:text-base leading-tight capitalize drop-shadow">
-                {question.text_en}
-              </span>
+              {/* La palabra aparece solo tras responder — el niño primero usa el oído */}
+              {selected !== null && (
+                <span className="relative text-white font-extrabold text-sm sm:text-base leading-tight capitalize drop-shadow">
+                  {question.text_en}
+                </span>
+              )}
             </button>
 
             {/* Slow button */}

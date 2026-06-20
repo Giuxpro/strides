@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getModuleConfig } from '@strides/core/kids'
+import { getModuleConfig, isSpeechProvider, DEFAULT_SPEECH_PROVIDER, type EvaluationConfig } from '@strides/core/kids'
 import { LessonEngine, type LessonStep, type ExerciseData, type VocabItem } from '@/components/kids/engine/LessonEngine'
 import { VoicePresetProvider } from '@/components/kids/audio/VoicePresetProvider'
 import { LessonPreviewFrame } from '@/components/admin/content/LessonPreviewFrame'
@@ -15,12 +15,12 @@ interface Props {
 type RawStep = {
   id: string
   position: number
-  step_type: 'video' | 'slide' | 'exercise'
+  step_type: string
   title: string | null
-  config: Record<string, string>
+  config: Record<string, unknown>
   exercises: {
     id: string
-    type: 'memory' | 'recognition' | 'speaking'
+    type: string
     phase: 'practice' | 'evaluation'
     exercise_items: { order: number; vocabulary_items: VocabItem | null }[]
   } | null
@@ -40,12 +40,15 @@ export default async function LessonPreviewPage({ params, searchParams }: Props)
 
   const supabase = createClient()
 
-  const [{ data: mod }, { data: lesson }] = await Promise.all([
+  const [{ data: mod }, { data: lesson }, { data: speechRow }] = await Promise.all([
     supabase.from('modules').select('id, title_es, slug').eq('id', params.moduleId).single(),
     supabase.from('lessons').select('id, title_es, title_en').eq('id', params.lessonId).single(),
+    supabase.from('settings').select('value').eq('key', 'speech_provider').maybeSingle(),
   ])
 
   if (!mod || !lesson) notFound()
+
+  const speechProvider = isSpeechProvider(speechRow?.value) ? speechRow.value : DEFAULT_SPEECH_PROVIDER
 
   const { data: rawSteps } = await supabase
     .from('lesson_steps')
@@ -58,6 +61,19 @@ export default async function LessonPreviewPage({ params, searchParams }: Props)
     `)
     .eq('lesson_id', lesson.id)
     .order('position') as { data: RawStep[] | null }
+
+  const evalVocabIds = Array.from(new Set(
+    (rawSteps ?? [])
+      .filter(s => s.step_type === 'evaluation')
+      .flatMap(s => (s.config as unknown as EvaluationConfig).vocabIds ?? [])
+  ))
+  const { data: evalVocabRows } = evalVocabIds.length
+    ? await supabase
+        .from('vocabulary_items')
+        .select('id, text_en, text_es, image_url, emoji_unicode, audio_url')
+        .in('id', evalVocabIds)
+    : { data: [] as VocabItem[] }
+  const evalVocabMap = new Map((evalVocabRows ?? []).map(v => [v.id, v]))
 
   const steps = (rawSteps ?? []).flatMap((s): LessonStep[] => {
     if (s.step_type === 'exercise') {
@@ -75,10 +91,17 @@ export default async function LessonPreviewPage({ params, searchParams }: Props)
       return [{ id: s.id, position: s.position, step_type: 'exercise', title: s.title, config: {} as Record<string, never>, exercise }]
     }
     if (s.step_type === 'video') {
-      return [{ id: s.id, position: s.position, step_type: 'video', title: s.title, config: s.config as { url: string; caption?: string } }]
+      return [{ id: s.id, position: s.position, step_type: 'video', title: s.title, config: s.config as unknown as { url: string; caption?: string } }]
     }
     if (s.step_type === 'slide') {
-      return [{ id: s.id, position: s.position, step_type: 'slide', title: s.title, config: s.config as { image_url?: string; text_en: string; text_es: string } }]
+      return [{ id: s.id, position: s.position, step_type: 'slide', title: s.title, config: s.config as unknown as { image_url?: string; text_en: string; text_es: string } }]
+    }
+    if (s.step_type === 'evaluation') {
+      const config = s.config as unknown as EvaluationConfig
+      const vocab = (config.vocabIds ?? [])
+        .map(id => evalVocabMap.get(id))
+        .filter((v): v is VocabItem => !!v)
+      return [{ id: s.id, position: s.position, step_type: 'evaluation', title: s.title, config, vocab }]
     }
     return []
   })
@@ -88,8 +111,8 @@ export default async function LessonPreviewPage({ params, searchParams }: Props)
 
   /* ── Vista padre: resumen de pasos ── */
   if (view === 'parent') {
-    const ICONS: Record<string, string> = { video: '🎬', slide: '🖼️', exercise: '🎮' }
-    const LABELS: Record<string, string> = { video: 'Video', slide: 'Diapositiva', exercise: 'Ejercicio' }
+    const ICONS: Record<string, string> = { video: '🎬', slide: '🖼️', exercise: '🎮', evaluation: '📝' }
+    const LABELS: Record<string, string> = { video: 'Video', slide: 'Diapositiva', exercise: 'Ejercicio', evaluation: 'Evaluación' }
 
     return (
       <div className="h-screen flex flex-col bg-gray-950">
@@ -106,7 +129,8 @@ export default async function LessonPreviewPage({ params, searchParams }: Props)
               const isIncomplete =
                 (step.step_type === 'slide' && !step.config.text_en) ||
                 (step.step_type === 'video' && !step.config.url) ||
-                (step.step_type === 'exercise' && step.exercise.items.length === 0)
+                (step.step_type === 'exercise' && step.exercise.items.length === 0) ||
+                (step.step_type === 'evaluation' && step.vocab.length === 0)
 
               return (
                 <div key={step.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-start gap-3">
@@ -127,6 +151,11 @@ export default async function LessonPreviewPage({ params, searchParams }: Props)
                     {step.step_type === 'exercise' && (
                       <p className="text-xs text-gray-500 mt-0.5">
                         {step.exercise.type} · {step.exercise.phase === 'evaluation' ? 'Evaluación' : 'Práctica'} · {step.exercise.items.length} palabras
+                      </p>
+                    )}
+                    {step.step_type === 'evaluation' && (
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {step.config.receptiveCount} receptivos + {step.config.productiveCount} productivos · {step.vocab.length} palabras
                       </p>
                     )}
                   </div>
@@ -154,7 +183,9 @@ export default async function LessonPreviewPage({ params, searchParams }: Props)
             moduleSlug={mod.slug}
             steps={steps}
             moduleConfig={moduleConfig}
+            speechProvider={speechProvider}
             previewMode
+            backHref={backHref}
           />
         </VoicePresetProvider>
       </LessonPreviewFrame>

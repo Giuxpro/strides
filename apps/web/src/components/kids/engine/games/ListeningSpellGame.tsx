@@ -63,7 +63,7 @@ const SUNBURST = [
 ].join(', ')
 
 export function ListeningSpellGame({ items, onComplete, onBack, moduleConfig, progress }: Props) {
-  const { reportCorrect, reportWrong, isTerminated } = useGameEvents()
+  const { reportCorrect, isTerminated } = useGameEvents()
   const speakFn = useSpeak()
   const [questions] = useState(() => shuffle([...items]))
   const [currentQ, setCurrentQ] = useState(0)
@@ -109,28 +109,36 @@ export function ListeningSpellGame({ items, onComplete, onBack, moduleConfig, pr
   }, [currentQ])
 
   function placeTile(tileIdx: number) {
-    if (isTerminated || shaking || burst) return
+    if (isTerminated || burst) return
     const letter = tiles[tileIdx]
     if (!letter || usedTileIdxs.has(tileIdx)) return
 
     const nextSlot = slots.findIndex(s => s === null)
     if (nextSlot === -1) return
 
+    const correct = letter === word[nextSlot]
     const newSlots = [...slots]
     newSlots[nextSlot] = letter
     const newUsed = new Set(usedTileIdxs)
     newUsed.add(tileIdx)
     const newStates = [...slotStates] as SlotState[]
-    newStates[nextSlot] = 'filled'
+    // Feedback inmediato por posición (incluye señuelos → rojo).
+    newStates[nextSlot] = correct ? 'correct' : 'wrong'
 
     setSlots(newSlots)
     setUsedTileIdxs(newUsed)
     setSlotStates(newStates)
 
-    if (!newSlots.every(s => s !== null)) return
+    if (!correct) {
+      // Cuenta el error (pista cada 3); el niño toca la letra para quitarla.
+      const newWrong = wrongCountRef.current + 1
+      setWrongCount(newWrong)
+      if (newWrong % 3 === 0) setShowHint(true)
+      return
+    }
 
-    const formed = newSlots.join('')
-    if (formed === word) {
+    // Completa solo cuando TODAS las letras están en su posición correcta.
+    if (newSlots.every((s, i) => s === word[i])) {
       setBurst(true)
       reportCorrect()
       speakFn(question.text_en)
@@ -149,39 +157,26 @@ export function ListeningSpellGame({ items, onComplete, onBack, moduleConfig, pr
           onComplete(newResults.filter(Boolean).length, newResults.length, wordResults)
         }
       }, 1800)
-    } else {
-      setShaking(true)
-      setSlotStates(newSlots.map(() => 'wrong' as SlotState))
-      reportWrong()
-
-      // Acumular error y mostrar pista cada 3 equivocaciones
-      const newWrong = wrongCountRef.current + 1
-      setWrongCount(newWrong)
-      if (newWrong % 3 === 0) setShowHint(true)
-
-      // Reshuffle sin resetear el contador de errores
-      const currentWord = question.text_en.toUpperCase()
-      setTimeout(() => resetTiles(currentWord, false), 800)
     }
   }
 
   function removeSlot(slotIdx: number) {
-    if (isTerminated || shaking || burst) return
+    if (isTerminated || burst) return
     if (slots[slotIdx] === null) return
 
     const letter = slots[slotIdx]!
     const newSlots = [...slots]
-    newSlots[slotIdx] = null
+    newSlots[slotIdx] = null  // libera el espacio sin compactar (la posición importa)
 
     const newUsed = new Set(usedTileIdxs)
     for (const idx of Array.from(usedTileIdxs)) {
       if (tiles[idx] === letter) { newUsed.delete(idx); break }
     }
 
-    const filled = newSlots.filter(s => s !== null)
-    const compacted = [...filled, ...Array(word.length - filled.length).fill(null)]
-    setSlots(compacted)
-    setSlotStates(compacted.map(s => (s !== null ? 'filled' : 'empty')) as SlotState[])
+    const newStates = [...slotStates] as SlotState[]
+    newStates[slotIdx] = 'empty'
+    setSlots(newSlots)
+    setSlotStates(newStates)
     setUsedTileIdxs(newUsed)
   }
 

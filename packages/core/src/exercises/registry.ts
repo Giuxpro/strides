@@ -1,4 +1,4 @@
-import type { ExerciseType } from '@strides/db'
+import { GAME_REGISTRY } from '../kids/games/registry'
 
 export type ExerciseComponentProps = {
   exerciseId: string
@@ -6,10 +6,11 @@ export type ExerciseComponentProps = {
   onComplete: (score: number, failedItemIds: string[]) => void
 }
 
-// Registry pattern: agregar nuevo tipo = una línea aquí, cero cambios en el motor
-// Los componentes se importan en la capa de UI (apps/web), no aquí
-export const EXERCISE_TYPES: ExerciseType[] = ['memory', 'recognition', 'speaking']
+// El catálogo de tipos de ejercicio = GAME_REGISTRY (fuente de verdad en código).
+// La columna exercises.type es text; la validez se comprueba aquí, no en BD.
+// Agregar un tipo nuevo = una línea en GAME_REGISTRY, cero migraciones.
+export const EXERCISE_TYPES: string[] = GAME_REGISTRY.map(g => g.id)
 
-export function isValidExerciseType(type: string): type is ExerciseType {
-  return EXERCISE_TYPES.includes(type as ExerciseType)
+export function isValidExerciseType(type: string): boolean {
+  return GAME_REGISTRY.some(g => g.id === type)
 }

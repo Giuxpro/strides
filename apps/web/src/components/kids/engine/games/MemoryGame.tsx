@@ -252,7 +252,7 @@ export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }
                           <img
                             src={card.imageUrl}
                             alt={card.enText}
-                            className={`w-10 h-10 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 object-contain drop-shadow-lg ${isMatch ? '' : 'animate-levitate'}`}
+                            className={`w-10 h-10 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 object-contain drop-shadow-lg ${isMatch ? '' : 'mg-lev'}`}
                             draggable={false}
                             style={{ animationDelay: levDelay }}
                           />
@@ -281,10 +281,18 @@ export function MemoryGame({ items, onComplete, onBack, moduleConfig, progress }
           display: grid;
           grid-template-columns: repeat(var(--mg-cols-sm), 1fr);
         }
+        /* Levitate suave en móvil (-5px) para que no se salga de la card;
+           normal (-14px, keyframe global) en tablet/PC. */
+        .mg-lev { animation: mg-lev-sm 3.8s ease-in-out infinite; }
+        @keyframes mg-lev-sm {
+          0%, 100% { transform: translateY(0); }
+          50%      { transform: translateY(-5px); }
+        }
         @media (min-width: 640px) {
           .mg-grid {
             grid-template-columns: repeat(var(--mg-cols), 1fr);
           }
+          .mg-lev { animation: levitate 3.8s ease-in-out infinite; }
         }
       `}</style>
     </div>

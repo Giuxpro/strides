@@ -5,7 +5,7 @@ import { AIModelSelector } from '@/components/admin/ai/AIModelSelector'
 import { SpeechProviderSelector } from '@/components/admin/ai/SpeechProviderSelector'
 import { AcquisitionSelector } from '@/components/admin/codes/AcquisitionSelector'
 import { SubmitButton } from '@/components/admin/shared/SubmitButton'
-import { GAME_REGISTRY, VOICE_PRESET_CONFIGS, isVoicePreset, DEFAULT_VOICE_PRESET, isSpeechProvider, DEFAULT_SPEECH_PROVIDER, isAudioConfig, DEFAULT_AUDIO_CONFIG } from '@strides/core/kids'
+import { GAME_REGISTRY, VOICE_PRESET_CONFIGS, isVoicePreset, DEFAULT_VOICE_PRESET, isSpeechProvider, DEFAULT_SPEECH_PROVIDER, isAudioConfig, DEFAULT_AUDIO_CONFIG, EVAL_FORMAT_REGISTRY, DEFAULT_EVAL_FORMATS } from '@strides/core/kids'
 import { MusicUploaderPanel } from '@/components/admin/settings/MusicUploaderPanel'
 import { GlobalDiscountPanel } from '@/components/admin/codes/GlobalDiscountPanel'
 import { FeedbackPromptPanel } from '@/components/admin/settings/FeedbackPromptPanel'
@@ -38,6 +38,7 @@ export default async function AdminSettingsPage() {
   const annualDiscountPct = (s['annual_discount_pct'] as number | null) ?? null
   const priceCurrency = (s['price_currency'] as string) === 'USD' ? 'USD' : 'PEN'
   const paymentMethods = (s['payment_methods'] as Partial<Record<PaymentMethodId, boolean>> | undefined) ?? DEFAULT_PAYMENT_METHODS
+  const evalFormats = (s['eval_formats'] as Record<string, boolean> | undefined) ?? DEFAULT_EVAL_FORMATS
   const globalDiscount = (s['global_discount'] as { enabled: boolean; percent: number; label: string; duration_months: number | null }) ?? { enabled: false, percent: 10, label: '', duration_months: null }
   const previewConfig = (s['preview_config'] as { scope: 'module' | 'lessons'; lessons_count: number }) ?? { scope: 'module' as const, lessons_count: 3 }
   const lockConfig = (s['lock_config'] as { enabled: boolean; applies_to: string[] }) ?? { enabled: false, applies_to: ['preview', 'trial'] }
@@ -179,6 +180,34 @@ export default async function AdminSettingsPage() {
                           type="checkbox"
                           name={`pm_${m.id}`}
                           defaultChecked={paymentMethods?.[m.id] === true}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 rounded-full bg-gray-700 transition-colors peer-checked:bg-violet-500 relative after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-4 after:h-4 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-4" />
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border-t border-gray-800 pt-5">
+                <p className="text-xs text-gray-400 font-medium mb-1">Formatos de evaluación</p>
+                <p className="text-xs text-gray-600 mb-3">Activa o desactiva cada formato de la estructura Evaluación en toda la app.</p>
+                <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-gray-800/50 [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-600">
+                  {EVAL_FORMAT_REGISTRY.map((f) => (
+                    <div key={f.id} className="flex items-center gap-3 bg-gray-800/40 border border-gray-700/50 rounded-lg px-3 py-2.5">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-gray-300">{f.label}</span>
+                        <span className="block text-xs text-gray-600">
+                          {f.skill === 'receptive' ? 'Receptivo' : 'Productivo'}
+                          {!f.implemented && ' · Próximamente'}
+                        </span>
+                      </div>
+                      <label className={`flex items-center shrink-0 ${f.implemented ? 'cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}>
+                        <input
+                          type="checkbox"
+                          name={`evf_${f.id}`}
+                          defaultChecked={f.implemented && evalFormats?.[f.id] === true}
+                          disabled={!f.implemented}
                           className="sr-only peer"
                         />
                         <div className="w-9 h-5 rounded-full bg-gray-700 transition-colors peer-checked:bg-violet-500 relative after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-4 after:h-4 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-4" />

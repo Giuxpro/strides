@@ -42,7 +42,7 @@ const SUNBURST = [
 ].join(', ')
 
 export function SpellingGame({ items, onComplete, onBack, moduleConfig, progress }: Props) {
-  const { reportCorrect, reportWrong, isTerminated } = useGameEvents()
+  const { reportCorrect, isTerminated } = useGameEvents()
   const speakFn = useSpeak()
   const [questions] = useState(() => shuffle([...items]))
   const [currentQ, setCurrentQ] = useState(0)
@@ -79,7 +79,7 @@ export function SpellingGame({ items, onComplete, onBack, moduleConfig, progress
   }, [currentQ])
 
   function placeTile(tileIdx: number) {
-    if (isTerminated || shaking || burst) return
+    if (isTerminated || burst) return
     const letter = tiles[tileIdx]
     if (!letter || usedTileIdxs.has(tileIdx)) return
 
@@ -91,60 +91,48 @@ export function SpellingGame({ items, onComplete, onBack, moduleConfig, progress
     const newUsed = new Set(usedTileIdxs)
     newUsed.add(tileIdx)
     const newStates = [...slotStates] as SlotState[]
-    newStates[nextSlot] = 'filled'
+    // Feedback inmediato por posición: verde si va ahí, rojo si no.
+    newStates[nextSlot] = letter === word[nextSlot] ? 'correct' : 'wrong'
 
     setSlots(newSlots)
     setUsedTileIdxs(newUsed)
     setSlotStates(newStates)
 
-    const allFilled = newSlots.every(s => s !== null)
-    if (allFilled) {
-      const formed = newSlots.join('')
-      if (formed === word) {
-        setBurst(true)
-        reportCorrect()
-        speakFn(question.text_en)
-        setSlotStates(newSlots.map(() => 'correct' as SlotState))
-        const newResults = [...results, true]
-        setResults(newResults)
-        setTimeout(() => {
-          if (currentQ < questions.length - 1) {
-            setCurrentQ(q => q + 1)
-          } else {
-            const wordResults = questions.map((q, i) => ({ vocabId: q.id, correct: newResults[i] ?? false, skillType: 'spelling' as const }))
-            onComplete(newResults.filter(Boolean).length, newResults.length, wordResults)
-          }
-        }, 1400)
-      } else {
-        setShaking(true)
-        setSlotStates(newSlots.map(() => 'wrong' as SlotState))
-        reportWrong()
-        setTimeout(() => {
-          const newResults = [...results, false]
-          setResults(newResults)
-          resetForWord(question.text_en.toUpperCase().split(''))
-        }, 800)
-      }
+    // Completa solo cuando TODAS las letras están en su posición correcta.
+    if (newSlots.every((s, i) => s === word[i])) {
+      setBurst(true)
+      reportCorrect()
+      speakFn(question.text_en)
+      const newResults = [...results, true]
+      setResults(newResults)
+      setTimeout(() => {
+        if (currentQ < questions.length - 1) {
+          setCurrentQ(q => q + 1)
+        } else {
+          const wordResults = questions.map((q, i) => ({ vocabId: q.id, correct: newResults[i] ?? false, skillType: 'spelling' as const }))
+          onComplete(newResults.filter(Boolean).length, newResults.length, wordResults)
+        }
+      }, 1400)
     }
   }
 
   function removeSlot(slotIdx: number) {
-    if (isTerminated || shaking || burst) return
+    if (isTerminated || burst) return
     if (slots[slotIdx] === null) return
 
     const letter = slots[slotIdx]!
     const newSlots = [...slots]
-    newSlots[slotIdx] = null
+    newSlots[slotIdx] = null  // libera el espacio sin compactar (la posición importa)
 
     const newUsed = new Set(usedTileIdxs)
     for (const idx of Array.from(usedTileIdxs)) {
       if (tiles[idx] === letter) { newUsed.delete(idx); break }
     }
 
-    const filled = newSlots.filter(s => s !== null)
-    const compacted = [...filled, ...Array(letters.length - filled.length).fill(null)]
-    setSlots(compacted)
-    setSlotStates(compacted.map(s => (s !== null ? 'filled' : 'empty')) as SlotState[])
+    const newStates = [...slotStates] as SlotState[]
+    newStates[slotIdx] = 'empty'
+    setSlots(newSlots)
+    setSlotStates(newStates)
     setUsedTileIdxs(newUsed)
   }
 

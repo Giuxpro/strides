@@ -9,6 +9,10 @@ export interface AnalyticsSummary {
   // ── Ciclo de vida de suscripciones (5 estados mutuamente exclusivos) ──
   /** Pagaron vía proveedor de pago, suscripción vigente → base del MRR */
   paidActive: number
+  /** De los pagos activos, cuántos en ciclo mensual (incluye sin ciclo definido) */
+  paidActiveMonthly: number
+  /** De los pagos activos, cuántos en ciclo anual */
+  paidActiveAnnual: number
   /** Período de prueba activo (landing B o código trial) */
   trialActive: number
   /** Acceso gratuito permanente por código de cortesía */
@@ -81,7 +85,9 @@ export async function getAnalyticsSummary(db: DB): Promise<AnalyticsSummary> {
   ] = await Promise.all([
     db.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'parent'),
     db.from('children').select('*', { count: 'exact', head: true }),
-    db.from('subscriptions').select('status, acquisition_type, stripe_subscription_id'),
+    // Solo suscripciones de parents: las cuentas admin/staff NO son clientes y no
+    // deben contar en MRR ni en los estados del ciclo de vida (inner join + filtro).
+    db.from('subscriptions').select('status, acquisition_type, billing_cycle, stripe_subscription_id, profiles!inner(role)').eq('profiles.role', 'parent'),
     db.from('child_lesson_completions').select('*', { count: 'exact', head: true }).gte('completed_at', todayStart.toISOString()),
     db.from('child_game_plays').select('*', { count: 'exact', head: true }).gte('played_at', todayStart.toISOString()),
     db.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'parent').gte('created_at', weekAgo.toISOString()),
@@ -103,7 +109,10 @@ export async function getAnalyticsSummary(db: DB): Promise<AnalyticsSummary> {
 
   // ── 5 estados mutuamente exclusivos del ciclo de vida ──
   // Activo pagado: tiene acceso vigente y fue vía proveedor de pago
-  const paidActive         = subsArr.filter(s => s.status === 'active' && s.acquisition_type !== 'trial' && s.acquisition_type !== 'complimentary').length
+  const paidSubs           = subsArr.filter(s => s.status === 'active' && s.acquisition_type !== 'trial' && s.acquisition_type !== 'complimentary')
+  const paidActive         = paidSubs.length
+  const paidActiveAnnual   = paidSubs.filter(s => s.billing_cycle === 'annual').length
+  const paidActiveMonthly  = paidActive - paidActiveAnnual
   // Trial: período de prueba gratuita vigente
   const trialActive        = subsArr.filter(s => s.status === 'active' && s.acquisition_type === 'trial').length
   // Cortesía: acceso gratuito permanente por código
@@ -122,6 +131,8 @@ export async function getAnalyticsSummary(db: DB): Promise<AnalyticsSummary> {
     totalParents: totalParents ?? 0,
     totalChildren: totalChildren ?? 0,
     paidActive,
+    paidActiveMonthly,
+    paidActiveAnnual,
     trialActive,
     complimentaryActive,
     trialExpired,

@@ -5,10 +5,28 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { Json } from '@strides/db'
 import { getAllSettings, insertGeneratedModule, insertGeneratedVocab, insertGeneratedLessons, logAIUsage } from '@strides/db'
-import { GAME_REGISTRY } from '@strides/core/kids'
+import { GAME_REGISTRY, LESSON_RECIPE, getVocabImageUrl, DEFAULT_EVALUATION_CONFIG, EVAL_FORMAT_REGISTRY } from '@strides/core/kids'
+import type { EvaluationConfig } from '@strides/core/kids'
+import { isValidExerciseType } from '@strides/core/exercises'
+
+function buildEvalConfig(formData: FormData): EvaluationConfig {
+  const formats = EVAL_FORMAT_REGISTRY
+    .filter(f => formData.get(`eval_format_${f.id}`) === 'on')
+    .map(f => f.id)
+  const timerSeconds = Number(formData.get('timer_seconds'))
+  return {
+    intro: ((formData.get('intro') as string) || '').trim() || undefined,
+    timerEnabled: formData.get('timer_enabled') === 'on',
+    timerSeconds: timerSeconds > 0 ? timerSeconds : undefined,
+    receptiveCount: Math.max(0, Number(formData.get('receptive_count')) || 0),
+    productiveCount: Math.max(0, Number(formData.get('productive_count')) || 0),
+    formats: formats.length ? formats : undefined,
+    vocabIds: formData.getAll('vocab_ids') as string[],
+  }
+}
 import { PAYMENT_METHOD_REGISTRY } from '@strides/core/payments'
 import { createAIProvider } from '@strides/core/ai'
-import { toStoragePath } from '@strides/core'
+import { toStoragePath, getStorageUrl } from '@strides/core'
 
 async function requireAdmin() {
   const supabase = createClient()
@@ -194,14 +212,16 @@ export async function addLessonStep(formData: FormData) {
   const { supabase } = await requireAdmin()
   const lessonId  = formData.get('lesson_id') as string
   const moduleId  = formData.get('module_id') as string
-  const stepType  = formData.get('step_type') as 'video' | 'slide' | 'exercise'
+  const stepType  = formData.get('step_type') as 'video' | 'slide' | 'exercise' | 'evaluation'
   const title     = (formData.get('title') as string) || null
   const position  = Number(formData.get('position'))
 
-  let config: Record<string, string> = {}
+  let config: Json = {}
   let exerciseId: string | null = null
 
-  if (stepType === 'video') {
+  if (stepType === 'evaluation') {
+    config = buildEvalConfig(formData) as unknown as Json
+  } else if (stepType === 'video') {
     config = {
       url:     formData.get('url') as string,
       caption: (formData.get('caption') as string) || '',
@@ -213,9 +233,11 @@ export async function addLessonStep(formData: FormData) {
       image_url: toStoragePath((formData.get('image_url') as string) || null) ?? '',
     }
   } else if (stepType === 'exercise') {
-    const exType  = formData.get('exercise_type') as 'memory' | 'recognition' | 'speaking'
+    const exType  = formData.get('exercise_type') as string
     const exPhase = formData.get('exercise_phase') as 'practice' | 'evaluation'
     const vocabIds = formData.getAll('vocab_ids') as string[]
+
+    if (!isValidExerciseType(exType)) throw new Error(`Tipo de ejercicio inválido: ${exType}`)
 
     const { data: exercise } = await supabase
       .from('exercises')
@@ -246,10 +268,15 @@ export async function updateLessonStep(formData: FormData) {
   const stepId   = formData.get('step_id') as string
   const lessonId = formData.get('lesson_id') as string
   const moduleId = formData.get('module_id') as string
-  const stepType = formData.get('step_type') as 'video' | 'slide' | 'exercise'
+  const stepType = formData.get('step_type') as 'video' | 'slide' | 'exercise' | 'evaluation'
   const title    = (formData.get('title') as string) || null
 
-  if (stepType === 'video') {
+  if (stepType === 'evaluation') {
+    await supabase.from('lesson_steps').update({
+      title,
+      config: buildEvalConfig(formData) as unknown as Json,
+    }).eq('id', stepId)
+  } else if (stepType === 'video') {
     await supabase.from('lesson_steps').update({
       title,
       config: {
@@ -268,9 +295,11 @@ export async function updateLessonStep(formData: FormData) {
     }).eq('id', stepId)
   } else if (stepType === 'exercise') {
     const exerciseId = formData.get('exercise_id') as string
-    const exType     = formData.get('exercise_type') as 'memory' | 'recognition' | 'speaking'
+    const exType     = formData.get('exercise_type') as string
     const exPhase    = formData.get('exercise_phase') as 'practice' | 'evaluation'
     const vocabIds   = formData.getAll('vocab_ids') as string[]
+
+    if (!isValidExerciseType(exType)) throw new Error(`Tipo de ejercicio inválido: ${exType}`)
 
     await Promise.all([
       supabase.from('lesson_steps').update({ title }).eq('id', stepId),
@@ -325,6 +354,108 @@ export async function reorderLessonSteps(
   )
 
   revalidatePath(`/admin/content/${moduleId}/lessons/${lessonId}/edit`)
+}
+
+// Genera la estructura de la lección siguiendo LESSON_RECIPE (receta canónica).
+// Guía, no obliga: el admin edita/añade/quita pasos después. El calentamiento
+// (video opcional) se deja para añadir a mano porque requiere una URL externa.
+export async function scaffoldLessonFromRecipe(formData: FormData) {
+  const { supabase } = await requireAdmin()
+  const lessonId = formData.get('lesson_id') as string
+  const moduleId = formData.get('module_id') as string
+  const vocabIds = formData.getAll('vocab_ids') as string[]
+  if (vocabIds.length === 0) return
+
+  const { data: vocabRows } = await supabase
+    .from('vocabulary_items')
+    .select('id, text_en, text_es, image_url, emoji_unicode')
+    .in('id', vocabIds)
+
+  const vocabMap = new Map((vocabRows ?? []).map(v => [v.id, v]))
+  const orderedVocab = vocabIds.map(id => vocabMap.get(id)).filter((v): v is NonNullable<typeof v> => !!v)
+
+  const { data: lastStep } = await supabase
+    .from('lesson_steps')
+    .select('position')
+    .eq('lesson_id', lessonId)
+    .order('position', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  let position = lastStep?.position ?? 0
+
+  for (const section of LESSON_RECIPE) {
+    if (section.stepType === 'video') {
+      // Placeholder: el admin pega la URL del video (o lo borra) después.
+      position++
+      await supabase.from('lesson_steps').insert({
+        lesson_id: lessonId,
+        position,
+        step_type: 'video',
+        title: section.label,
+        config: { url: '', caption: '' },
+        exercise_id: null,
+      })
+    } else if (section.stepType === 'slide' && section.perVocabItem) {
+      for (const v of orderedVocab) {
+        position++
+        await supabase.from('lesson_steps').insert({
+          lesson_id: lessonId,
+          position,
+          step_type: 'slide',
+          title: null,
+          config: {
+            text_en: v.text_en,
+            text_es: v.text_es,
+            image_url: getStorageUrl(getVocabImageUrl(v)) ?? '',
+          },
+          exercise_id: null,
+        })
+      }
+    } else if (section.stepType === 'exercise' && section.defaultGameId) {
+      position++
+      const { data: exercise } = await supabase
+        .from('exercises')
+        .insert({
+          module_id: moduleId,
+          lesson_id: lessonId,
+          type: section.defaultGameId,
+          phase: section.phase,
+          order: position,
+          min_age: 4,
+        })
+        .select('id')
+        .single()
+
+      if (!exercise) continue
+
+      await supabase.from('exercise_items').insert(
+        vocabIds.map((vid, i) => ({ exercise_id: exercise.id, vocabulary_item_id: vid, order: i + 1 }))
+      )
+
+      await supabase.from('lesson_steps').insert({
+        lesson_id: lessonId,
+        position,
+        step_type: 'exercise',
+        title: null,
+        config: {},
+        exercise_id: exercise.id,
+      })
+    } else if (section.stepType === 'evaluation') {
+      position++
+      await supabase.from('lesson_steps').insert({
+        lesson_id: lessonId,
+        position,
+        step_type: 'evaluation',
+        title: null,
+        config: { ...DEFAULT_EVALUATION_CONFIG, vocabIds } as unknown as Json,
+        exercise_id: null,
+      })
+    }
+  }
+
+  revalidatePath(`/admin/content/${moduleId}/lessons/${lessonId}/edit`)
+  revalidatePath(`/admin/content/${moduleId}`)
 }
 
 // ─── Vocabulary ──────────────────────────────────────────────────────────────
@@ -409,6 +540,10 @@ export async function updateSettings(formData: FormData) {
     { key: 'payment_methods', value: Object.fromEntries(
         // Un método no implementado nunca puede quedar activo, aunque llegue el campo.
         PAYMENT_METHOD_REGISTRY.map(m => [m.id, m.implemented && formData.get(`pm_${m.id}`) === 'on'])
+      ) as Json },
+    { key: 'eval_formats', value: Object.fromEntries(
+        // Un formato no implementado nunca puede quedar activo.
+        EVAL_FORMAT_REGISTRY.map(f => [f.id, f.implemented && formData.get(`evf_${f.id}`) === 'on'])
       ) as Json },
     { key: 'preview_config', value: {
         scope:         (formData.get('preview_scope') as string) || 'module',

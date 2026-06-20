@@ -32,12 +32,14 @@ function InfoChip({
   color,
   tooltip,
   tooltipAlign = 'left',
+  muted = false,
 }: {
   label: string
   value: string
   color: string
   tooltip?: string
   tooltipAlign?: 'left' | 'right'
+  muted?: boolean
 }) {
   return (
     <div style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '14px 16px' }}>
@@ -47,14 +49,14 @@ function InfoChip({
           <div className="relative group cursor-help flex items-center">
             <span className="text-[11px] leading-none select-none text-slate-400">ⓘ</span>
             <div
-              className={`absolute bottom-full mb-2 w-56 bg-gray-900 border border-gray-700 rounded-xl p-3 text-[11px] text-gray-400 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 z-[200] shadow-xl text-left whitespace-normal leading-relaxed ${tooltipAlign === 'right' ? 'right-0' : 'left-0'}`}
+              className={`absolute bottom-full mb-2 w-64 bg-gray-900 border border-gray-700 rounded-xl p-3 text-[11px] text-gray-300 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 z-[200] shadow-xl text-left whitespace-pre-line leading-relaxed ${tooltipAlign === 'right' ? 'right-0' : 'left-0'}`}
             >
               {tooltip}
             </div>
           </div>
         )}
       </div>
-      <p className="text-base font-bold text-white" style={{ fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{value}</p>
+      <p className={`text-base font-bold ${muted ? 'text-gray-600' : 'text-white'}`} style={{ fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{value}</p>
     </div>
   )
 }
@@ -107,7 +109,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const lastYear = lastMonthDate.getFullYear()
   const lastMonth = lastMonthDate.getMonth() + 1
 
-  const [summary, growth, engagement, topGames, aiUsage, aiThisMonth, aiAllTime, priceResult, retention, devices] = await Promise.all([
+  const [summary, growth, engagement, topGames, aiUsage, aiThisMonth, aiAllTime, priceResult, retention, devices, currencyResult, annualDiscResult] = await Promise.all([
     getAnalyticsSummary(db),
     getUserGrowthSeries(db, period),
     getEngagementSeries(db, Math.min(period, 30)),
@@ -118,13 +120,18 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     getSetting(db, 'monthly_price'),
     getRetentionRate(db),
     getDeviceBreakdown(db),
+    getSetting(db, 'price_currency'),
+    getSetting(db, 'annual_discount_pct'),
   ])
 
   const monthlyPrice = (priceResult.data?.value as number | undefined) ?? 0
-  const mrr = summary.paidActive * monthlyPrice
-  const daysInMonth = new Date(thisYear, thisMonth, 0).getDate()
-  const fmtMrr = (n: number) => monthlyPrice === 0 ? 'Sin precio' : `$${n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-  const mrrToday = fmtMrr(mrr / daysInMonth)
+  // Símbolo según la moneda configurada (el MRR es en la moneda de cobro, no siempre USD).
+  const currencySymbol = (currencyResult.data?.value as string | undefined) === 'USD' ? '$' : 'S/ '
+  // MRR normalizado por ciclo: mensual = precio; anual = mensual-equivalente (precio × (1 − descuento)).
+  const annualDiscount = (annualDiscResult.data?.value as number | undefined) ?? 0
+  const annualMonthlyEquiv = monthlyPrice * (1 - annualDiscount / 100)
+  const mrr = summary.paidActiveMonthly * monthlyPrice + summary.paidActiveAnnual * annualMonthlyEquiv
+  const fmtMrr = (n: number) => monthlyPrice === 0 ? 'Sin precio' : `${currencySymbol}${n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   const mrrMonth = fmtMrr(mrr)
   const mrrAnnual = fmtMrr(mrr * 12)
 
@@ -293,15 +300,33 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       </div>
 
       {/* ── Info row ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
         <AIUsageChip
-          label="MRR"
+          label="Ingreso recurrente"
           color="#34D399"
           defaultPeriod="month"
-          today={mrrToday}
+          periods={['month', 'total']}
+          labels={{ month: 'MRR', total: 'ARR' }}
+          today={mrrMonth}
           month={mrrMonth}
           total={mrrAnnual}
-          tooltip="Hoy: ingreso diario estimado (MRR ÷ días del mes). Mes: MRR actual, suscripciones pagas activas × precio. Total: ARR proyectado (MRR × 12). No incluye trials ni accesos gratuitos."
+          tooltip={`MRR — ingreso recurrente mensual.
+ARR — proyección anual (MRR × 12).
+
+El MRR estima el ingreso mensual estable. Las suscripciones mensuales se cuentan a su precio completo, y las anuales se reparten entre 12 meses para reflejar cuánto representan por mes (ya con su descuento aplicado).
+
+Es una proyección del ritmo de ingresos, no el dinero que realmente entró este mes. Solo se consideran los padres con una suscripción de pago activa.`}
+        />
+        <InfoChip
+          label="Ingreso real (caja)"
+          value="No disponible"
+          color="#34D399"
+          muted
+          tooltip={`Es el dinero que realmente se cobró durante el mes. A diferencia del MRR, aquí una suscripción anual se cuenta completa en el mes en que se paga, en lugar de repartirse.
+
+Todavía no está disponible porque faltan dos cosas: que los pagos reales estén activos en producción (hoy funcionan en modo de prueba, sin montos), y un registro que guarde cada cobro con su monto y su fecha.
+
+Cuando ambas estén listas, esta tarjeta mostrará la suma de los pagos reales del mes.`}
         />
         <AIUsageChip
           label="Costo IA"

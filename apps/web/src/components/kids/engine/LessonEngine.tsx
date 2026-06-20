@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { ModuleConfig, ModifierConfig, WordResult, VocabItem, ExerciseData } from '@strides/core/kids'
+import type { ModuleConfig, ModifierConfig, WordResult, VocabItem, ExerciseData, EvaluationConfig } from '@strides/core/kids'
+import { DEFAULT_EVAL_FORMATS } from '@strides/core/kids'
 import { getGameById } from './gamePool'
+import { EvaluationShell } from './evaluation/EvaluationShell'
 import { ModifierStack } from './modifiers/ModifierStack'
 import { VideoStep } from './steps/VideoStep'
 import { SlideStep } from './steps/SlideStep'
@@ -40,7 +42,16 @@ type ExerciseStepData = {
   exercise: ExerciseData
 }
 
-export type LessonStep = VideoStepData | SlideStepData | ExerciseStepData
+type EvaluationStepData = {
+  id: string
+  position: number
+  step_type: 'evaluation'
+  title: string | null
+  config: EvaluationConfig
+  vocab: VocabItem[]
+}
+
+export type LessonStep = VideoStepData | SlideStepData | ExerciseStepData | EvaluationStepData
 
 interface Props {
   lesson: { id: string; title_es: string; title_en: string }
@@ -49,6 +60,9 @@ interface Props {
   moduleConfig: ModuleConfig
   speechProvider?: SpeechProvider
   previewMode?: boolean
+  backHref?: string
+  childAge?: number
+  evalFormatsEnabled?: Record<string, boolean>
 }
 
 // ── 3D kids-style arrow button ────────────────────────────────────────────────
@@ -87,25 +101,36 @@ function NavArrow({
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, speechProvider = 'web-speech', previewMode = false }: Props) {
+export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, speechProvider = 'web-speech', previewMode = false, backHref, childAge = 6, evalFormatsEnabled = DEFAULT_EVAL_FORMATS }: Props) {
   const router = useRouter()
   const { setMusicContext } = useMusicContext()
   const [stage, setStage]               = useState<'playing' | 'results'>('playing')
   const [currentIndex, setCurrentIndex] = useState(0)
   const [completedSet, setCompletedSet] = useState<Set<number>>(new Set())
   const [evalScoreMap, setEvalScoreMap] = useState<Record<number, number>>({})
+  const [evalTotalMap, setEvalTotalMap] = useState<Record<number, number>>({})
   const [allWordResults, setAllWordResults] = useState<WordResult[]>([])
 
   const currentDone = completedSet.has(currentIndex)
 
   const evalStepIndices = steps.reduce<number[]>((acc, s, i) => {
     if (s.step_type === 'exercise' && s.exercise.phase === 'evaluation') acc.push(i)
+    else if (s.step_type === 'evaluation') acc.push(i)
     return acc
   }, [])
-  const evalTotal   = evalStepIndices.reduce((acc, i) => acc + (steps[i] as ExerciseStepData).exercise.items.length, 0)
+  const evalTotal   = evalStepIndices.reduce((acc, i) => {
+    const s = steps[i]
+    if (s?.step_type === 'exercise') return acc + s.exercise.items.length
+    return acc + (evalTotalMap[i] ?? 0)
+  }, 0)
   const evalCorrect = Object.values(evalScoreMap).reduce((a, b) => a + b, 0)
 
   function handleBack() {
+    if (previewMode) {
+      if (backHref) router.push(backHref)
+      else router.back()
+      return
+    }
     router.push(`/kids/play/${moduleSlug}`)
   }
 
@@ -121,13 +146,15 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, speechPr
     if (currentIndex > 0) setCurrentIndex(prev => prev - 1)
   }
 
-  function markDone(correct: number, wordResults?: WordResult[]) {
+  function markDone(correct: number, total?: number, wordResults?: WordResult[]) {
     const alreadyDone = completedSet.has(currentIndex)
     const step = steps[currentIndex]
+    const isEval = (step?.step_type === 'exercise' && step.exercise.phase === 'evaluation') || step?.step_type === 'evaluation'
 
     if (!alreadyDone) {
-      if (step?.step_type === 'exercise' && step.exercise.phase === 'evaluation') {
+      if (isEval) {
         setEvalScoreMap(prev => ({ ...prev, [currentIndex]: correct }))
+        if (total !== undefined) setEvalTotalMap(prev => ({ ...prev, [currentIndex]: total }))
       }
       if (wordResults?.length) {
         setAllWordResults(prev => [...prev, ...wordResults])
@@ -161,7 +188,7 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, speechPr
 
     const actionBtn = previewMode ? (
       <button
-        onClick={() => router.back()}
+        onClick={() => backHref ? router.push(backHref) : router.back()}
         className="w-full text-white font-extrabold text-lg px-8 py-4 rounded-2xl transition-all hover:scale-105 active:scale-95"
         style={{ background: moduleConfig.gradient, boxShadow: moduleConfig.shadow }}
       >
@@ -310,6 +337,23 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, speechPr
     )
   }
 
+  if (step.step_type === 'evaluation') {
+    return (
+      <SpeechConfigProvider provider={speechProvider}>
+        <EvaluationShell
+          config={step.config}
+          vocab={step.vocab}
+          enabled={evalFormatsEnabled}
+          childAge={childAge}
+          moduleConfig={moduleConfig}
+          missionTitle={`Recordando ${lesson.title_es}`}
+          onComplete={({ correct, total, wordResults }) => markDone(correct, total, wordResults)}
+          onBack={handleBack}
+        />
+      </SpeechConfigProvider>
+    )
+  }
+
   if (step.step_type === 'exercise') {
     const { exercise } = step
     const game = getGameById(exercise.type)
@@ -323,7 +367,7 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, speechPr
               game={game.component}
               items={exercise.items}
               modifiers={step.config.modifiers ?? []}
-              onGameEnd={({ correct, wordResults }) => { setMusicContext('navigation'); markDone(correct, wordResults) }}
+              onGameEnd={({ correct, wordResults }) => { setMusicContext('navigation'); markDone(correct, undefined, wordResults) }}
               onBack={() => { setMusicContext('navigation'); handleBack() }}
               moduleConfig={moduleConfig}
               progress={progress}

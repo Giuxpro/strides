@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { addLessonStep, updateLessonStep, deleteLessonStep, reorderLessonSteps } from '@/app/admin/_actions'
+import { addLessonStep, updateLessonStep, deleteLessonStep, reorderLessonSteps, scaffoldLessonFromRecipe } from '@/app/admin/_actions'
 import { VocabPicker, type VocabItemWithUsage } from './VocabPicker'
-import { GAME_REGISTRY as GAME_POOL } from '@strides/core/kids'
+import { GAME_REGISTRY as GAME_POOL, LESSON_RECIPE, getGameMeta, type GameRole, type EvaluationConfig, DEFAULT_EVALUATION_CONFIG, EVAL_FORMAT_REGISTRY } from '@strides/core/kids'
 import { SubmitButton } from '@/components/admin/shared/SubmitButton'
 
-type StepType = 'video' | 'slide' | 'exercise'
+type StepType = 'video' | 'slide' | 'exercise' | 'evaluation'
 
 interface AdminStep {
   id: string
@@ -29,8 +29,41 @@ interface Props {
   vocabItems: VocabItemWithUsage[]
 }
 
-const ICONS:  Record<StepType, string> = { video: '🎬', slide: '🖼️', exercise: '🎮' }
-const LABELS: Record<StepType, string> = { video: 'Video', slide: 'Diapositiva', exercise: 'Ejercicio' }
+const ICONS:  Record<StepType, string> = { video: '🎬', slide: '🖼️', exercise: '🎮', evaluation: '📝' }
+const LABELS: Record<StepType, string> = { video: 'Video', slide: 'Diapositiva', exercise: 'Ejercicio', evaluation: 'Evaluación' }
+
+const ROLE_META: Record<GameRole, { label: string; cls: string }> = {
+  receptive:  { label: 'Receptivo',      cls: 'bg-sky-500/15 text-sky-300 border-sky-500/30' },
+  productive: { label: 'Productivo',     cls: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
+  literacy:   { label: 'Lectoescritura', cls: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
+}
+
+function ScaffoldPending() {
+  return (
+    <div className="bg-gray-900 border border-violet-800/40 rounded-xl p-4 mt-2 space-y-3">
+      <div className="flex items-center gap-2.5">
+        <span className="w-4 h-4 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
+        <p className="text-sm font-semibold text-white">Armando estructura…</p>
+      </div>
+      <div className="space-y-1.5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="h-11 rounded-lg bg-gray-800/60 animate-pulse" />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function RoleChip({ gameId }: { gameId: string }) {
+  const role = getGameMeta(gameId)?.role
+  if (!role) return null
+  const meta = ROLE_META[role]
+  return (
+    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${meta.cls}`}>
+      {meta.label}
+    </span>
+  )
+}
 
 const I = 'w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500'
 const L = 'block text-sm text-gray-400 mb-1.5'
@@ -44,6 +77,10 @@ function stepSummary(step: AdminStep): string {
     const words = step.exercise.vocabIds.length
     return `${label} · ${step.exercise.phase === 'evaluation' ? 'Evaluación' : 'Práctica'} · ${words} palabras`
   }
+  if (step.step_type === 'evaluation') {
+    const c = step.config as unknown as EvaluationConfig
+    return `${c.receptiveCount ?? 0} receptivos + ${c.productiveCount ?? 0} productivos · ${c.vocabIds?.length ?? 0} palabras`
+  }
   return '—'
 }
 
@@ -54,6 +91,63 @@ function DragHandle() {
       <circle cx="2" cy="8"  r="1.5" /><circle cx="8" cy="8"  r="1.5" />
       <circle cx="2" cy="12" r="1.5" /><circle cx="8" cy="12" r="1.5" />
     </svg>
+  )
+}
+
+// ── Campos del bloque de Evaluación (compartidos por add y edit) ───────────
+
+function EvalFields({ config, vocab }: { config: EvaluationConfig; vocab: VocabItemWithUsage[] }) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className={L}>Mensaje de intro (opcional)</label>
+        <input name="intro" defaultValue={config.intro ?? ''} placeholder="¡Veamos todo lo que aprendiste!" className={I} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={L}>Ejercicios receptivos</label>
+          <input name="receptive_count" type="number" min={0} defaultValue={config.receptiveCount} className={I} />
+        </div>
+        <div>
+          <label className={L}>Ejercicios productivos</label>
+          <input name="productive_count" type="number" min={0} defaultValue={config.productiveCount} className={I} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3 items-end">
+        <label className="flex items-center gap-2 text-sm text-gray-400 pb-2.5">
+          <input type="checkbox" name="timer_enabled" defaultChecked={config.timerEnabled} className="w-4 h-4 accent-violet-500" />
+          Activar timer
+        </label>
+        <div>
+          <label className={L}>Segundos (si hay timer)</label>
+          <input name="timer_seconds" type="number" min={0} defaultValue={config.timerSeconds ?? ''} className={I} />
+        </div>
+      </div>
+      <div>
+        <label className={L}>Formatos a usar <span className="text-gray-600">(vacío = todos los disponibles)</span></label>
+        <div className="flex flex-wrap gap-2">
+          {EVAL_FORMAT_REGISTRY.filter(f => f.implemented).map(f => (
+            <label key={f.id} className="flex items-center gap-1.5 text-xs text-gray-300 bg-gray-800/60 border border-gray-700 rounded-lg px-2 py-1 cursor-pointer">
+              <input
+                type="checkbox"
+                name={`eval_format_${f.id}`}
+                defaultChecked={config.formats?.includes(f.id) ?? false}
+                className="w-3.5 h-3.5 accent-violet-500"
+              />
+              {f.label} <span className="text-gray-600">({f.skill === 'receptive' ? 'R' : 'P'})</span>
+            </label>
+          ))}
+        </div>
+      </div>
+      {vocab.length > 0 ? (
+        <div>
+          <label className={L}>Palabras a evaluar <span className="text-red-500">*</span></label>
+          <VocabPicker items={vocab} initialSelected={config.vocabIds} />
+        </div>
+      ) : (
+        <p className="text-xs text-gray-600">Sin vocabulario en este módulo. Añade vocab primero.</p>
+      )}
+    </div>
   )
 }
 
@@ -122,6 +216,10 @@ function StepEditForm({
           </>
         )}
 
+        {step.step_type === 'evaluation' && (
+          <EvalFields config={step.config as unknown as EvaluationConfig} vocab={vocab} />
+        )}
+
         {step.step_type === 'exercise' && step.exercise && (
           <>
             <input type="hidden" name="exercise_id" value={step.exercise.id} />
@@ -174,6 +272,8 @@ export function LessonStepBuilder({ lessonId, moduleId, steps, vocabItems }: Pro
   const [editPosVal,  setEditPosVal] = useState('')
   const [expandedId,  setExpandedId] = useState<string | null>(null)
   const [adding,      setAdding]    = useState<StepType | null>(null)
+  const [scaffolding, setScaffolding] = useState(false)
+  const [scaffoldPending, setScaffoldPending] = useState(false)
 
   const dragIdRef     = useRef<string | null>(null)
   const dropIdRef     = useRef<string | null>(null)
@@ -227,6 +327,30 @@ export function LessonStepBuilder({ lessonId, moduleId, steps, vocabItems }: Pro
     dropIdRef.current = null
     setDragId(null)
     setDropId(null)
+  }
+
+  // ── Crear desde plantilla ────────────────────────────────────────────────────
+
+  async function handleScaffold(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    setScaffoldPending(true)
+    await scaffoldLessonFromRecipe(fd)
+    setScaffoldPending(false)
+    setScaffolding(false)
+  }
+
+  // ── Delete (optimista) ──────────────────────────────────────────────────────
+
+  async function handleDelete(step: AdminStep) {
+    setLocalSteps(prev => prev.filter(s => s.id !== step.id))
+    if (expandedId === step.id) setExpandedId(null)
+
+    const fd = new FormData()
+    fd.set('step_id',   step.id)
+    fd.set('lesson_id', lessonId)
+    fd.set('module_id', moduleId)
+    await deleteLessonStep(fd)
   }
 
   // ── Position edit ─────────────────────────────────────────────────────────
@@ -326,8 +450,13 @@ export function LessonStepBuilder({ lessonId, moduleId, steps, vocabItems }: Pro
 
               {/* Summary */}
               <div className="flex-1 min-w-0">
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                  {LABELS[step.step_type]}
+                <span className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                    {LABELS[step.step_type]}
+                  </span>
+                  {step.step_type === 'exercise' && step.exercise && (
+                    <RoleChip gameId={step.exercise.type} />
+                  )}
                 </span>
                 {step.title && (
                   <p className="text-sm text-white font-medium leading-tight">{step.title}</p>
@@ -349,18 +478,14 @@ export function LessonStepBuilder({ lessonId, moduleId, steps, vocabItems }: Pro
               </button>
 
               {/* Delete */}
-              <form action={deleteLessonStep}>
-                <input type="hidden" name="step_id"   value={step.id} />
-                <input type="hidden" name="lesson_id" value={lessonId} />
-                <input type="hidden" name="module_id" value={moduleId} />
-                <button
-                  type="submit"
-                  className="w-7 h-7 flex items-center justify-center rounded text-red-800 hover:text-red-400 hover:bg-gray-700 transition-colors text-base shrink-0"
-                  aria-label="Eliminar paso"
-                >
-                  ×
-                </button>
-              </form>
+              <button
+                type="button"
+                onClick={() => handleDelete(step)}
+                className="w-7 h-7 flex items-center justify-center rounded text-red-800 hover:text-red-400 hover:bg-gray-700 transition-colors text-base shrink-0"
+                aria-label="Eliminar paso"
+              >
+                ×
+              </button>
             </div>
 
             {/* Expanded edit panel */}
@@ -383,19 +508,81 @@ export function LessonStepBuilder({ lessonId, moduleId, steps, vocabItems }: Pro
         </p>
       )}
 
+      {/* ── Crear desde plantilla ─────────────────────────────────────────── */}
+      {scaffolding && vocabItems.length > 0 && (scaffoldPending ? (
+        <ScaffoldPending />
+      ) : (
+        <form
+          onSubmit={handleScaffold}
+          className="bg-gray-900 border border-violet-800/40 rounded-xl p-4 space-y-3 mt-2"
+        >
+          <input type="hidden" name="lesson_id" value={lessonId} />
+          <input type="hidden" name="module_id" value={moduleId} />
+
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-white">✨ Crear desde plantilla</p>
+            <button type="button" onClick={() => setScaffolding(false)} className="text-xs text-gray-500 hover:text-gray-300">
+              Cancelar
+            </button>
+          </div>
+
+          <p className="text-xs text-gray-500">
+            Genera el arco pedagógico recomendado con las palabras que elijas. Es una guía: luego puedes editar, añadir o quitar pasos.
+          </p>
+
+          <ol className="text-xs text-gray-400 space-y-1 list-decimal list-inside marker:text-gray-600">
+            {LESSON_RECIPE.map(s => (
+              <li key={s.id}>
+                <span className="text-gray-300 font-medium">{s.label}</span>
+                <span className="text-gray-600"> — {s.rationale}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="text-[11px] text-gray-600">
+            El calentamiento se crea como video vacío: pégale la URL después o bórralo si no lo usas.
+          </p>
+
+          <div>
+            <label className={L}>Palabras de esta lección <span className="text-red-500">*</span></label>
+            <VocabPicker items={vocabItems} />
+          </div>
+
+          <div className="flex items-center gap-3 pt-1">
+            <SubmitButton label="Generar estructura" pendingLabel="Generando…" />
+            <button
+              type="button"
+              onClick={() => setScaffolding(false)}
+              className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      ))}
+
       {/* ── Add step ──────────────────────────────────────────────────────── */}
       {adding === null ? (
-        <div className="flex flex-wrap gap-2 pt-2">
-          {(['video', 'slide', 'exercise'] as StepType[]).map(type => (
-            <button
-              key={type}
-              onClick={() => { setAdding(type); setExpandedId(null) }}
-              className="flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300 border border-violet-800/50 hover:border-violet-600 px-3 py-1.5 rounded-lg transition-colors"
-            >
-              {ICONS[type]} + {LABELS[type]}
-            </button>
-          ))}
-        </div>
+        !scaffolding && (
+          <div className="flex flex-wrap gap-2 pt-2">
+            {vocabItems.length > 0 && (
+              <button
+                onClick={() => { setScaffolding(true); setAdding(null); setExpandedId(null) }}
+                className="flex items-center gap-1.5 text-xs font-medium text-violet-300 hover:text-white bg-violet-600/20 hover:bg-violet-600/30 border border-violet-600/50 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                ✨ Crear desde plantilla
+              </button>
+            )}
+            {(['video', 'slide', 'exercise', 'evaluation'] as StepType[]).map(type => (
+              <button
+                key={type}
+                onClick={() => { setAdding(type); setExpandedId(null) }}
+                className="flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300 border border-violet-800/50 hover:border-violet-600 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                {ICONS[type]} + {LABELS[type]}
+              </button>
+            ))}
+          </div>
+        )
       ) : (
         <div className="bg-gray-900 border border-violet-800/40 rounded-xl p-4 space-y-3 mt-2">
           <div className="flex items-center justify-between">
@@ -479,6 +666,10 @@ export function LessonStepBuilder({ lessonId, moduleId, steps, vocabItems }: Pro
                   <p className="text-xs text-gray-600">Sin vocabulario en este módulo. Añade vocab primero.</p>
                 )}
               </div>
+            )}
+
+            {adding === 'evaluation' && (
+              <EvalFields config={DEFAULT_EVALUATION_CONFIG} vocab={vocabItems} />
             )}
 
             <div className="flex items-center gap-3 pt-1">

@@ -5,7 +5,7 @@ import { getVocabImageUrl } from '@strides/core/kids'
 import { useSpeak } from '@/components/kids/audio/VoicePresetProvider'
 import type { EvalFormatProps } from '../types'
 
-export function YesNoQuestion({ item, allVocab, moduleConfig, onAnswer }: EvalFormatProps) {
+export function YesNoQuestion({ item, allVocab, moduleConfig, onAnswer, autoPlay = true }: EvalFormatProps) {
   const speak = useSpeak()
   const { vocab } = item
 
@@ -19,10 +19,11 @@ export function YesNoQuestion({ item, allVocab, moduleConfig, onAnswer }: EvalFo
   const imgUrl = getVocabImageUrl(vocab)
 
   useEffect(() => {
+    if (!autoPlay) return
     const t = setTimeout(() => speak(shownWord.text_en), 300)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [autoPlay])
 
   function answer(saidYes: boolean) {
     if (answered !== null) return

@@ -8,4 +8,7 @@ export interface EvalFormatProps {
   allVocab: VocabItem[]
   moduleConfig: ModuleConfig
   onAnswer: (correct: boolean) => void
+  // En el examen continuo todas las tarjetas montan a la vez; solo la tarjeta en
+  // foco reproduce su audio (las demás esperan a su turno). Por defecto true.
+  autoPlay?: boolean
 }

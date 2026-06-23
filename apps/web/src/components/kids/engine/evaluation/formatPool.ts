@@ -6,6 +6,7 @@ import { YesNoQuestion } from './formats/YesNoQuestion'
 import { WordChoiceQuestion } from './formats/WordChoiceQuestion'
 import { MissingLetter, FirstSound } from './formats/LetterPickQuestion'
 import { CompleteSentenceQuestion } from './formats/CompleteSentenceQuestion'
+import { OrderSentenceQuestion } from './formats/OrderSentenceQuestion'
 import type { EvalFormatProps } from './types'
 
 // Mapea id de formato → componente, igual que gamePool para los juegos.
@@ -18,6 +19,7 @@ const FORMAT_COMPONENTS: Record<string, ComponentType<EvalFormatProps>> = {
   speak:              SpeakQuestion,
   'say-sentence':     SpeakQuestion,
   'complete-sentence': CompleteSentenceQuestion,
+  'order-sentence':   OrderSentenceQuestion,
   spell:              SpellQuestion,
   'missing-letter':   MissingLetter,
   'first-sound':      FirstSound,

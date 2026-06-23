@@ -1,5 +1,11 @@
 import type { VocabItem } from '../types'
-import { EVAL_FORMAT_REGISTRY, type EvalFormatMeta, type EvalSkill } from './formats'
+import { EVAL_FORMAT_REGISTRY, getEvalFormat, type EvalFormatMeta, type EvalSkill } from './formats'
+
+// Una estructura colocada a mano: un formato con su palabra objetivo asignada.
+export interface EvalManualItem {
+  formatId: string
+  vocabId: string
+}
 
 // Config que vive en lesson_steps.config cuando step_type === 'evaluation'.
 // El vocab se guarda aquí (no en tabla aparte); el runtime filtra ids colgados.
@@ -7,14 +13,22 @@ export interface EvaluationConfig {
   intro?: string
   timerEnabled: boolean
   timerSeconds?: number
+  // 'auto': estructuras y palabras se eligen al azar del pool. 'manual': el admin
+  // ordena cada estructura y le asigna su palabra (`items`).
+  mode: 'auto' | 'manual'
+  // ── auto ──
   receptiveCount: number
   productiveCount: number
   // Subconjunto de formatos a usar; si está vacío/ausente → todos los habilitados.
   formats?: string[]
+  // ── manual ──
+  // Lista ordenada de estructuras tal cual las verá el niño.
+  items?: EvalManualItem[]
   vocabIds: string[]
 }
 
 export const DEFAULT_EVALUATION_CONFIG: EvaluationConfig = {
+  mode: 'auto',
   timerEnabled: false,
   receptiveCount: 3,
   productiveCount: 3,
@@ -57,15 +71,13 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-function pickItemsForSkill(
-  vocab: VocabItem[],
+// Asigna un formato (rotando los barajados) a cada palabra ya elegida.
+function itemsFromWords(
+  words: VocabItem[],
   formats: EvalFormatMeta[],
-  count: number,
   skill: EvalSkill,
 ): EvalItem[] {
-  if (count <= 0 || formats.length === 0 || vocab.length === 0) return []
-  const words = shuffle(vocab).slice(0, Math.min(count, vocab.length))
-  // Rota los formatos (barajados) para variar dentro de la habilidad.
+  if (formats.length === 0 || words.length === 0) return []
   const fmts = shuffle(formats)
   return words.map((vocab, idx) => ({ vocab, formatId: fmts[idx % fmts.length]!.id, skill }))
 }
@@ -93,8 +105,28 @@ function breakConsecutiveFormats(items: EvalItem[]): EvalItem[] {
   return arr
 }
 
+// Modo manual: respeta el orden y la palabra que eligió el admin. Solo descarta
+// estructuras apagadas globalmente, no construidas, o cuya palabra ya no existe.
+function buildManualItems(opts: {
+  vocab: VocabItem[]
+  config: EvaluationConfig
+  enabled: Record<string, boolean>
+}): EvalItem[] {
+  const { vocab, config, enabled } = opts
+  const byId = new Map(vocab.map(v => [v.id, v]))
+  const out: EvalItem[] = []
+  for (const it of config.items ?? []) {
+    const meta = getEvalFormat(it.formatId)
+    const v = byId.get(it.vocabId)
+    if (!v || !meta || !meta.implemented || enabled[meta.id] === false) continue
+    out.push({ vocab: v, formatId: meta.id, skill: meta.skill })
+  }
+  return out
+}
+
 // Genera los ítems INTERCALADOS (receptivo/productivo alternados) y sin repetir
 // formato en posiciones consecutivas → no se siente como bloques de mini-juegos.
+// Las palabras NO se repiten entre estructuras (se reparten de un pool barajado).
 export function buildEvalItems(opts: {
   vocab: VocabItem[]
   config: EvaluationConfig
@@ -102,8 +134,13 @@ export function buildEvalItems(opts: {
   childAge: number
 }): EvalItem[] {
   const { vocab, config, enabled, childAge } = opts
+  if (config.mode === 'manual') return buildManualItems({ vocab, config, enabled })
+
   const { receptive, productive } = resolveEvalFormats({ config, enabled, childAge })
-  const rec  = pickItemsForSkill(vocab, receptive, config.receptiveCount, 'receptive')
-  const prod = pickItemsForSkill(vocab, productive, config.productiveCount, 'productive')
+  const pool = shuffle(vocab)
+  const recWords  = pool.slice(0, config.receptiveCount)
+  const prodWords = pool.slice(config.receptiveCount, config.receptiveCount + config.productiveCount)
+  const rec  = itemsFromWords(recWords,  receptive,  'receptive')
+  const prod = itemsFromWords(prodWords, productive, 'productive')
   return breakConsecutiveFormats(interleave(rec, prod))
 }

@@ -21,7 +21,7 @@ function buildOptions(target: string): string[] {
   return shuffle([target, ...distractors])
 }
 
-function LetterPick({ item, moduleConfig, onAnswer, mode }: EvalFormatProps & { mode: 'missing' | 'first' }) {
+function LetterPick({ item, moduleConfig, onAnswer, autoPlay = true, mode }: EvalFormatProps & { mode: 'missing' | 'first' }) {
   const speak = useSpeak()
   const { vocab } = item
   const word = vocab.text_en.toUpperCase()
@@ -35,10 +35,11 @@ function LetterPick({ item, moduleConfig, onAnswer, mode }: EvalFormatProps & { 
   const [selected, setSelected] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!autoPlay) return
     const t = setTimeout(() => speak(vocab.text_en), 300)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [autoPlay])
 
   function pick(letter: string) {
     if (selected !== null) return
@@ -48,37 +49,43 @@ function LetterPick({ item, moduleConfig, onAnswer, mode }: EvalFormatProps & { 
 
   return (
     <div className="flex flex-col items-center gap-5 w-full">
-      <button
-        onClick={() => speak(vocab.text_en)}
-        className="w-24 h-24 rounded-2xl flex items-center justify-center transition-all active:scale-95"
-        style={{ background: 'var(--kids-bg)', border: '2px solid var(--kids-border-color)' }}
-      >
-        {imgUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imgUrl} alt="" className="w-16 h-16 object-contain" draggable={false} />
-        ) : (
-          <span className="text-3xl">🔊</span>
-        )}
-      </button>
+      {/* Corneta + palabra en fila; la letra que falta es un subrayado resaltado */}
+      <div className="flex items-center gap-3 flex-wrap justify-center">
+        <button
+          onClick={() => speak(vocab.text_en)}
+          className="w-12 h-12 rotate-45 rounded-lg flex items-center justify-center shrink-0 transition-all active:scale-95"
+          style={{ background: 'var(--kids-bg)', border: '2px solid var(--kids-border-color)' }}
+          aria-label="Escuchar"
+        >
+          <span className="-rotate-45 flex items-center justify-center">
+            {imgUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={imgUrl} alt="" className="w-7 h-7 object-contain" draggable={false} />
+            ) : (
+              <span className="text-lg">🔊</span>
+            )}
+          </span>
+        </button>
 
-      {mode === 'missing' ? (
-        <div className="flex gap-1.5">
-          {word.split('').map((letter, i) => (
-            <div
-              key={i}
-              className="w-[36px] h-[36px] rounded-lg flex items-center justify-center font-extrabold text-base"
-              style={{
-                border: `2px ${i === blankIdx ? 'dashed' : 'solid'} ${i === blankIdx ? moduleConfig.accent : 'var(--kids-border-color)'}`,
-                color: 'var(--kids-text)',
-              }}
-            >
-              {i === blankIdx ? (selected ?? '') : letter}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-xs font-semibold" style={{ color: 'var(--kids-text-muted)' }}>¿Con qué letra empieza?</p>
-      )}
+        {mode === 'missing' ? (
+          <div className="flex gap-1.5 items-end">
+            {word.split('').map((letter, i) => (
+              <div
+                key={i}
+                className="w-[30px] h-[38px] flex items-center justify-center font-extrabold text-lg"
+                style={{
+                  borderBottom: i === blankIdx ? `3px dashed ${selected ? (selected === target ? '#22c55e' : '#ef4444') : moduleConfig.accent}` : 'none',
+                  color: 'var(--kids-text)',
+                }}
+              >
+                {i === blankIdx ? (selected ?? '') : letter}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs font-semibold" style={{ color: 'var(--kids-text-muted)' }}>¿Con qué letra empieza?</p>
+        )}
+      </div>
 
       <div className="flex gap-2 flex-wrap justify-center">
         {options.map(letter => {

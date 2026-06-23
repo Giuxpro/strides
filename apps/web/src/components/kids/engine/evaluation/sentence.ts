@@ -12,3 +12,9 @@ export function seeSentence(word: string): string {
 export function itsSentence(word: string): string {
   return `It's ${withArticle(word)}.`
 }
+
+// Glosa en español de seeSentence, como pista de significado (sin artículo para
+// no depender del género de la palabra).
+export function seeSentenceEs(wordEs: string): string {
+  return `Veo ${wordEs}.`
+}

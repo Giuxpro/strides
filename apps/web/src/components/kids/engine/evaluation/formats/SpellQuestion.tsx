@@ -14,7 +14,7 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-export function SpellQuestion({ item, moduleConfig, onAnswer }: EvalFormatProps) {
+export function SpellQuestion({ item, moduleConfig, onAnswer, autoPlay = true }: EvalFormatProps) {
   const speak = useSpeak()
   const { vocab } = item
   const word = vocab.text_en.toUpperCase()
@@ -28,10 +28,11 @@ export function SpellQuestion({ item, moduleConfig, onAnswer }: EvalFormatProps)
   const imgUrl = getVocabImageUrl(vocab)
 
   useEffect(() => {
+    if (!autoPlay) return
     const t = setTimeout(() => speak(vocab.text_en), 300)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [autoPlay])
 
   function place(tileIdx: number) {
     if (done || usedIdxs.has(tileIdx)) return
@@ -71,23 +72,27 @@ export function SpellQuestion({ item, moduleConfig, onAnswer }: EvalFormatProps)
     <div className="flex flex-col items-center gap-5 w-full">
       <button
         onClick={() => speak(vocab.text_en)}
-        className="w-24 h-24 rounded-2xl flex items-center justify-center transition-all active:scale-95"
+        className="w-16 h-16 rotate-45 rounded-xl flex items-center justify-center transition-all active:scale-95"
         style={{ background: 'var(--kids-bg)', border: '2px solid var(--kids-border-color)' }}
+        aria-label="Escuchar"
       >
-        {imgUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imgUrl} alt="" className="w-16 h-16 object-contain" draggable={false} />
-        ) : (
-          <span className="text-3xl">🔊</span>
-        )}
+        <span className="-rotate-45 flex items-center justify-center">
+          {imgUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={imgUrl} alt="" className="w-9 h-9 object-contain" draggable={false} />
+          ) : (
+            <span className="text-2xl">🔊</span>
+          )}
+        </span>
       </button>
 
-      <div className="flex gap-1.5 flex-wrap justify-center">
+      {/* Casillas como subrayados (no cajas) → distinto del juego de spelling */}
+      <div className="flex gap-2 flex-wrap justify-center">
         {slots.map((letter, i) => (
           <div
             key={i}
-            className="w-[40px] h-[40px] rounded-lg flex items-center justify-center font-extrabold text-lg"
-            style={{ border: `2px ${letter ? 'solid' : 'dashed'} ${slotBorder(i, letter)}`, color: 'var(--kids-text)' }}
+            className="w-[34px] h-[40px] flex items-center justify-center font-extrabold text-lg"
+            style={{ borderBottom: `3px solid ${slotBorder(i, letter)}`, color: 'var(--kids-text)' }}
           >
             {letter ?? ''}
           </div>

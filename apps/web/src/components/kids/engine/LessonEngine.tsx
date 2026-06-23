@@ -345,6 +345,7 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, speechPr
           vocab={step.vocab}
           enabled={evalFormatsEnabled}
           childAge={childAge}
+          previewMode={previewMode}
           moduleConfig={moduleConfig}
           missionTitle={`Recordando ${lesson.title_es}`}
           onComplete={({ correct, total, wordResults }) => markDone(correct, total, wordResults)}

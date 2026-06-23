@@ -117,7 +117,7 @@ export default async function NewLessonPage({ params }: Props) {
             Vocabulario de esta lección
           </p>
           <p className="text-xs text-gray-600 mb-4">
-            Se crearán automáticamente 1 ejercicio de práctica (memorama) y 1 de evaluación (reconocimiento) con las palabras seleccionadas.
+            Las palabras que enseña esta lección. Después armas los juegos y la evaluación con el constructor o con &quot;Crear desde plantilla&quot;. Puedes cambiarlas luego al editar la lección.
           </p>
 
           {vocabWithUsage.length > 0 ? (

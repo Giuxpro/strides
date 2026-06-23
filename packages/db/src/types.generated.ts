@@ -854,6 +854,45 @@ export type Database = {
           },
         ]
       }
+      lesson_vocabulary: {
+        Row: {
+          created_at: string
+          id: string
+          lesson_id: string
+          order: number
+          vocabulary_item_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lesson_id: string
+          order?: number
+          vocabulary_item_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lesson_id?: string
+          order?: number
+          vocabulary_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_vocabulary_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_vocabulary_vocabulary_item_id_fkey"
+            columns: ["vocabulary_item_id"]
+            isOneToOne: false
+            referencedRelation: "vocabulary_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lessons: {
         Row: {
           audio_url: string | null

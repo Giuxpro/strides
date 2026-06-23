@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { updateLesson } from '@/app/admin/_actions'
+import { updateLesson, setLessonVocabulary } from '@/app/admin/_actions'
 import { LessonStepBuilder } from '@/components/admin/content/LessonStepBuilder'
+import { VocabPicker } from '@/components/admin/content/VocabPicker'
 import { ImageUploadField } from '@/components/admin/shared/ImageUploadField'
 import { SubmitButton } from '@/components/admin/shared/SubmitButton'
 
@@ -52,6 +53,13 @@ export default async function EditLessonPage({ params }: Props) {
       lessonCountMap[vid].add(ex.lesson_id)
     }
   }
+
+  const { data: lessonVocabRows } = await supabase
+    .from('lesson_vocabulary')
+    .select('vocabulary_item_id')
+    .eq('lesson_id', params.lessonId)
+    .order('order')
+  const lessonVocabIds = (lessonVocabRows ?? []).map(r => r.vocabulary_item_id)
 
   const { data: rawSteps } = await supabase
     .from('lesson_steps')
@@ -103,6 +111,7 @@ export default async function EditLessonPage({ params }: Props) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,32rem)_minmax(0,1fr)] gap-8 items-start">
+      <div className="space-y-6">
       {/* Basic info */}
       <form action={updateLesson} className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-5">
         <input type="hidden" name="id" value={lesson.id} />
@@ -163,6 +172,30 @@ export default async function EditLessonPage({ params }: Props) {
         </div>
       </form>
 
+      {/* Vocabulario de la lección */}
+      <form action={setLessonVocabulary} className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <input type="hidden" name="lesson_id" value={lesson.id} />
+        <input type="hidden" name="module_id" value={params.moduleId} />
+        <p className="text-sm font-semibold text-gray-300 mb-1">Vocabulario de la lección</p>
+        <p className="text-xs text-gray-600 mb-4">
+          Las palabras que enseña esta lección. De aquí salen los ejercicios y la evaluación. No depende de que existan ejercicios.
+        </p>
+        {(vocab ?? []).length > 0 ? (
+          <>
+            <VocabPicker
+              items={(vocab ?? []).map(v => ({ ...v, lessonCount: lessonCountMap[v.id]?.size ?? 0 }))}
+              initialSelected={lessonVocabIds}
+            />
+            <div className="mt-4">
+              <SubmitButton label="Guardar vocabulario" />
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-gray-600">Este módulo no tiene vocabulario aún.</p>
+        )}
+      </form>
+      </div>
+
       {/* Step builder */}
       <section>
         <div className="mb-4">
@@ -179,6 +212,7 @@ export default async function EditLessonPage({ params }: Props) {
             ...v,
             lessonCount: lessonCountMap[v.id]?.size ?? 0,
           }))}
+          lessonVocabIds={lessonVocabIds}
         />
       </section>
       </div>

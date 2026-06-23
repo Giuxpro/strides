@@ -10,72 +10,73 @@ interface Props {
   vocab: VocabItem[]
   enabled: Record<string, boolean>
   childAge: number
+  previewMode?: boolean
   moduleConfig: ModuleConfig
   missionTitle: string
   onComplete: (r: { correct: number; total: number; wordResults: WordResult[] }) => void
   onBack: () => void
 }
 
-type CardStatus = 'locked' | 'active' | 'correct' | 'wrong'
-
 const DEFAULT_INTRO = 'Vamos a comprobar lo que aprendiste con unos retos cortos. ¡Tú puedes!'
 
-export function EvaluationShell({ config, vocab, enabled, childAge, moduleConfig, missionTitle, onComplete, onBack }: Props) {
+export function EvaluationShell({ config, vocab, enabled, childAge, previewMode = false, moduleConfig, missionTitle, onComplete, onBack }: Props) {
   // Los ítems se generan tras montar (usan Math.random): si se generaran en el
   // render del servidor, el HTML SSR ≠ cliente → error de hidratación.
-  const [items, setItems]         = useState<EvalItem[] | null>(null)
-  const [stage, setStage]         = useState<'intro' | 'playing'>('intro')
-  const [activeIdx, setActiveIdx] = useState(0)
-  const [results, setResults]     = useState<(boolean | null)[]>([])
-  const [timeLeft, setTimeLeft]   = useState(config.timerSeconds ?? 0)
-  const correctRef = useRef(0)
-  const resultsRef = useRef<WordResult[]>([])
+  const [items, setItems]       = useState<EvalItem[] | null>(null)
+  const [stage, setStage]       = useState<'intro' | 'playing'>('intro')
+  const [results, setResults]   = useState<(boolean | null)[]>([])
+  const [timeLeft, setTimeLeft] = useState(config.timerSeconds ?? 0)
   const doneRef    = useRef(false)
-  const cardRefs   = useRef<(HTMLDivElement | null)[]>([])
-  const answeringRef = useRef(false)
+  const itemsRef   = useRef<EvalItem[] | null>(null)
+  const resultsRef = useRef<(boolean | null)[]>([])
+  itemsRef.current   = items
+  resultsRef.current = results
 
-  function finishAll(total: number) {
+  // Cierra la evaluación con lo respondido hasta ahora (sin respuesta = incorrecta).
+  function finish() {
     if (doneRef.current) return
     doneRef.current = true
-    onComplete({ correct: correctRef.current, total, wordResults: resultsRef.current })
+    const its = itemsRef.current ?? []
+    const res = resultsRef.current
+    const correct = res.filter(r => r === true).length
+    const wordResults: WordResult[] = its.map((it, i) => ({ vocabId: it.vocab.id, correct: res[i] === true }))
+    onComplete({ correct, total: its.length, wordResults })
   }
 
   useEffect(() => {
     const built = buildEvalItems({ vocab, config, enabled, childAge })
     setItems(built)
     setResults(built.map(() => null))
-    if (built.length === 0) finishAll(0)
+    // Eval vacía: en juego real se salta; en preview se muestra el aviso (no finish).
+    if (built.length === 0 && !previewMode) finish()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Auto-scroll a la tarjeta activa + libera el guard para la nueva tarjeta.
+  // Auto-cierre cuando ya respondió todo (todas las tarjetas resueltas).
   useEffect(() => {
-    answeringRef.current = false
-    cardRefs.current[activeIdx]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [activeIdx])
+    if (!items || items.length === 0) return
+    if (results.length === items.length && results.every(r => r !== null)) {
+      const t = setTimeout(finish, 600)
+      return () => clearTimeout(t)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [results, items])
 
   // Timer global opcional (arranca al empezar, con los ítems listos).
   useEffect(() => {
     if (stage !== 'playing' || !items || !config.timerEnabled || !config.timerSeconds) return
-    const total = items.length
     const t = setInterval(() => {
-      setTimeLeft(prev => { if (prev <= 1) { clearInterval(t); finishAll(total); return 0 } return prev - 1 })
+      setTimeLeft(prev => { if (prev <= 1) { clearInterval(t); finish(); return 0 } return prev - 1 })
     }, 1000)
     return () => clearInterval(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, stage])
 
-  function handleAnswer(correct: boolean) {
-    if (!items || answeringRef.current) return
-    answeringRef.current = true
-    const item = items[activeIdx]
-    if (item) {
-      if (correct) correctRef.current++
-      resultsRef.current.push({ vocabId: item.vocab.id, correct })
-    }
-    setResults(prev => { const n = [...prev]; n[activeIdx] = correct; return n })
-    if (activeIdx < items.length - 1) setActiveIdx(activeIdx + 1)
-    else finishAll(items.length)
+  function handleAnswer(idx: number, correct: boolean) {
+    setResults(prev => {
+      if (prev[idx] !== null) return prev
+      const n = [...prev]; n[idx] = correct; return n
+    })
   }
 
   // ── Intro: bienvenida a la misión ──
@@ -102,10 +103,29 @@ export function EvaluationShell({ config, vocab, enabled, childAge, moduleConfig
     )
   }
 
-  if (items === null || items.length === 0) return null
+  if (items === null) return null
+
+  if (items.length === 0) {
+    // En juego real ya se llamó finish() y este render no se ve; en preview avisamos.
+    if (!previewMode) return null
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center gap-4" style={{ background: 'var(--kids-bg)' }}>
+        <button onClick={onBack} className="absolute top-6 left-6 text-sm font-bold transition-opacity hover:opacity-70" style={{ color: moduleConfig.accent }}>
+          ← Salir
+        </button>
+        <span className="text-5xl">📝</span>
+        <h2 className="text-lg font-extrabold" style={{ color: 'var(--kids-text)' }}>Esta evaluación no tiene preguntas</h2>
+        <p className="text-sm max-w-xs" style={{ color: 'var(--kids-text-muted)' }}>
+          En modo Aleatorio las palabras salen de los ejercicios de la lección. Agrega ejercicios con vocabulario, o elige palabras en la evaluación. En el juego real este paso se salta solo.
+        </p>
+      </div>
+    )
+  }
 
   const answered = results.filter(r => r !== null).length
   const pct = Math.round((answered / items.length) * 100)
+  // Solo la 1ª pregunta sin responder reproduce su audio (las demás, al llegar su turno).
+  const focusIdx = results.findIndex(r => r === null)
 
   return (
     <div className="min-h-screen px-4 py-6 sm:py-8" style={{ background: 'var(--kids-bg)' }}>
@@ -132,73 +152,63 @@ export function EvaluationShell({ config, vocab, enabled, childAge, moduleConfig
           </div>
         </div>
 
-        {/* ── Tarjetas de la misión ── */}
+        {/* ── Tarjetas de la misión: todas activas, examen continuo ── */}
         <div className="space-y-3">
           {items.map((it, i) => {
-            const status: CardStatus = results[i] === null ? (i === activeIdx ? 'active' : 'locked') : (results[i] ? 'correct' : 'wrong')
+            const answeredThis = results[i] !== null
             const meta = getEvalFormat(it.formatId)
             const FormatComp = getEvalFormatComponent(it.formatId)
 
             const border =
-              status === 'active'  ? moduleConfig.accent
-              : status === 'correct' ? '#22c55e'
-              : status === 'wrong'   ? '#ef4444'
-              : 'var(--kids-border-color)'
+              !answeredThis      ? 'var(--kids-border-color)'
+              : results[i]       ? '#22c55e'
+              :                    '#ef4444'
 
             return (
               <div
                 key={it.vocab.id + '-' + i}
-                ref={el => { cardRefs.current[i] = el }}
                 className="rounded-2xl transition-all"
-                style={{
-                  background: 'var(--kids-surface)',
-                  border: `2px solid ${border}`,
-                  opacity: status === 'locked' ? 0.45 : 1,
-                  boxShadow: status === 'active' ? '0 8px 28px rgba(0,0,0,0.10)' : 'none',
-                }}
+                style={{ background: 'var(--kids-surface)', border: `2px solid ${border}` }}
               >
                 {/* Header de tarjeta */}
                 <div className="flex items-center gap-2.5 px-4 py-3">
                   <span
                     className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0"
                     style={{
-                      background: status === 'correct' ? '#22c55e' : status === 'wrong' ? '#ef4444' : status === 'active' ? moduleConfig.accent : 'var(--kids-border-color)',
-                      color: status === 'locked' ? 'var(--kids-text-muted)' : '#fff',
+                      background: answeredThis ? (results[i] ? '#22c55e' : '#ef4444') : moduleConfig.accentLight,
+                      color: answeredThis ? '#fff' : moduleConfig.accent,
                     }}
                   >
-                    {status === 'correct' ? '✓' : status === 'wrong' ? '✗' : status === 'locked' ? '🔒' : i + 1}
+                    {answeredThis ? (results[i] ? '✓' : '✗') : i + 1}
                   </span>
                   <span className="text-sm font-semibold" style={{ color: 'var(--kids-text)' }}>
                     {meta?.label ?? 'Reto'}
                   </span>
                 </div>
 
-                {/* Cuerpo: solo la tarjeta activa es interactiva */}
-                {status === 'active' && (
-                  <div className="px-4 pb-4 pt-1">
-                    {FormatComp ? (
-                      <FormatComp item={it} allVocab={vocab} moduleConfig={moduleConfig} onAnswer={handleAnswer} />
-                    ) : (
-                      <button onClick={() => handleAnswer(false)} className="font-bold px-6 py-3 rounded-2xl" style={{ background: moduleConfig.accentLight, color: moduleConfig.accent }}>
-                        Continuar →
-                      </button>
-                    )}
-                    {/* Nunca bloquea: siempre puede pasar a la siguiente */}
-                    <div className="flex justify-center mt-4">
-                      <button
-                        onClick={() => handleAnswer(false)}
-                        className="text-xs font-semibold transition-opacity hover:opacity-100"
-                        style={{ color: 'var(--kids-text-muted)', opacity: 0.6 }}
-                      >
-                        🤔 No lo sé →
-                      </button>
-                    </div>
-                  </div>
-                )}
+                {/* Cuerpo: siempre interactivo (cada formato se bloquea solo al responder) */}
+                <div className="px-4 pb-4 pt-1">
+                  {FormatComp ? (
+                    <FormatComp item={it} allVocab={vocab} moduleConfig={moduleConfig} onAnswer={c => handleAnswer(i, c)} autoPlay={i === focusIdx} />
+                  ) : (
+                    <button onClick={() => handleAnswer(i, false)} className="font-bold px-6 py-3 rounded-2xl" style={{ background: moduleConfig.accentLight, color: moduleConfig.accent }}>
+                      Continuar →
+                    </button>
+                  )}
+                </div>
               </div>
             )
           })}
         </div>
+
+        {/* ── Terminar: el niño cierra cuando quiera ── */}
+        <button
+          onClick={finish}
+          className="w-full mt-5 text-white font-extrabold px-6 py-3.5 rounded-2xl transition-all hover:scale-[1.02] active:scale-95"
+          style={{ background: moduleConfig.accent }}
+        >
+          Terminar misión →
+        </button>
       </div>
     </div>
   )

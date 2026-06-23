@@ -5,24 +5,77 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { Json } from '@strides/db'
 import { getAllSettings, insertGeneratedModule, insertGeneratedVocab, insertGeneratedLessons, logAIUsage } from '@strides/db'
-import { GAME_REGISTRY, LESSON_RECIPE, getVocabImageUrl, DEFAULT_EVALUATION_CONFIG, EVAL_FORMAT_REGISTRY } from '@strides/core/kids'
-import type { EvaluationConfig } from '@strides/core/kids'
+import { GAME_REGISTRY, LESSON_RECIPE, getVocabImageUrl, DEFAULT_EVALUATION_CONFIG, EVAL_FORMAT_REGISTRY, DEFAULT_EVAL_FORMATS, buildEvalItems } from '@strides/core/kids'
+import type { EvaluationConfig, EvalManualItem, VocabItem } from '@strides/core/kids'
 import { isValidExerciseType } from '@strides/core/exercises'
 
+// Misma config para ambos comportamientos; el modo solo cambia si se materializa
+// (fijo) o se sortea en vivo (aleatorio). Los `items` del fijo los pone el action.
 function buildEvalConfig(formData: FormData): EvaluationConfig {
+  const timerSeconds = Number(formData.get('timer_seconds'))
+  const mode = formData.get('eval_mode') === 'manual' ? 'manual' : 'auto'
   const formats = EVAL_FORMAT_REGISTRY
     .filter(f => formData.get(`eval_format_${f.id}`) === 'on')
     .map(f => f.id)
-  const timerSeconds = Number(formData.get('timer_seconds'))
   return {
     intro: ((formData.get('intro') as string) || '').trim() || undefined,
     timerEnabled: formData.get('timer_enabled') === 'on',
     timerSeconds: timerSeconds > 0 ? timerSeconds : undefined,
+    mode,
     receptiveCount: Math.max(0, Number(formData.get('receptive_count')) || 0),
     productiveCount: Math.max(0, Number(formData.get('productive_count')) || 0),
     formats: formats.length ? formats : undefined,
     vocabIds: formData.getAll('vocab_ids') as string[],
   }
+}
+
+const VOCAB_COLS = 'id, text_en, text_es, image_url, emoji_unicode, audio_url'
+
+// Materializa una instancia concreta (estructura + palabra) a partir de la config,
+// reusando el sorteo de buildEvalItems. Pool: las palabras elegidas o, si no hay,
+// las que ya usa la lección en sus ejercicios.
+async function generateFrozenEvalItems(
+  supabase: Awaited<ReturnType<typeof requireAdmin>>['supabase'],
+  lessonId: string,
+  config: EvaluationConfig,
+): Promise<EvalManualItem[]> {
+  let pool: VocabItem[] = []
+  if (config.vocabIds.length) {
+    const { data } = await supabase.from('vocabulary_items').select(VOCAB_COLS).in('id', config.vocabIds)
+    pool = (data ?? []) as unknown as VocabItem[]
+  } else {
+    const { data } = await supabase
+      .from('lesson_vocabulary')
+      .select(`vocabulary_items(${VOCAB_COLS})`)
+      .eq('lesson_id', lessonId)
+      .order('order')
+    pool = ((data ?? []) as unknown as { vocabulary_items: VocabItem | null }[])
+      .map(r => r.vocabulary_items)
+      .filter((v): v is VocabItem => !!v)
+  }
+
+  const { data: evalRow } = await supabase.from('settings').select('value').eq('key', 'eval_formats').maybeSingle()
+  const enabled = (evalRow?.value as Record<string, boolean> | undefined) ?? DEFAULT_EVAL_FORMATS
+
+  return buildEvalItems({ vocab: pool, config: { ...config, mode: 'auto' }, enabled, childAge: 6 })
+    .map(it => ({ formatId: it.formatId, vocabId: it.vocab.id }))
+}
+
+// Cierra la config de eval: aleatorio → tal cual; fijo → congela items (mantiene
+// los existentes salvo que se pida re-generar o aún no haya).
+async function finalizeEvalConfig(
+  supabase: Awaited<ReturnType<typeof requireAdmin>>['supabase'],
+  lessonId: string,
+  formData: FormData,
+  existing?: EvaluationConfig,
+): Promise<EvaluationConfig> {
+  const config = buildEvalConfig(formData)
+  if (config.mode !== 'manual') return config
+
+  const regenerate = formData.get('eval_regenerate') === '1'
+  const keep = !regenerate && !!existing?.items?.length
+  const items = keep ? existing!.items! : await generateFrozenEvalItems(supabase, lessonId, config)
+  return { ...config, items, vocabIds: Array.from(new Set(items.map(it => it.vocabId))) }
 }
 import { PAYMENT_METHOD_REGISTRY } from '@strides/core/payments'
 import { createAIProvider } from '@strides/core/ai'
@@ -136,36 +189,33 @@ export async function createLesson(formData: FormData) {
 
   if (lessonErr || !lesson) throw new Error('Error creando lección')
 
-  const { data: exercises, error: exErr } = await supabase
-    .from('exercises')
-    .insert([
-      { module_id: moduleId, lesson_id: lesson.id, type: 'memory',      phase: 'practice',   order: 1, min_age },
-      { module_id: moduleId, lesson_id: lesson.id, type: 'recognition', phase: 'evaluation', order: 2, min_age },
-    ])
-    .select('id')
-
-  if (exErr || !exercises) throw new Error('Error creando ejercicios')
-
+  // Solo guardamos el vocab de la lección. Los pasos (juegos, eval) los arma el
+  // admin con el step builder o "Crear desde plantilla" — sin ejercicios forzados.
   if (vocabIds.length > 0) {
-    const items = exercises.flatMap(ex =>
-      vocabIds.map((vid, i) => ({ exercise_id: ex.id, vocabulary_item_id: vid, order: i + 1 }))
+    await supabase.from('lesson_vocabulary').insert(
+      vocabIds.map((vid, i) => ({ lesson_id: lesson.id, vocabulary_item_id: vid, order: i }))
     )
-    await supabase.from('exercise_items').insert(items)
   }
-
-  // Create lesson_steps for the auto-generated exercises
-  await supabase.from('lesson_steps').insert(
-    exercises.map((ex, i) => ({
-      lesson_id: lesson.id,
-      position: i + 1,
-      step_type: 'exercise' as const,
-      exercise_id: ex.id,
-      config: {},
-    }))
-  )
 
   revalidatePath(`/admin/content/${moduleId}`)
   redirect(`/admin/content/${moduleId}`)
+}
+
+// Reemplaza el vocab de una lección (la lista de palabras que enseña).
+export async function setLessonVocabulary(formData: FormData) {
+  const { supabase } = await requireAdmin()
+  const lessonId = formData.get('lesson_id') as string
+  const moduleId = formData.get('module_id') as string
+  const vocabIds = formData.getAll('vocab_ids') as string[]
+
+  await supabase.from('lesson_vocabulary').delete().eq('lesson_id', lessonId)
+  if (vocabIds.length > 0) {
+    await supabase.from('lesson_vocabulary').insert(
+      vocabIds.map((vid, i) => ({ lesson_id: lessonId, vocabulary_item_id: vid, order: i }))
+    )
+  }
+
+  revalidatePath(`/admin/content/${moduleId}/lessons/${lessonId}/edit`)
 }
 
 export async function updateLesson(formData: FormData) {
@@ -220,7 +270,7 @@ export async function addLessonStep(formData: FormData) {
   let exerciseId: string | null = null
 
   if (stepType === 'evaluation') {
-    config = buildEvalConfig(formData) as unknown as Json
+    config = (await finalizeEvalConfig(supabase, lessonId, formData)) as unknown as Json
   } else if (stepType === 'video') {
     config = {
       url:     formData.get('url') as string,
@@ -272,10 +322,10 @@ export async function updateLessonStep(formData: FormData) {
   const title    = (formData.get('title') as string) || null
 
   if (stepType === 'evaluation') {
-    await supabase.from('lesson_steps').update({
-      title,
-      config: buildEvalConfig(formData) as unknown as Json,
-    }).eq('id', stepId)
+    const { data: cur } = await supabase.from('lesson_steps').select('config').eq('id', stepId).single()
+    const existing = cur?.config as unknown as EvaluationConfig | undefined
+    const config = await finalizeEvalConfig(supabase, lessonId, formData, existing)
+    await supabase.from('lesson_steps').update({ title, config: config as unknown as Json }).eq('id', stepId)
   } else if (stepType === 'video') {
     await supabase.from('lesson_steps').update({
       title,
@@ -365,6 +415,12 @@ export async function scaffoldLessonFromRecipe(formData: FormData) {
   const moduleId = formData.get('module_id') as string
   const vocabIds = formData.getAll('vocab_ids') as string[]
   if (vocabIds.length === 0) return
+
+  // Registrar estas palabras como vocab de la lección (sin pisar las existentes).
+  await supabase.from('lesson_vocabulary').upsert(
+    vocabIds.map((vid, i) => ({ lesson_id: lessonId, vocabulary_item_id: vid, order: i })),
+    { onConflict: 'lesson_id,vocabulary_item_id', ignoreDuplicates: true }
+  )
 
   const { data: vocabRows } = await supabase
     .from('vocabulary_items')

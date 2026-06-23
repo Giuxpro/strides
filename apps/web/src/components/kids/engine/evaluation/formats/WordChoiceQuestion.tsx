@@ -15,7 +15,7 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-export function WordChoiceQuestion({ item, allVocab, moduleConfig, onAnswer }: EvalFormatProps) {
+export function WordChoiceQuestion({ item, allVocab, moduleConfig, onAnswer, autoPlay = true }: EvalFormatProps) {
   const speak = useSpeak()
   const { vocab } = item
   const [options] = useState<VocabItem[]>(() => {
@@ -26,10 +26,11 @@ export function WordChoiceQuestion({ item, allVocab, moduleConfig, onAnswer }: E
   const imgUrl = getVocabImageUrl(vocab)
 
   useEffect(() => {
+    if (!autoPlay) return
     const t = setTimeout(() => speak(vocab.text_en), 300)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [autoPlay])
 
   function pick(o: VocabItem) {
     if (selected !== null) return

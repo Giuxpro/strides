@@ -99,6 +99,16 @@ export const EVAL_FORMAT_REGISTRY: EvalFormatMeta[] = [
     defaultEnabled: false,
   },
   {
+    id: 'order-sentence',
+    skill: 'productive',
+    label: 'Ordena la oración',
+    description: 'Arrastra los bloques para formar la frase en inglés (la pista está en español)',
+    requiresReading: true,
+    minAge: 6,
+    implemented: true,
+    defaultEnabled: false,
+  },
+  {
     id: 'spell',
     skill: 'productive',
     label: 'Arma la palabra',

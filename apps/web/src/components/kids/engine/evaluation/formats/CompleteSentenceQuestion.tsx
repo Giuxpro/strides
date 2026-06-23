@@ -16,7 +16,7 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-export function CompleteSentenceQuestion({ item, allVocab, moduleConfig, onAnswer }: EvalFormatProps) {
+export function CompleteSentenceQuestion({ item, allVocab, moduleConfig, onAnswer, autoPlay = true }: EvalFormatProps) {
   const speak = useSpeak()
   const { vocab } = item
   const imgUrl = getVocabImageUrl(vocab)
@@ -30,10 +30,11 @@ export function CompleteSentenceQuestion({ item, allVocab, moduleConfig, onAnswe
   const sentenceParts = seeSentence(vocab.text_en).split(vocab.text_en)
 
   useEffect(() => {
+    if (!autoPlay) return
     const t = setTimeout(() => speak(seeSentence(vocab.text_en)), 300)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [autoPlay])
 
   function pick(o: VocabItem) {
     if (selected !== null) return

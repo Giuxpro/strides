@@ -23,7 +23,7 @@ function getOptions(all: VocabItem[], correct: VocabItem, count: number): VocabI
 
 // image-choice (muestra la palabra), audio-choice (solo sonido de la palabra),
 // sentence-choose (suena una frase "I see a cow"). Todos → elegir imagen.
-export function ChoiceQuestion({ item, allVocab, onAnswer }: EvalFormatProps) {
+export function ChoiceQuestion({ item, allVocab, onAnswer, autoPlay = true }: EvalFormatProps) {
   const speak = useSpeak()
   const { vocab } = item
   const showWord = item.formatId === 'image-choice'
@@ -33,10 +33,11 @@ export function ChoiceQuestion({ item, allVocab, onAnswer }: EvalFormatProps) {
   const [selected, setSelected] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!autoPlay) return
     const t = setTimeout(() => speak(prompt), 300)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [autoPlay])
 
   function pick(o: VocabItem) {
     if (selected !== null) return
@@ -44,18 +45,23 @@ export function ChoiceQuestion({ item, allVocab, onAnswer }: EvalFormatProps) {
     setTimeout(() => onAnswer(o.id === vocab.id), 700)
   }
 
+  // Layout fila: corneta en diamante (rotada 45°) a la izquierda + opciones en
+  // fila horizontal. Distinto del grid 2×2 de los juegos.
   return (
-    <div className="flex flex-col items-center gap-5 w-full">
-      <button
-        onClick={() => speak(prompt)}
-        className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all active:scale-95"
-        style={{ background: 'var(--kids-bg)', border: '2px solid var(--kids-border-color)' }}
-      >
-        <span className="text-xl">🔊</span>
-        {showWord && <span className="font-bold capitalize" style={{ color: 'var(--kids-text)' }}>{vocab.text_en}</span>}
-      </button>
+    <div className="flex items-center gap-3 w-full">
+      <div className="flex flex-col items-center gap-1 shrink-0">
+        <button
+          onClick={() => speak(prompt)}
+          className="w-12 h-12 rotate-45 rounded-lg flex items-center justify-center transition-all active:scale-95"
+          style={{ background: 'var(--kids-bg)', border: '2px solid var(--kids-border-color)' }}
+          aria-label="Escuchar"
+        >
+          <span className="-rotate-45 text-xl">🔊</span>
+        </button>
+        {showWord && <span className="text-[11px] font-bold capitalize" style={{ color: 'var(--kids-text)' }}>{vocab.text_en}</span>}
+      </div>
 
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="flex gap-2 flex-1 flex-wrap justify-end">
         {options.map(o => {
           const sel = selected === o.id
           const correct = o.id === vocab.id
@@ -66,14 +72,14 @@ export function ChoiceQuestion({ item, allVocab, onAnswer }: EvalFormatProps) {
               key={o.id}
               onClick={() => pick(o)}
               disabled={selected !== null}
-              className="w-[76px] h-[76px] rounded-xl flex items-center justify-center transition-all active:scale-95"
+              className="w-[58px] h-[58px] rounded-xl flex items-center justify-center transition-all active:scale-95"
               style={{ background: 'var(--kids-bg)', border: `2.5px solid ${border}` }}
             >
               {img ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={img} alt="" className="w-12 h-12 object-contain" draggable={false} />
+                <img src={img} alt="" className="w-10 h-10 object-contain" draggable={false} />
               ) : (
-                <span className="text-2xl font-bold" style={{ color: 'var(--kids-text)' }}>{o.text_en[0]?.toUpperCase()}</span>
+                <span className="text-xl font-bold" style={{ color: 'var(--kids-text)' }}>{o.text_en[0]?.toUpperCase()}</span>
               )}
             </button>
           )

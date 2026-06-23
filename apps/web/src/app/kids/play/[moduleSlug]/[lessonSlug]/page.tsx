@@ -87,6 +87,17 @@ export default async function LessonPage({ params }: Props) {
     : { data: [] as VocabItem[] }
   const evalVocabMap = new Map((evalVocabRows ?? []).map(v => [v.id, v]))
 
+  // Vocab propio de la lección (lista directa). Pool por defecto cuando la
+  // evaluación no fija palabras (aleatorio: vacío = toda la lección).
+  const { data: lessonVocabRows } = await supabase
+    .from('lesson_vocabulary')
+    .select('vocabulary_items(id, text_en, text_es, image_url, emoji_unicode, audio_url)')
+    .eq('lesson_id', lesson.id)
+    .order('order')
+  const lessonVocab = (lessonVocabRows ?? [])
+    .map(r => r.vocabulary_items as unknown as VocabItem | null)
+    .filter((v): v is VocabItem => !!v)
+
   const steps = (rawSteps ?? [])
     .flatMap((s): LessonStep[] => {
       if (s.step_type === 'exercise') {
@@ -111,9 +122,10 @@ export default async function LessonPage({ params }: Props) {
       }
       if (s.step_type === 'evaluation') {
         const config = s.config as unknown as EvaluationConfig
-        const vocab = (config.vocabIds ?? [])
+        const explicit = (config.vocabIds ?? [])
           .map(id => evalVocabMap.get(id))
           .filter((v): v is VocabItem => !!v)
+        const vocab = explicit.length ? explicit : lessonVocab
         return [{ id: s.id, position: s.position, step_type: 'evaluation', title: s.title, config, vocab }]
       }
       return []

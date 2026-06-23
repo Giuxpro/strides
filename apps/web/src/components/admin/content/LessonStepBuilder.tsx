@@ -27,6 +27,7 @@ interface Props {
   moduleId: string
   steps: AdminStep[]
   vocabItems: VocabItemWithUsage[]
+  lessonVocabIds: string[]
 }
 
 const ICONS:  Record<StepType, string> = { video: '🎬', slide: '🖼️', exercise: '🎮', evaluation: '📝' }
@@ -79,7 +80,8 @@ function stepSummary(step: AdminStep): string {
   }
   if (step.step_type === 'evaluation') {
     const c = step.config as unknown as EvaluationConfig
-    return `${c.receptiveCount ?? 0} receptivos + ${c.productiveCount ?? 0} productivos · ${c.vocabIds?.length ?? 0} palabras`
+    if (c.mode === 'manual') return `Fijo · ${c.items?.length ?? 0} preguntas`
+    return `Aleatorio · ${c.receptiveCount ?? 0} receptivos + ${c.productiveCount ?? 0} productivos`
   }
   return '—'
 }
@@ -96,13 +98,89 @@ function DragHandle() {
 
 // ── Campos del bloque de Evaluación (compartidos por add y edit) ───────────
 
-function EvalFields({ config, vocab }: { config: EvaluationConfig; vocab: VocabItemWithUsage[] }) {
+const IMPLEMENTED_EVAL_FORMATS = EVAL_FORMAT_REGISTRY.filter(f => f.implemented)
+
+function EvalFields({ config, vocab, lessonHasVocab }: { config: EvaluationConfig; vocab: VocabItemWithUsage[]; lessonHasVocab: boolean }) {
+  const [fijo, setFijo] = useState(config.mode === 'manual')
+  const [regenerate, setRegenerate] = useState(false)
+  const frozenCount = config.items?.length ?? 0
+
   return (
     <div className="space-y-3">
+      <input type="hidden" name="eval_mode" value={fijo ? 'manual' : 'auto'} />
+      {fijo && <input type="hidden" name="eval_regenerate" value={regenerate ? '1' : ''} />}
+
+      {/* Toggle deslizante: aleatorio / fijo */}
+      <div className="relative flex w-full max-w-[18rem] bg-gray-800/60 border border-gray-700 rounded-lg p-1 select-none">
+        <span
+          className="absolute top-1 bottom-1 rounded-md bg-violet-600 transition-all duration-300 ease-out"
+          style={fijo ? { left: '50%', right: '0.25rem' } : { left: '0.25rem', right: '50%' }}
+        />
+        <button
+          type="button"
+          onClick={() => { setFijo(false); setRegenerate(false) }}
+          className={`relative z-10 flex-1 text-xs font-semibold py-1.5 rounded-md transition-opacity ${!fijo ? 'text-white' : 'text-gray-400 opacity-50 hover:opacity-90'}`}
+        >
+          🎲 Aleatorio
+        </button>
+        <button
+          type="button"
+          onClick={() => { setFijo(true); setRegenerate(false) }}
+          className={`relative z-10 flex-1 text-xs font-semibold py-1.5 rounded-md transition-opacity ${fijo ? 'text-white' : 'text-gray-400 opacity-50 hover:opacity-90'}`}
+        >
+          📌 Fijo
+        </button>
+      </div>
+      <p className="text-[11px] text-gray-500 leading-relaxed">
+        {fijo
+          ? 'Tú armas un examen concreto y queda guardado tal cual. Todos los niños verán siempre las mismas preguntas, en el mismo orden, cada vez que lo abran.'
+          : 'La app crea el examen sola, eligiendo preguntas y palabras de esta lección. Cada vez que un niño lo abre, le toca una combinación distinta.'}
+      </p>
+
+      {!lessonHasVocab && (
+        <p className="text-[11px] text-amber-400/90 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2 leading-relaxed">
+          ⚠ Esta lección todavía no tiene ejercicios con vocabulario. La evaluación toma sus palabras de esos ejercicios, así que ahora mismo saldría <strong>vacía</strong> (y se saltaría). Agrega ejercicios con vocab, o elige palabras abajo a mano.
+        </p>
+      )}
+
+      {fijo && (
+        <div className="bg-violet-950/20 border border-violet-800/40 rounded-lg px-3 py-2.5 space-y-1.5">
+          {frozenCount > 0 ? (
+            <>
+              <p className="text-[11px] text-gray-400">Examen congelado: <span className="text-gray-200 font-semibold">{frozenCount} preguntas</span>.</p>
+              <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                <input type="checkbox" checked={regenerate} onChange={e => setRegenerate(e.target.checked)} className="w-4 h-4 accent-violet-500" />
+                🎲 Re-generar el examen al guardar (con la configuración de abajo)
+              </label>
+            </>
+          ) : (
+            <p className="text-[11px] text-gray-400 leading-relaxed">Al guardar, la app arma el examen una vez respetando lo que marques abajo (estructuras y palabras; si no marcas, usa todas) y lo deja fijo. El azar solo decide la combinación y el orden dentro de eso.</p>
+          )}
+        </div>
+      )}
+
+      {/* Comunes */}
       <div>
         <label className={L}>Mensaje de intro (opcional)</label>
         <input name="intro" defaultValue={config.intro ?? ''} placeholder="¡Veamos todo lo que aprendiste!" className={I} />
       </div>
+      <div>
+        <label className={L}>Tiempo límite (opcional)</label>
+        <p className="text-[11px] text-gray-500 mb-2 leading-relaxed">
+          Activa un cronómetro para el examen. Cuando el tiempo se acaba, el examen se cierra solo con lo que el niño haya respondido hasta ese momento. Si lo dejas apagado, el niño tiene todo el tiempo que necesite.
+        </p>
+        <div className="grid grid-cols-2 gap-3 items-end">
+          <label className="flex items-center gap-2 text-sm text-gray-400 pb-2.5">
+            <input type="checkbox" name="timer_enabled" defaultChecked={config.timerEnabled} className="w-4 h-4 accent-violet-500" />
+            Activar timer
+          </label>
+          <div>
+            <label className={L}>Segundos (si hay timer)</label>
+            <input name="timer_seconds" type="number" min={0} defaultValue={config.timerSeconds ?? ''} className={I} />
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className={L}>Ejercicios receptivos</label>
@@ -113,35 +191,34 @@ function EvalFields({ config, vocab }: { config: EvaluationConfig; vocab: VocabI
           <input name="productive_count" type="number" min={0} defaultValue={config.productiveCount} className={I} />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3 items-end">
-        <label className="flex items-center gap-2 text-sm text-gray-400 pb-2.5">
-          <input type="checkbox" name="timer_enabled" defaultChecked={config.timerEnabled} className="w-4 h-4 accent-violet-500" />
-          Activar timer
-        </label>
-        <div>
-          <label className={L}>Segundos (si hay timer)</label>
-          <input name="timer_seconds" type="number" min={0} defaultValue={config.timerSeconds ?? ''} className={I} />
-        </div>
-      </div>
       <div>
-        <label className={L}>Formatos a usar <span className="text-gray-600">(vacío = todos los disponibles)</span></label>
-        <div className="flex flex-wrap gap-2">
-          {EVAL_FORMAT_REGISTRY.filter(f => f.implemented).map(f => (
-            <label key={f.id} className="flex items-center gap-1.5 text-xs text-gray-300 bg-gray-800/60 border border-gray-700 rounded-lg px-2 py-1 cursor-pointer">
-              <input
-                type="checkbox"
-                name={`eval_format_${f.id}`}
-                defaultChecked={config.formats?.includes(f.id) ?? false}
-                className="w-3.5 h-3.5 accent-violet-500"
-              />
-              {f.label} <span className="text-gray-600">({f.skill === 'receptive' ? 'R' : 'P'})</span>
-            </label>
+        <label className={L}>Estructuras a usar <span className="text-gray-600">(vacío = todas las disponibles)</span></label>
+        <div className="grid grid-cols-2 gap-3">
+          {(['receptive', 'productive'] as const).map(skill => (
+            <div key={skill}>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-violet-400 mb-1.5">
+                {skill === 'receptive' ? 'Receptivas' : 'Productivas'}
+              </p>
+              <div className="flex flex-col gap-1.5">
+                {IMPLEMENTED_EVAL_FORMATS.filter(f => f.skill === skill).map(f => (
+                  <label key={f.id} className="flex items-center gap-1.5 text-xs text-gray-300 bg-gray-800/60 border border-gray-700 rounded-lg px-2 py-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name={`eval_format_${f.id}`}
+                      defaultChecked={config.formats?.includes(f.id) ?? false}
+                      className="w-3.5 h-3.5 accent-violet-500 shrink-0"
+                    />
+                    {f.label}
+                  </label>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </div>
       {vocab.length > 0 ? (
         <div>
-          <label className={L}>Palabras a evaluar <span className="text-red-500">*</span></label>
+          <label className={L}>Palabras <span className="text-gray-600">(opcional — vacío = todas las que usa la lección)</span></label>
           <VocabPicker items={vocab} initialSelected={config.vocabIds} />
         </div>
       ) : (
@@ -154,12 +231,13 @@ function EvalFields({ config, vocab }: { config: EvaluationConfig; vocab: VocabI
 // ── Edit form shown below a step when expanded ─────────────────────────────
 
 function StepEditForm({
-  step, lessonId, moduleId, vocab, onClose,
+  step, lessonId, moduleId, vocab, lessonHasVocab, onClose,
 }: {
   step: AdminStep
   lessonId: string
   moduleId: string
   vocab: VocabItemWithUsage[]
+  lessonHasVocab: boolean
   onClose: () => void
 }) {
   return (
@@ -217,7 +295,7 @@ function StepEditForm({
         )}
 
         {step.step_type === 'evaluation' && (
-          <EvalFields config={step.config as unknown as EvaluationConfig} vocab={vocab} />
+          <EvalFields config={step.config as unknown as EvaluationConfig} vocab={vocab} lessonHasVocab={lessonHasVocab} />
         )}
 
         {step.step_type === 'exercise' && step.exercise && (
@@ -264,7 +342,7 @@ function StepEditForm({
 
 // ── Main builder ────────────────────────────────────────────────────────────
 
-export function LessonStepBuilder({ lessonId, moduleId, steps, vocabItems }: Props) {
+export function LessonStepBuilder({ lessonId, moduleId, steps, vocabItems, lessonVocabIds }: Props) {
   const [localSteps, setLocalSteps] = useState<AdminStep[]>(steps)
   const [dragId,      setDragId]    = useState<string | null>(null)
   const [dropId,      setDropId]    = useState<string | null>(null)
@@ -382,6 +460,8 @@ export function LessonStepBuilder({ lessonId, moduleId, steps, vocabItems }: Pro
   // ─────────────────────────────────────────────────────────────────────────
 
   const nextPosition = localSteps.length + 1
+  // El modo Aleatorio saca palabras del vocab de la lección (lesson_vocabulary).
+  const lessonHasVocab = lessonVocabIds.length > 0
 
   return (
     <div className="space-y-1.5">
@@ -494,6 +574,7 @@ export function LessonStepBuilder({ lessonId, moduleId, steps, vocabItems }: Pro
                 step={step}
                 lessonId={lessonId}
                 moduleId={moduleId}
+                lessonHasVocab={lessonHasVocab}
                 vocab={vocabItems}
                 onClose={() => setExpandedId(null)}
               />
@@ -660,7 +741,7 @@ export function LessonStepBuilder({ lessonId, moduleId, steps, vocabItems }: Pro
                 {vocabItems.length > 0 ? (
                   <div>
                     <label className={L}>Vocabulario <span className="text-red-500">*</span></label>
-                    <VocabPicker items={vocabItems} />
+                    <VocabPicker items={vocabItems} initialSelected={lessonVocabIds} />
                   </div>
                 ) : (
                   <p className="text-xs text-gray-600">Sin vocabulario en este módulo. Añade vocab primero.</p>
@@ -669,7 +750,7 @@ export function LessonStepBuilder({ lessonId, moduleId, steps, vocabItems }: Pro
             )}
 
             {adding === 'evaluation' && (
-              <EvalFields config={DEFAULT_EVALUATION_CONFIG} vocab={vocabItems} />
+              <EvalFields config={DEFAULT_EVALUATION_CONFIG} vocab={vocabItems} lessonHasVocab={lessonHasVocab} />
             )}
 
             <div className="flex items-center gap-3 pt-1">

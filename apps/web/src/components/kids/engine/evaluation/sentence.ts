@@ -13,8 +13,14 @@ export function itsSentence(word: string): string {
   return `It's ${withArticle(word)}.`
 }
 
-// Glosa en español de seeSentence, como pista de significado (sin artículo para
-// no depender del género de la palabra).
+// Artículo indefinido español por heurística: termina en -a → "una", si no "un".
+// Acierta el grueso del vocab concreto infantil; excepciones (la flor, la mano)
+// son minoría y se afinarían con género en BD si hiciera falta.
+export function withArticleEs(wordEs: string): string {
+  return /a$/i.test(wordEs.trim()) ? `una ${wordEs}` : `un ${wordEs}`
+}
+
+// Glosa en español de seeSentence, como pista de significado ("Veo un pato").
 export function seeSentenceEs(wordEs: string): string {
-  return `Veo ${wordEs}.`
+  return `Veo ${withArticleEs(wordEs)}.`
 }

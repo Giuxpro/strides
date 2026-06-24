@@ -4,13 +4,12 @@ import { useState, useEffect, useRef } from 'react'
 import { getVocabImageUrl } from '@strides/core/kids'
 import { useSpeak } from '@/components/kids/audio/VoicePresetProvider'
 import { useSpeechAttempt } from '../../speech/useSpeechAttempt'
-import { itsSentence } from '../sentence'
 import type { EvalFormatProps } from '../types'
 
 export function SpeakQuestion({ item, moduleConfig, onAnswer, autoPlay = true }: EvalFormatProps) {
   const speak = useSpeak()
   const { vocab } = item
-  const expected = item.formatId === 'say-sentence' ? itsSentence(vocab.text_en) : vocab.text_en
+  const expected = vocab.text_en
 
   const [done, setDone] = useState<null | 'correct' | 'wrong'>(null)
   const answeredRef = useRef(false)

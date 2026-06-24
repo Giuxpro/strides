@@ -25,7 +25,7 @@ function buildEvalConfig(formData: FormData): EvaluationConfig {
     receptiveCount: Math.max(0, Number(formData.get('receptive_count')) || 0),
     productiveCount: Math.max(0, Number(formData.get('productive_count')) || 0),
     formats: formats.length ? formats : undefined,
-    vocabIds: formData.getAll('vocab_ids') as string[],
+    allowRepeat: formData.get('eval_allow_repeat') === 'on',
   }
 }
 
@@ -39,20 +39,14 @@ async function generateFrozenEvalItems(
   lessonId: string,
   config: EvaluationConfig,
 ): Promise<EvalManualItem[]> {
-  let pool: VocabItem[] = []
-  if (config.vocabIds.length) {
-    const { data } = await supabase.from('vocabulary_items').select(VOCAB_COLS).in('id', config.vocabIds)
-    pool = (data ?? []) as unknown as VocabItem[]
-  } else {
-    const { data } = await supabase
-      .from('lesson_vocabulary')
-      .select(`vocabulary_items(${VOCAB_COLS})`)
-      .eq('lesson_id', lessonId)
-      .order('order')
-    pool = ((data ?? []) as unknown as { vocabulary_items: VocabItem | null }[])
-      .map(r => r.vocabulary_items)
-      .filter((v): v is VocabItem => !!v)
-  }
+  const { data } = await supabase
+    .from('lesson_vocabulary')
+    .select(`vocabulary_items(${VOCAB_COLS})`)
+    .eq('lesson_id', lessonId)
+    .order('order')
+  const pool = ((data ?? []) as unknown as { vocabulary_items: VocabItem | null }[])
+    .map(r => r.vocabulary_items)
+    .filter((v): v is VocabItem => !!v)
 
   const { data: evalRow } = await supabase.from('settings').select('value').eq('key', 'eval_formats').maybeSingle()
   const enabled = (evalRow?.value as Record<string, boolean> | undefined) ?? DEFAULT_EVAL_FORMATS
@@ -75,7 +69,7 @@ async function finalizeEvalConfig(
   const regenerate = formData.get('eval_regenerate') === '1'
   const keep = !regenerate && !!existing?.items?.length
   const items = keep ? existing!.items! : await generateFrozenEvalItems(supabase, lessonId, config)
-  return { ...config, items, vocabIds: Array.from(new Set(items.map(it => it.vocabId))) }
+  return { ...config, items }
 }
 import { PAYMENT_METHOD_REGISTRY } from '@strides/core/payments'
 import { createAIProvider } from '@strides/core/ai'
@@ -504,7 +498,7 @@ export async function scaffoldLessonFromRecipe(formData: FormData) {
         position,
         step_type: 'evaluation',
         title: null,
-        config: { ...DEFAULT_EVALUATION_CONFIG, vocabIds } as unknown as Json,
+        config: { ...DEFAULT_EVALUATION_CONFIG } as unknown as Json,
         exercise_id: null,
       })
     }

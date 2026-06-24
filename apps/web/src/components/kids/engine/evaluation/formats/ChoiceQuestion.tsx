@@ -21,13 +21,20 @@ function getOptions(all: VocabItem[], correct: VocabItem, count: number): VocabI
   return shuffle([correct, ...distractors])
 }
 
-// image-choice (muestra la palabra), audio-choice (solo sonido de la palabra),
-// sentence-choose (suena una frase "I see a cow"). Todos → elegir imagen.
+// Una sola mecánica "elige la imagen" cuyo estímulo varía al azar cada vez para
+// que no se sienta repetida: a veces muestra la palabra escrita, a veces solo
+// suena la palabra, a veces suena una frase ("I see a cow").
+type Stimulus = 'word' | 'audio' | 'sentence'
+
 export function ChoiceQuestion({ item, allVocab, onAnswer, autoPlay = true }: EvalFormatProps) {
   const speak = useSpeak()
   const { vocab } = item
-  const showWord = item.formatId === 'image-choice'
-  const prompt = item.formatId === 'sentence-choose' ? seeSentence(vocab.text_en) : vocab.text_en
+  const [stimulus] = useState<Stimulus>(() => {
+    const modes: Stimulus[] = ['word', 'audio', 'sentence']
+    return modes[Math.floor(Math.random() * modes.length)]!
+  })
+  const showWord = stimulus === 'word'
+  const prompt = stimulus === 'sentence' ? seeSentence(vocab.text_en) : vocab.text_en
 
   const [options] = useState(() => getOptions(allVocab, vocab, Math.min(4, allVocab.length)))
   const [selected, setSelected] = useState<string | null>(null)

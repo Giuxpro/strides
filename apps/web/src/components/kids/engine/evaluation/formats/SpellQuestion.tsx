@@ -14,21 +14,30 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
+// Construir la palabra en inglés pulsando letras desordenadas. La pista depende
+// del formato: imagen (spell-image), palabra en español (spell-es) o solo audio
+// (spell-audio). Son variantes de la misma familia "spell".
+type Stimulus = 'image' | 'spanish' | 'audio'
+
 export function SpellQuestion({ item, moduleConfig, onAnswer, autoPlay = true }: EvalFormatProps) {
   const speak = useSpeak()
   const { vocab } = item
   const word = vocab.text_en.toUpperCase()
   const letters = word.split('')
 
+  const imgUrl = getVocabImageUrl(vocab)
+  const stimulus: Stimulus =
+    item.formatId === 'spell-es'    ? 'spanish'
+    : item.formatId === 'spell-audio' ? 'audio'
+    : 'image'
   const [tiles] = useState(() => shuffle([...letters]))
   const [slots, setSlots] = useState<(string | null)[]>(() => Array(letters.length).fill(null))
   const [usedIdxs, setUsedIdxs] = useState<Set<number>>(new Set())
   const [done, setDone] = useState<null | 'correct' | 'wrong'>(null)
 
-  const imgUrl = getVocabImageUrl(vocab)
-
   useEffect(() => {
-    if (!autoPlay) return
+    // En modo español la palabra inglesa es la respuesta: no la cantamos al entrar.
+    if (!autoPlay || stimulus === 'spanish') return
     const t = setTimeout(() => speak(vocab.text_en), 300)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -70,21 +79,35 @@ export function SpellQuestion({ item, moduleConfig, onAnswer, autoPlay = true }:
 
   return (
     <div className="flex flex-col items-center gap-5 w-full">
-      <button
-        onClick={() => speak(vocab.text_en)}
-        className="w-16 h-16 rotate-45 rounded-xl flex items-center justify-center transition-all active:scale-95"
-        style={{ background: 'var(--kids-bg)', border: '2px solid var(--kids-border-color)' }}
-        aria-label="Escuchar"
-      >
-        <span className="-rotate-45 flex items-center justify-center">
-          {imgUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={imgUrl} alt="" className="w-9 h-9 object-contain" draggable={false} />
-          ) : (
-            <span className="text-2xl">🔊</span>
-          )}
-        </span>
-      </button>
+      {stimulus === 'spanish' ? (
+        <div className="flex items-center gap-3">
+          <p className="text-lg font-bold capitalize" style={{ color: 'var(--kids-text)' }}>{vocab.text_es}</p>
+          <button
+            onClick={() => speak(vocab.text_en)}
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90"
+            style={{ background: moduleConfig.accentLight, color: moduleConfig.accent }}
+            aria-label="Escuchar"
+          >
+            🔊
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => speak(vocab.text_en)}
+          className="w-16 h-16 rotate-45 rounded-xl flex items-center justify-center transition-all active:scale-95"
+          style={{ background: 'var(--kids-bg)', border: '2px solid var(--kids-border-color)' }}
+          aria-label="Escuchar"
+        >
+          <span className="-rotate-45 flex items-center justify-center">
+            {stimulus === 'image' && imgUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={imgUrl} alt="" className="w-9 h-9 object-contain" draggable={false} />
+            ) : (
+              <span className="text-2xl">🔊</span>
+            )}
+          </span>
+        </button>
+      )}
 
       {/* Casillas como subrayados (no cajas) → distinto del juego de spelling */}
       <div className="flex gap-2 flex-wrap justify-center">

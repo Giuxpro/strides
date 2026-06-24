@@ -7,20 +7,21 @@ import { WordChoiceQuestion } from './formats/WordChoiceQuestion'
 import { MissingLetter, FirstSound } from './formats/LetterPickQuestion'
 import { CompleteSentenceQuestion } from './formats/CompleteSentenceQuestion'
 import { OrderSentenceQuestion } from './formats/OrderSentenceQuestion'
+import { DragWordQuestion } from './formats/DragWordQuestion'
 import type { EvalFormatProps } from './types'
 
 // Mapea id de formato → componente, igual que gamePool para los juegos.
 const FORMAT_COMPONENTS: Record<string, ComponentType<EvalFormatProps>> = {
-  'image-choice':     ChoiceQuestion,
   'audio-choice':     ChoiceQuestion,
-  'sentence-choose':  ChoiceQuestion,
   'yes-no':           YesNoQuestion,
   'word-choice':      WordChoiceQuestion,
   speak:              SpeakQuestion,
-  'say-sentence':     SpeakQuestion,
   'complete-sentence': CompleteSentenceQuestion,
   'order-sentence':   OrderSentenceQuestion,
-  spell:              SpellQuestion,
+  'match-word':       DragWordQuestion,
+  'spell-image':      SpellQuestion,
+  'spell-es':         SpellQuestion,
+  'spell-audio':      SpellQuestion,
   'missing-letter':   MissingLetter,
   'first-sound':      FirstSound,
 }

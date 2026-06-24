@@ -100,15 +100,39 @@ function DragHandle() {
 
 const IMPLEMENTED_EVAL_FORMATS = EVAL_FORMAT_REGISTRY.filter(f => f.implemented)
 
-function EvalFields({ config, vocab, lessonHasVocab }: { config: EvaluationConfig; vocab: VocabItemWithUsage[]; lessonHasVocab: boolean }) {
+function EvalFields({ config, lessonHasVocab }: { config: EvaluationConfig; lessonHasVocab: boolean }) {
   const [fijo, setFijo] = useState(config.mode === 'manual')
   const [regenerate, setRegenerate] = useState(false)
+  const [recCount, setRecCount] = useState(config.receptiveCount)
+  const [prodCount, setProdCount] = useState(config.productiveCount)
+  const [selFormats, setSelFormats] = useState<Set<string>>(new Set(config.formats ?? []))
+  const [allowRepeat, setAllowRepeat] = useState(config.allowRepeat ?? false)
   const frozenCount = config.items?.length ?? 0
+
+  function toggleFormat(id: string, on: boolean) {
+    setSelFormats(prev => {
+      const next = new Set(prev)
+      if (on) next.add(id); else next.delete(id)
+      return next
+    })
+  }
+
+  // Estructuras disponibles por habilidad: si no se marca ninguna en el bloque,
+  // cuentan todas las implementadas de esa habilidad (vacío = todas).
+  function availFor(skill: 'receptive' | 'productive'): number {
+    const all = IMPLEMENTED_EVAL_FORMATS.filter(f => f.skill === skill)
+    if (selFormats.size === 0) return all.length
+    return all.filter(f => selFormats.has(f.id)).length
+  }
+  const recAvail = availFor('receptive')
+  const prodAvail = availFor('productive')
+  const exceeds = recCount > recAvail || prodCount > prodAvail
 
   return (
     <div className="space-y-3">
       <input type="hidden" name="eval_mode" value={fijo ? 'manual' : 'auto'} />
       {fijo && <input type="hidden" name="eval_regenerate" value={regenerate ? '1' : ''} />}
+      {allowRepeat && <input type="hidden" name="eval_allow_repeat" value="on" />}
 
       {/* Toggle deslizante: aleatorio / fijo */}
       <div className="relative flex w-full max-w-[18rem] bg-gray-800/60 border border-gray-700 rounded-lg p-1 select-none">
@@ -183,14 +207,26 @@ function EvalFields({ config, vocab, lessonHasVocab }: { config: EvaluationConfi
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className={L}>Ejercicios receptivos</label>
-          <input name="receptive_count" type="number" min={0} defaultValue={config.receptiveCount} className={I} />
+          <label className={L}>Ejercicios receptivos <span className="text-gray-600">({recAvail} disponibles)</span></label>
+          <input name="receptive_count" type="number" min={0} value={recCount} onChange={e => setRecCount(Math.max(0, Number(e.target.value) || 0))} className={I} />
         </div>
         <div>
-          <label className={L}>Ejercicios productivos</label>
-          <input name="productive_count" type="number" min={0} defaultValue={config.productiveCount} className={I} />
+          <label className={L}>Ejercicios productivos <span className="text-gray-600">({prodAvail} disponibles)</span></label>
+          <input name="productive_count" type="number" min={0} value={prodCount} onChange={e => setProdCount(Math.max(0, Number(e.target.value) || 0))} className={I} />
         </div>
       </div>
+
+      {exceeds && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2.5 space-y-2">
+          <p className="text-[11px] text-amber-300/90 leading-relaxed">
+            ⚠ Pediste más ejercicios ({recCount > recAvail ? `${recCount} receptivos` : ''}{recCount > recAvail && prodCount > prodAvail ? ' y ' : ''}{prodCount > prodAvail ? `${prodCount} productivos` : ''}) que estructuras distintas disponibles ({recAvail} receptivas · {prodAvail} productivas). Sin repetir, el examen se topa a esas estructuras.
+          </p>
+          <label className="flex items-center gap-2 text-xs text-amber-200 cursor-pointer">
+            <input type="checkbox" checked={allowRepeat} onChange={e => setAllowRepeat(e.target.checked)} className="w-4 h-4 accent-amber-500" />
+            🔁 Permitir repetir estructuras para llegar al número pedido (misma estructura, otra palabra)
+          </label>
+        </div>
+      )}
       <div>
         <label className={L}>Estructuras a usar <span className="text-gray-600">(vacío = todas las disponibles)</span></label>
         <div className="grid grid-cols-2 gap-3">
@@ -205,7 +241,8 @@ function EvalFields({ config, vocab, lessonHasVocab }: { config: EvaluationConfi
                     <input
                       type="checkbox"
                       name={`eval_format_${f.id}`}
-                      defaultChecked={config.formats?.includes(f.id) ?? false}
+                      checked={selFormats.has(f.id)}
+                      onChange={e => toggleFormat(f.id, e.target.checked)}
                       className="w-3.5 h-3.5 accent-violet-500 shrink-0"
                     />
                     {f.label}
@@ -216,14 +253,9 @@ function EvalFields({ config, vocab, lessonHasVocab }: { config: EvaluationConfi
           ))}
         </div>
       </div>
-      {vocab.length > 0 ? (
-        <div>
-          <label className={L}>Palabras <span className="text-gray-600">(opcional — vacío = todas las que usa la lección)</span></label>
-          <VocabPicker items={vocab} initialSelected={config.vocabIds} />
-        </div>
-      ) : (
-        <p className="text-xs text-gray-600">Sin vocabulario en este módulo. Añade vocab primero.</p>
-      )}
+      <p className="text-[11px] text-gray-500 leading-relaxed">
+        Las palabras salen siempre del vocabulario de la lección. Edítalas en la sección <strong>Vocabulario de la lección</strong>.
+      </p>
     </div>
   )
 }
@@ -295,7 +327,7 @@ function StepEditForm({
         )}
 
         {step.step_type === 'evaluation' && (
-          <EvalFields config={step.config as unknown as EvaluationConfig} vocab={vocab} lessonHasVocab={lessonHasVocab} />
+          <EvalFields config={step.config as unknown as EvaluationConfig} lessonHasVocab={lessonHasVocab} />
         )}
 
         {step.step_type === 'exercise' && step.exercise && (
@@ -750,7 +782,7 @@ export function LessonStepBuilder({ lessonId, moduleId, steps, vocabItems, lesso
             )}
 
             {adding === 'evaluation' && (
-              <EvalFields config={DEFAULT_EVALUATION_CONFIG} vocab={vocabItems} lessonHasVocab={lessonHasVocab} />
+              <EvalFields config={DEFAULT_EVALUATION_CONFIG} lessonHasVocab={lessonHasVocab} />
             )}
 
             <div className="flex items-center gap-3 pt-1">

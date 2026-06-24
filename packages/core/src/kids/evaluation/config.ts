@@ -21,10 +21,12 @@ export interface EvaluationConfig {
   productiveCount: number
   // Subconjunto de formatos a usar; si está vacío/ausente → todos los habilitados.
   formats?: string[]
+  // Si se piden más preguntas que estructuras distintas: true rellena repitiendo
+  // estructuras (con otra palabra); false (default) topa al nº de estructuras.
+  allowRepeat?: boolean
   // ── manual ──
   // Lista ordenada de estructuras tal cual las verá el niño.
   items?: EvalManualItem[]
-  vocabIds: string[]
 }
 
 export const DEFAULT_EVALUATION_CONFIG: EvaluationConfig = {
@@ -32,7 +34,6 @@ export const DEFAULT_EVALUATION_CONFIG: EvaluationConfig = {
   timerEnabled: false,
   receptiveCount: 3,
   productiveCount: 3,
-  vocabIds: [],
 }
 
 // Un ítem concreto a resolver en la evaluación: una palabra bajo un formato.
@@ -71,15 +72,19 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-// Asigna un formato (rotando los barajados) a cada palabra ya elegida.
+// Asigna un formato a cada palabra. Por defecto una estructura no se repite en el
+// examen, así que el nº de preguntas se topa al nº de estructuras distintas. Si
+// allowRepeat, se rellena rotando estructuras (con otra palabra) hasta el count.
 function itemsFromWords(
   words: VocabItem[],
   formats: EvalFormatMeta[],
   skill: EvalSkill,
+  allowRepeat: boolean,
 ): EvalItem[] {
   if (formats.length === 0 || words.length === 0) return []
   const fmts = shuffle(formats)
-  return words.map((vocab, idx) => ({ vocab, formatId: fmts[idx % fmts.length]!.id, skill }))
+  const n = allowRepeat ? words.length : Math.min(words.length, fmts.length)
+  return Array.from({ length: n }, (_, idx) => ({ vocab: words[idx]!, formatId: fmts[idx % fmts.length]!.id, skill }))
 }
 
 // Intercala dos listas alternando una de cada.
@@ -124,9 +129,16 @@ function buildManualItems(opts: {
   return out
 }
 
+// Toma n palabras recorriendo el pool de forma circular desde un offset. Mientras
+// total de preguntas ≤ palabras disponibles no hay repetición; si se piden más
+// preguntas que palabras, recicla (la palabra reaparece bajo otra estructura).
+function cycle<T>(arr: T[], n: number, offset: number): T[] {
+  if (arr.length === 0) return []
+  return Array.from({ length: n }, (_, i) => arr[(offset + i) % arr.length]!)
+}
+
 // Genera los ítems INTERCALADOS (receptivo/productivo alternados) y sin repetir
 // formato en posiciones consecutivas → no se siente como bloques de mini-juegos.
-// Las palabras NO se repiten entre estructuras (se reparten de un pool barajado).
 export function buildEvalItems(opts: {
   vocab: VocabItem[]
   config: EvaluationConfig
@@ -138,9 +150,10 @@ export function buildEvalItems(opts: {
 
   const { receptive, productive } = resolveEvalFormats({ config, enabled, childAge })
   const pool = shuffle(vocab)
-  const recWords  = pool.slice(0, config.receptiveCount)
-  const prodWords = pool.slice(config.receptiveCount, config.receptiveCount + config.productiveCount)
-  const rec  = itemsFromWords(recWords,  receptive,  'receptive')
-  const prod = itemsFromWords(prodWords, productive, 'productive')
+  const recWords  = cycle(pool, config.receptiveCount, 0)
+  const prodWords = cycle(pool, config.productiveCount, config.receptiveCount)
+  const allowRepeat = config.allowRepeat ?? false
+  const rec  = itemsFromWords(recWords,  receptive,  'receptive',  allowRepeat)
+  const prod = itemsFromWords(prodWords, productive, 'productive', allowRepeat)
   return breakConsecutiveFormats(interleave(rec, prod))
 }

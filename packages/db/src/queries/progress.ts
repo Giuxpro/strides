@@ -10,6 +10,15 @@ export function getLessonCompletions(db: DB, childId: string) {
     .eq('child_id', childId)
 }
 
+export function getEvaluationAttempt(db: DB, childId: string, lessonId: string) {
+  return db
+    .from('child_evaluation_attempts')
+    .select('detail, correct, total, stars, attempts')
+    .eq('child_id', childId)
+    .eq('lesson_id', lessonId)
+    .maybeSingle()
+}
+
 export function getVocabMastery(db: DB, childId: string) {
   return db
     .from('child_vocab_mastery')

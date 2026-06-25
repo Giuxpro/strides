@@ -5,34 +5,59 @@ import { getVocabImageUrl } from '@strides/core/kids'
 import { useSpeak } from '@/components/kids/audio/VoicePresetProvider'
 import { useSpeechAttempt } from '../../speech/useSpeechAttempt'
 import type { EvalFormatProps } from '../types'
+import type { SpeakSnapshot } from '../snapshots'
 
-export function SpeakQuestion({ item, moduleConfig, onAnswer, autoPlay = true }: EvalFormatProps) {
+export function SpeakQuestion({ item, moduleConfig, onAnswer, onSnapshot, review, autoPlay = true }: EvalFormatProps) {
   const speak = useSpeak()
   const { vocab } = item
   const expected = vocab.text_en
+  const rev = review?.kind === 'speak' ? review : null
+  const readOnly = !!rev
 
-  const [done, setDone] = useState<null | 'correct' | 'wrong'>(null)
+  const [done, setDone] = useState<null | 'correct' | 'wrong'>(rev ? rev.result : null)
+  const [retry, setRetry] = useState(false)
   const answeredRef = useRef(false)
+  const attemptsRef = useRef(0)
+  const MAX_ATTEMPTS = 2
   const { state, start, volumeRef } = useSpeechAttempt({
     onResult: ({ correct }) => {
       if (answeredRef.current) return
-      answeredRef.current = true
-      setDone(correct ? 'correct' : 'wrong')
-      if (correct) speak(expected)
-      setTimeout(() => onAnswer(correct), 1100)
+      if (correct) {
+        answeredRef.current = true
+        setRetry(false)
+        setDone('correct')
+        onAnswer(true, { kind: 'speak', result: 'correct' })
+        return
+      }
+      // Primer fallo: pudo ser ruido → damos otra oportunidad sin marcar mal aún.
+      attemptsRef.current += 1
+      if (attemptsRef.current >= MAX_ATTEMPTS) {
+        answeredRef.current = true
+        setRetry(false)
+        setDone('wrong')
+        onAnswer(false, { kind: 'speak', result: 'wrong' })
+      } else {
+        setRetry(true)
+      }
     },
   })
 
   const imgUrl = getVocabImageUrl(vocab)
 
   useEffect(() => {
-    if (!autoPlay) return
+    if (readOnly) return
+    onSnapshot?.({ kind: 'speak', result: null })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (readOnly || !autoPlay) return
     const t = setTimeout(() => speak(expected), 400)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPlay])
 
-  if (state === 'unsupported') {
+  if (state === 'unsupported' && !readOnly) {
     return (
       <div className="flex flex-col items-center gap-3 text-center px-6">
         <span className="text-4xl">🎤</span>
@@ -63,13 +88,13 @@ export function SpeakQuestion({ item, moduleConfig, onAnswer, autoPlay = true }:
 
       <div className="flex flex-col items-center gap-2">
         <button
-          onClick={() => start(expected)}
-          disabled={active || done !== null}
+          onClick={() => { setRetry(false); start(expected) }}
+          disabled={readOnly || active || done !== null}
           className="w-16 h-16 rounded-full flex items-center justify-center text-2xl transition-all active:scale-95"
           style={{
             background: state === 'recording' || state === 'listening' ? '#ef4444' : moduleConfig.accent,
             color: '#fff',
-            opacity: done === null ? 1 : 0.6,
+            opacity: done === null && !readOnly ? 1 : 0.6,
           }}
         >
           {state === 'processing' ? '⏳' : active ? '🔴' : '🎤'}
@@ -83,6 +108,7 @@ export function SpeakQuestion({ item, moduleConfig, onAnswer, autoPlay = true }:
           {state === 'recording' || state === 'listening' ? 'Escuchando…'
             : state === 'processing' ? 'Procesando…'
             : state === 'no-speech' ? 'No te escuché'
+            : retry ? 'No te entendí, intenta otra vez 🎤'
             : done === 'correct' ? '✓'
             : done === 'wrong' ? 'Inténtalo la próxima'
             : 'Toca y dilo'}

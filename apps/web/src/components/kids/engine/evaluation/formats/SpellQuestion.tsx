@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { getVocabImageUrl } from '@strides/core/kids'
 import { useSpeak } from '@/components/kids/audio/VoicePresetProvider'
 import type { EvalFormatProps } from '../types'
+import type { SpellSnapshot } from '../snapshots'
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -19,56 +20,57 @@ function shuffle<T>(arr: T[]): T[] {
 // (spell-audio). Son variantes de la misma familia "spell".
 type Stimulus = 'image' | 'spanish' | 'audio'
 
-export function SpellQuestion({ item, moduleConfig, onAnswer, autoPlay = true }: EvalFormatProps) {
+export function SpellQuestion({ item, moduleConfig, onAnswer, onSnapshot, review, autoPlay = true }: EvalFormatProps) {
   const speak = useSpeak()
   const { vocab } = item
   const word = vocab.text_en.toUpperCase()
   const letters = word.split('')
+  const rev = review?.kind === 'spell' ? review : null
+  const readOnly = !!rev
 
   const imgUrl = getVocabImageUrl(vocab)
   const stimulus: Stimulus =
     item.formatId === 'spell-es'    ? 'spanish'
     : item.formatId === 'spell-audio' ? 'audio'
     : 'image'
-  const [tiles] = useState(() => shuffle([...letters]))
-  const [slots, setSlots] = useState<(string | null)[]>(() => Array(letters.length).fill(null))
-  const [usedIdxs, setUsedIdxs] = useState<Set<number>>(new Set())
-  const [done, setDone] = useState<null | 'correct' | 'wrong'>(null)
+  const [tiles] = useState(() => (rev ? rev.tiles : shuffle([...letters])))
+  // `placed` = índices de tiles colocados en orden; slots/usados se derivan de él.
+  const [placed, setPlaced] = useState<number[]>(() => (rev ? rev.placedTileIdxs : []))
+
+  const slots: (string | null)[] = letters.map((_, i) => (placed[i] !== undefined ? tiles[placed[i]!]! : null))
+  const usedIdxs = new Set(placed)
+  const complete = placed.length === letters.length
+  const done: null | 'correct' | 'wrong' = complete ? (slots.join('') === word ? 'correct' : 'wrong') : null
+
+  useEffect(() => {
+    if (readOnly) return
+    onSnapshot?.({ kind: 'spell', tiles, placedTileIdxs: [] })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     // En modo español la palabra inglesa es la respuesta: no la cantamos al entrar.
-    if (!autoPlay || stimulus === 'spanish') return
+    if (readOnly || !autoPlay || stimulus === 'spanish') return
     const t = setTimeout(() => speak(vocab.text_en), 300)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPlay])
 
   function place(tileIdx: number) {
-    if (done || usedIdxs.has(tileIdx)) return
-    const nextSlot = slots.findIndex(s => s === null)
-    if (nextSlot === -1) return
-    const newSlots = [...slots]; newSlots[nextSlot] = tiles[tileIdx]!
-    const newUsed = new Set(usedIdxs); newUsed.add(tileIdx)
-    setSlots(newSlots); setUsedIdxs(newUsed)
-    if (newSlots.every(s => s !== null)) {
-      const correct = newSlots.join('') === word
-      setDone(correct ? 'correct' : 'wrong')
-      setTimeout(() => onAnswer(correct), 800)
+    if (readOnly || done || usedIdxs.has(tileIdx) || placed.length === letters.length) return
+    const newPlaced = [...placed, tileIdx]
+    setPlaced(newPlaced)
+    if (newPlaced.length === letters.length) {
+      const built = newPlaced.map(idx => tiles[idx]!).join('')
+      const correct = built === word
+      const snapshot: SpellSnapshot = { kind: 'spell', tiles, placedTileIdxs: newPlaced }
+      onAnswer(correct, snapshot)
     }
   }
 
   function removeLast() {
-    if (done) return
-    const lastFilled = [...slots].reverse().findIndex(s => s !== null)
-    if (lastFilled === -1) return
-    const slotIdx = slots.length - 1 - lastFilled
-    const letter = slots[slotIdx]
-    const newSlots = [...slots]; newSlots[slotIdx] = null
-    const newUsed = new Set(usedIdxs)
-    for (const idx of Array.from(usedIdxs).reverse()) {
-      if (tiles[idx] === letter) { newUsed.delete(idx); break }
-    }
-    setSlots(newSlots); setUsedIdxs(newUsed)
+    if (readOnly || done) return
+    setPlaced(placed.slice(0, -1))
   }
 
   // Por letra: al completar, verde si la letra está en su posición correcta, rojo si no.
@@ -129,7 +131,7 @@ export function SpellQuestion({ item, moduleConfig, onAnswer, autoPlay = true }:
             <button
               key={i}
               onClick={() => place(i)}
-              disabled={used || !!done}
+              disabled={readOnly || used || !!done}
               className="w-[44px] h-[44px] rounded-lg font-extrabold text-lg transition-all active:scale-90"
               style={{
                 background: 'var(--kids-bg)',
@@ -144,7 +146,7 @@ export function SpellQuestion({ item, moduleConfig, onAnswer, autoPlay = true }:
         })}
       </div>
 
-      {!done && (
+      {!done && !readOnly && (
         <button onClick={removeLast} className="text-xs font-semibold" style={{ color: 'var(--kids-text-muted)' }}>
           ⌫ Borrar
         </button>

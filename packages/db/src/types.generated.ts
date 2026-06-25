@@ -184,6 +184,63 @@ export type Database = {
           },
         ]
       }
+      child_evaluation_attempts: {
+        Row: {
+          attempts: number
+          child_id: string
+          correct: number
+          created_at: string
+          detail: Json
+          id: string
+          lesson_id: string
+          score: number | null
+          stars: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          child_id: string
+          correct?: number
+          created_at?: string
+          detail?: Json
+          id?: string
+          lesson_id: string
+          score?: number | null
+          stars?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          child_id?: string
+          correct?: number
+          created_at?: string
+          detail?: Json
+          id?: string
+          lesson_id?: string
+          score?: number | null
+          stars?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "child_evaluation_attempts_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "child_evaluation_attempts_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       child_game_plays: {
         Row: {
           child_id: string

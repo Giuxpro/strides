@@ -1,21 +1,29 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import type { VocabItem } from '@strides/core/kids'
 import { getVocabImageUrl } from '@strides/core/kids'
 import { useSpeak } from '@/components/kids/audio/VoicePresetProvider'
 import type { EvalFormatProps } from '../types'
+import type { YesNoSnapshot } from '../snapshots'
 
 const THRESHOLD = 70
 
 // Comparación literal: a la izquierda la palabra (texto y/o solo sonido), a la
 // derecha la imagen, y un "=" en medio. El niño desliza la tarjeta para decir si
 // la igualdad es cierta (➡️ sí) o no (⬅️ no). La tarjeta vuelve al centro con ✓/✗.
-export function YesNoQuestion({ item, allVocab, moduleConfig, onAnswer, autoPlay = true }: EvalFormatProps) {
+export function YesNoQuestion({ item, allVocab, moduleConfig, onAnswer, onSnapshot, review, autoPlay = true }: EvalFormatProps) {
   const speak = useSpeak()
   const { vocab } = item
   const startX = useRef(0)
+  const rev = review?.kind === 'yesno' ? review : null
+  const readOnly = !!rev
 
   const [{ isMatch, shownWord, showText }] = useState(() => {
+    if (rev) {
+      const found = allVocab.find(v => v.id === rev.shownWordId) ?? vocab
+      return { isMatch: rev.isMatch, shownWord: found, showText: rev.showText }
+    }
     const others = allVocab.filter(v => v.id !== vocab.id)
     const match = others.length === 0 ? true : Math.random() < 0.5
     const shown = match ? vocab : others[Math.floor(Math.random() * others.length)]!
@@ -23,12 +31,20 @@ export function YesNoQuestion({ item, allVocab, moduleConfig, onAnswer, autoPlay
   })
   const [dx, setDx] = useState(0)
   const [dragging, setDragging] = useState(false)
-  const [answered, setAnswered] = useState<boolean | null>(null)
+  const [answered, setAnswered] = useState<boolean | null>(
+    rev ? (rev.saidYes === null ? null : rev.saidYes === rev.isMatch) : null,
+  )
 
   const imgUrl = getVocabImageUrl(vocab)
 
   useEffect(() => {
-    if (!autoPlay) return
+    if (readOnly) return
+    onSnapshot?.({ kind: 'yesno', isMatch, shownWordId: shownWord.id, showText, saidYes: null })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (readOnly || !autoPlay) return
     const t = setTimeout(() => speak(shownWord.text_en), 300)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -38,11 +54,12 @@ export function YesNoQuestion({ item, allVocab, moduleConfig, onAnswer, autoPlay
     if (answered !== null) return
     setAnswered(saidYes === isMatch)
     setDx(0) // vuelve al centro; el resultado se ve con borde + icono
-    setTimeout(() => onAnswer(saidYes === isMatch), 800)
+    const snapshot: YesNoSnapshot = { kind: 'yesno', isMatch, shownWordId: shownWord.id, showText, saidYes }
+    onAnswer(saidYes === isMatch, snapshot)
   }
 
   function onPointerDown(e: React.PointerEvent) {
-    if (answered !== null) return
+    if (readOnly || answered !== null) return
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
     startX.current = e.clientX
     setDragging(true)
@@ -88,7 +105,7 @@ export function YesNoQuestion({ item, allVocab, moduleConfig, onAnswer, autoPlay
           className="flex items-center gap-3 px-4 py-3 rounded-2xl select-none"
           style={{
             touchAction: 'none',
-            cursor: answered === null ? 'grab' : 'default',
+            cursor: answered === null && !readOnly ? 'grab' : 'default',
             background: 'var(--kids-bg)',
             border: `2.5px solid ${resultBorder}`,
             transform: `translateX(${dx}px) rotate(${dx * 0.03}deg)`,

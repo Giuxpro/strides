@@ -5,6 +5,7 @@ import { getVocabImageUrl } from '@strides/core/kids'
 import { useSpeak } from '@/components/kids/audio/VoicePresetProvider'
 import { seeSentence, seeSentenceEs } from '../sentence'
 import type { EvalFormatProps } from '../types'
+import type { OrderSnapshot } from '../snapshots'
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -17,48 +18,53 @@ function shuffle<T>(arr: T[]): T[] {
 
 // Ordena los bloques de palabras (en inglés) para formar la frase. La pista de
 // significado va arriba en español. Mecánica de toque tipo "arma la palabra".
-export function OrderSentenceQuestion({ item, moduleConfig, onAnswer, autoPlay = true }: EvalFormatProps) {
+export function OrderSentenceQuestion({ item, moduleConfig, onAnswer, onSnapshot, review, autoPlay = true }: EvalFormatProps) {
   const speak = useSpeak()
   const { vocab } = item
   const sentence = seeSentence(vocab.text_en)
   const words = sentence.replace(/\.$/, '').split(' ')
   const imgUrl = getVocabImageUrl(vocab)
+  const rev = review?.kind === 'order' ? review : null
+  const readOnly = !!rev
 
-  const [tiles] = useState(() => shuffle(words.map((w, i) => ({ w, i }))))
-  const [slots, setSlots] = useState<(number | null)[]>(() => Array(words.length).fill(null))
-  const [done, setDone] = useState<null | 'correct' | 'wrong'>(null)
+  const [tiles] = useState(() => (rev ? rev.tiles : shuffle(words.map((w, i) => ({ w, i })))))
+  // `placed` = posiciones de tiles colocadas en orden; las casillas se derivan.
+  const [placed, setPlaced] = useState<number[]>(() => (rev ? rev.placedTilePos : []))
+
+  const slots: (number | null)[] = words.map((_, i) => (placed[i] !== undefined ? placed[i]! : null))
+  const usedTiles = new Set(placed)
+  const complete = placed.length === words.length
+  const builtAnswer = placed.map(p => tiles[p]!.w).join(' ')
+  const done: null | 'correct' | 'wrong' = complete ? (builtAnswer === words.join(' ') ? 'correct' : 'wrong') : null
 
   useEffect(() => {
-    if (!autoPlay) return
+    if (readOnly) return
+    onSnapshot?.({ kind: 'order', tiles, placedTilePos: [] })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (readOnly || !autoPlay) return
     const t = setTimeout(() => speak(sentence), 300)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPlay])
 
-  const usedTiles = new Set(slots.filter((s): s is number => s !== null))
-
   function place(tilePos: number) {
-    if (done || usedTiles.has(tilePos)) return
-    const nextSlot = slots.findIndex(s => s === null)
-    if (nextSlot === -1) return
-    const newSlots = [...slots]; newSlots[nextSlot] = tilePos
-    setSlots(newSlots)
-    if (newSlots.every(s => s !== null)) {
-      const answer = newSlots.map(p => tiles[p!]!.w).join(' ')
+    if (readOnly || done || usedTiles.has(tilePos) || placed.length === words.length) return
+    const newPlaced = [...placed, tilePos]
+    setPlaced(newPlaced)
+    if (newPlaced.length === words.length) {
+      const answer = newPlaced.map(p => tiles[p]!.w).join(' ')
       const correct = answer === words.join(' ')
-      setDone(correct ? 'correct' : 'wrong')
-      if (correct) speak(sentence)
-      setTimeout(() => onAnswer(correct), 900)
+      const snapshot: OrderSnapshot = { kind: 'order', tiles, placedTilePos: newPlaced }
+      onAnswer(correct, snapshot)
     }
   }
 
   function removeLast() {
-    if (done) return
-    const lastFilled = [...slots].reverse().findIndex(s => s !== null)
-    if (lastFilled === -1) return
-    const slotIdx = slots.length - 1 - lastFilled
-    const newSlots = [...slots]; newSlots[slotIdx] = null
-    setSlots(newSlots)
+    if (readOnly || done) return
+    setPlaced(placed.slice(0, -1))
   }
 
   function slotBorder(i: number, filled: boolean): string {
@@ -110,7 +116,7 @@ export function OrderSentenceQuestion({ item, moduleConfig, onAnswer, autoPlay =
             <button
               key={pos}
               onClick={() => place(pos)}
-              disabled={used || !!done}
+              disabled={readOnly || used || !!done}
               className="px-3 h-[44px] rounded-lg font-bold text-sm capitalize transition-all active:scale-90"
               style={{
                 background: 'var(--kids-bg)',
@@ -125,7 +131,7 @@ export function OrderSentenceQuestion({ item, moduleConfig, onAnswer, autoPlay =
         })}
       </div>
 
-      {!done && (
+      {!done && !readOnly && (
         <button onClick={removeLast} className="text-xs font-semibold" style={{ color: 'var(--kids-text-muted)' }}>
           ⌫ Borrar
         </button>

@@ -43,6 +43,17 @@ export interface EvalItem {
   skill: EvalSkill
 }
 
+// Una pregunta tal como quedó tras rendir la evaluación, persistida para poder
+// re-renderizar el examen en modo lectura (replay fiel). `snapshot` es el estado
+// que dibujó el formato + la respuesta literal del niño; su forma concreta la
+// define cada componente de formato en web, aquí es opaca.
+export interface EvalAttemptQuestion {
+  formatId: string
+  vocabId: string
+  correct: boolean
+  snapshot: unknown
+}
+
 // Formatos usables por habilidad, cruzando: construido (implemented) ∧ encendido
 // en BD ∧ apto para la edad ∧ (si config.formats está, incluido en él).
 export function resolveEvalFormats(opts: {

@@ -5,6 +5,7 @@ import type { VocabItem } from '@strides/core/kids'
 import { getVocabImageUrl } from '@strides/core/kids'
 import { useSpeak } from '@/components/kids/audio/VoicePresetProvider'
 import type { EvalFormatProps } from '../types'
+import type { WordChoiceSnapshot } from '../snapshots'
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -15,27 +16,41 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-export function WordChoiceQuestion({ item, allVocab, moduleConfig, onAnswer, autoPlay = true }: EvalFormatProps) {
+export function WordChoiceQuestion({ item, allVocab, onAnswer, onSnapshot, review, autoPlay = true }: EvalFormatProps) {
   const speak = useSpeak()
   const { vocab } = item
+  const rev = review?.kind === 'wordchoice' ? review : null
+  const readOnly = !!rev
+
   const [options] = useState<VocabItem[]>(() => {
+    if (rev) {
+      const byId = new Map(allVocab.map(v => [v.id, v]))
+      return rev.optionIds.map(id => byId.get(id)).filter((v): v is VocabItem => !!v)
+    }
     const distractors = shuffle(allVocab.filter(v => v.id !== vocab.id)).slice(0, Math.max(0, Math.min(4, allVocab.length) - 1))
     return shuffle([vocab, ...distractors])
   })
-  const [selected, setSelected] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string | null>(rev ? rev.pickedId : null)
   const imgUrl = getVocabImageUrl(vocab)
 
   useEffect(() => {
-    if (!autoPlay) return
+    if (readOnly) return
+    onSnapshot?.({ kind: 'wordchoice', optionIds: options.map(o => o.id), pickedId: null })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (readOnly || !autoPlay) return
     const t = setTimeout(() => speak(vocab.text_en), 300)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPlay])
 
   function pick(o: VocabItem) {
-    if (selected !== null) return
+    if (readOnly || selected !== null) return
     setSelected(o.id)
-    setTimeout(() => onAnswer(o.id === vocab.id), 700)
+    const snapshot: WordChoiceSnapshot = { kind: 'wordchoice', optionIds: options.map(x => x.id), pickedId: o.id }
+    onAnswer(o.id === vocab.id, snapshot)
   }
 
   return (
@@ -62,7 +77,7 @@ export function WordChoiceQuestion({ item, allVocab, moduleConfig, onAnswer, aut
             <button
               key={o.id}
               onClick={() => pick(o)}
-              disabled={selected !== null}
+              disabled={readOnly || selected !== null}
               className="py-3 rounded-xl font-bold text-base capitalize transition-all active:scale-95"
               style={{ background: 'var(--kids-bg)', border: `2px solid ${border}`, color: sel ? border : 'var(--kids-text)' }}
             >

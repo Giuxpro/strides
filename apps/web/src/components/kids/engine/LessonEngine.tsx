@@ -2,10 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { ModuleConfig, ModifierConfig, WordResult, VocabItem, ExerciseData, EvaluationConfig } from '@strides/core/kids'
+import type { ModuleConfig, ModifierConfig, WordResult, VocabItem, ExerciseData, EvaluationConfig, EvalAttemptQuestion } from '@strides/core/kids'
 import { DEFAULT_EVAL_FORMATS } from '@strides/core/kids'
 import { getGameById } from './gamePool'
-import { EvaluationShell } from './evaluation/EvaluationShell'
+import { EvaluationShell, type PreviousAttempt } from './evaluation/EvaluationShell'
 import { ModifierStack } from './modifiers/ModifierStack'
 import { VideoStep } from './steps/VideoStep'
 import { SlideStep } from './steps/SlideStep'
@@ -63,6 +63,7 @@ interface Props {
   backHref?: string
   childAge?: number
   evalFormatsEnabled?: Record<string, boolean>
+  previousEvalAttempt?: PreviousAttempt | null
 }
 
 // ── 3D kids-style arrow button ────────────────────────────────────────────────
@@ -101,7 +102,7 @@ function NavArrow({
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, speechProvider = 'web-speech', previewMode = false, backHref, childAge = 6, evalFormatsEnabled = DEFAULT_EVAL_FORMATS }: Props) {
+export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, speechProvider = 'web-speech', previewMode = false, backHref, childAge = 6, evalFormatsEnabled = DEFAULT_EVAL_FORMATS, previousEvalAttempt = null }: Props) {
   const router = useRouter()
   const { setMusicContext } = useMusicContext()
   const [stage, setStage]               = useState<'playing' | 'results'>('playing')
@@ -110,6 +111,7 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, speechPr
   const [evalScoreMap, setEvalScoreMap] = useState<Record<number, number>>({})
   const [evalTotalMap, setEvalTotalMap] = useState<Record<number, number>>({})
   const [allWordResults, setAllWordResults] = useState<WordResult[]>([])
+  const [evalDetail, setEvalDetail]     = useState<EvalAttemptQuestion[]>([])
 
   const currentDone = completedSet.has(currentIndex)
 
@@ -146,7 +148,7 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, speechPr
     if (currentIndex > 0) setCurrentIndex(prev => prev - 1)
   }
 
-  function markDone(correct: number, total?: number, wordResults?: WordResult[]) {
+  function markDone(correct: number, total?: number, wordResults?: WordResult[], detail?: EvalAttemptQuestion[]) {
     const alreadyDone = completedSet.has(currentIndex)
     const step = steps[currentIndex]
     const isEval = (step?.step_type === 'exercise' && step.exercise.phase === 'evaluation') || step?.step_type === 'evaluation'
@@ -155,6 +157,7 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, speechPr
       if (isEval) {
         setEvalScoreMap(prev => ({ ...prev, [currentIndex]: correct }))
         if (total !== undefined) setEvalTotalMap(prev => ({ ...prev, [currentIndex]: total }))
+        if (detail) setEvalDetail(detail)
       }
       if (wordResults?.length) {
         setAllWordResults(prev => [...prev, ...wordResults])
@@ -201,6 +204,9 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, speechPr
         <input type="hidden" name="score"       value={String(scorePercent)} />
         <input type="hidden" name="stars"       value={String(starCount)} />
         <input type="hidden" name="wordResults" value={JSON.stringify(allWordResults)} />
+        <input type="hidden" name="evalDetail" value={JSON.stringify(evalDetail)} />
+        <input type="hidden" name="evalCorrect" value={String(evalCorrect)} />
+        <input type="hidden" name="evalTotal" value={String(evalTotal)} />
         <button
           type="submit"
           className="w-full text-white font-extrabold text-lg px-8 py-4 rounded-2xl transition-all hover:scale-105 active:scale-95"
@@ -348,7 +354,8 @@ export function LessonEngine({ lesson, moduleSlug, steps, moduleConfig, speechPr
           previewMode={previewMode}
           moduleConfig={moduleConfig}
           missionTitle={`Recordando ${lesson.title_es}`}
-          onComplete={({ correct, total, wordResults }) => markDone(correct, total, wordResults)}
+          previousAttempt={previousEvalAttempt}
+          onComplete={({ correct, total, wordResults, detail }) => markDone(correct, total, wordResults, detail)}
           onBack={handleBack}
         />
       </SpeechConfigProvider>

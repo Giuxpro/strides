@@ -11,6 +11,9 @@ interface MusicContextValue {
   toggleMute: () => void
   setVolume: (v: number) => void
   setMusicContext: (ctx: MusicContext) => void
+  // Silencia temporalmente la música (sin tocar la preferencia del usuario)
+  // mientras el micrófono graba, para que no la capte y arruine la transcripción.
+  duck: (active: boolean) => void
 }
 
 const Ctx = createContext<MusicContextValue>({
@@ -19,6 +22,7 @@ const Ctx = createContext<MusicContextValue>({
   toggleMute: () => {},
   setVolume: () => {},
   setMusicContext: () => {},
+  duck: () => {},
 })
 
 export function useMusicContext() {
@@ -45,6 +49,7 @@ export function MusicProvider({ config, children }: Props) {
   const indexRef   = useRef(0)
   const contextRef = useRef<MusicContext>('navigation')
   const readyRef   = useRef(false)
+  const duckedRef  = useRef(false)
 
   const [muted, setMuted] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false
@@ -73,6 +78,7 @@ export function MusicProvider({ config, children }: Props) {
   function playNext(queue: string[], index: number) {
     const audio = audioRef.current
     if (!audio || queue.length === 0) return
+    if (duckedRef.current) return // mic grabando: no arrancar audio
     const src = queue[index % queue.length] as string
     audio.src = src
     audio.volume = mutedRef.current ? 0 : userVolumeRef.current
@@ -137,7 +143,7 @@ export function MusicProvider({ config, children }: Props) {
       if (!audio) return
       if (document.hidden) {
         audio.pause()
-      } else if (readyRef.current && !mutedRef.current) {
+      } else if (readyRef.current && !mutedRef.current && !duckedRef.current) {
         audio.play().catch(() => {})
       }
     }
@@ -178,6 +184,20 @@ export function MusicProvider({ config, children }: Props) {
     })
   }, [])
 
+  // Pausa real al grabar; al soltar, reanuda la reproducción si ya había arrancado.
+  // El muteo NO bloquea la reanudación: en este provider muteado = volumen 0 pero
+  // sigue sonando, así un mute→duck→unmute posterior no deja la música pausada.
+  const duck = useCallback((active: boolean) => {
+    duckedRef.current = active
+    const audio = audioRef.current
+    if (!audio) return
+    if (active) {
+      audio.pause()
+    } else if (readyRef.current) {
+      audio.play().catch(() => {})
+    }
+  }, [])
+
   const setVolume = useCallback((v: number) => {
     const clamped = Math.min(1, Math.max(0, v))
     localStorage.setItem('kids_music_volume', String(clamped))
@@ -210,7 +230,7 @@ export function MusicProvider({ config, children }: Props) {
   }, [config])
 
   return (
-    <Ctx.Provider value={{ muted, volume: userVolume, toggleMute, setVolume, setMusicContext }}>
+    <Ctx.Provider value={{ muted, volume: userVolume, toggleMute, setVolume, setMusicContext, duck }}>
       {children}
     </Ctx.Provider>
   )

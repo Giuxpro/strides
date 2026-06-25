@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from 'react'
 import { useSpeechProvider } from '../SpeechConfigContext'
+import { useMusicContext } from '@/components/kids/audio/MusicProvider'
 import { getSpeechRecognition, isSpeechMatch, type RecognitionInstance, type SpeechEvent } from './matchSpeech'
 
 export type SpeechAttemptState =
@@ -15,6 +16,7 @@ export function useSpeechAttempt(opts: {
   onResult: (r: { correct: boolean; heard: string | null; lowConfidence: boolean }) => void
 }) {
   const provider = useSpeechProvider()
+  const { duck } = useMusicContext()
   const [state, setState] = useState<SpeechAttemptState>('idle')
   const volumeRef = useRef<HTMLDivElement | null>(null)
 
@@ -39,6 +41,13 @@ export function useSpeechAttempt(opts: {
     return cleanup
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Mientras el micrófono escucha/graba, silencia la música para que no la capte
+  // (salía por los altavoces y arruinaba la transcripción de Whisper).
+  useEffect(() => {
+    duck(state === 'listening' || state === 'recording')
+  }, [state, duck])
+  useEffect(() => () => duck(false), [duck])
 
   function noSpeech() {
     setState('no-speech')

@@ -12,7 +12,7 @@ export type SpeechAttemptState =
 // primando el permiso de micro). Un intento por `start(expected)`; el resultado
 // llega por onResult. Reutilizable por la evaluación y por cualquier juego de speaking.
 export function useSpeechAttempt(opts: {
-  onResult: (r: { correct: boolean; heard: string | null }) => void
+  onResult: (r: { correct: boolean; heard: string | null; lowConfidence: boolean }) => void
 }) {
   const provider = useSpeechProvider()
   const [state, setState] = useState<SpeechAttemptState>('idle')
@@ -66,9 +66,9 @@ export function useSpeechAttempt(opts: {
             if (isSpeechMatch(alt, expected)) { transcript = alt; break }
           }
           setState('idle')
-          onResultRef.current({ correct: isSpeechMatch(transcript, expected), heard: transcript })
+          onResultRef.current({ correct: isSpeechMatch(transcript, expected), heard: transcript, lowConfidence: false })
         }
-        rec.onnomatch = () => { handled = true; setState('idle'); onResultRef.current({ correct: false, heard: null }) }
+        rec.onnomatch = () => { handled = true; setState('idle'); onResultRef.current({ correct: false, heard: null, lowConfidence: false }) }
         rec.onerror = (ev: { error: string }) => {
           if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') setState('unsupported')
           else if (ev.error === 'no-speech') noSpeech()
@@ -153,10 +153,10 @@ export function useSpeechAttempt(opts: {
       try {
         const res = await fetch('/api/speech/evaluate', { method: 'POST', body })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const d = await res.json() as { transcript: string; correct: boolean; noSpeech: boolean }
+        const d = await res.json() as { transcript: string; correct: boolean; noSpeech: boolean; lowConfidence: boolean }
         if (d.noSpeech) { noSpeech(); return }
         setState('idle')
-        onResultRef.current({ correct: d.correct, heard: d.transcript })
+        onResultRef.current({ correct: d.correct, heard: d.transcript, lowConfidence: d.lowConfidence })
       } catch { setState('idle') }
     }
     recorder.start()

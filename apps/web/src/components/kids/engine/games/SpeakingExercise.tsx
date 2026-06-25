@@ -5,8 +5,8 @@ import type { VocabItem } from '../LessonEngine'
 import type { ModuleConfig, WordResult } from '@strides/core/kids'
 import { getVocabImageUrl } from '@strides/core/kids'
 import { useGameEvents } from '../modifiers/ModifierContext'
-import { useSpeechProvider } from '../SpeechConfigContext'
 import { useSpeak } from '@/components/kids/audio/VoicePresetProvider'
+import { useSpeechAttempt } from '../speech/useSpeechAttempt'
 import { playSuccessSound } from '@/components/kids/ui/AnimatedStar'
 
 interface Props {
@@ -17,66 +17,6 @@ interface Props {
   progress: { current: number; total: number }
 }
 
-type MicState =
-  | 'idle'
-  | 'listening'
-  | 'listening-retry'
-  | 'recording'
-  | 'processing'
-  | 'correct'
-  | 'wrong'
-  | 'retry'
-  | 'unsupported'
-  | 'no-speech'
-
-interface SpeechAlt { transcript: string }
-interface SpeechResult extends ArrayLike<SpeechAlt> { isFinal: boolean }
-interface SpeechEvent { results: ArrayLike<SpeechResult> }
-interface RecognitionInstance {
-  lang: string; continuous: boolean; interimResults: boolean; maxAlternatives: number
-  onresult: ((e: SpeechEvent) => void) | null
-  onnomatch: ((e: SpeechEvent) => void) | null
-  onerror: ((e: { error: string }) => void) | null
-  onend: (() => void) | null
-  start(): void; stop(): void; abort(): void
-}
-type RecognitionCtor = new () => RecognitionInstance
-
-function getSpeechRecognition(): RecognitionCtor | null {
-  if (typeof window === 'undefined') return null
-  const w = window as Window & { SpeechRecognition?: RecognitionCtor; webkitSpeechRecognition?: RecognitionCtor }
-  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
-}
-
-function normalize(t: string) { return t.toLowerCase().trim().replace(/[^a-z0-9\s]/g, '') }
-
-function levenshtein(a: string, b: string): number {
-  const dp = Array.from({ length: b.length + 1 }, (_, i) => i)
-  for (let i = 1; i <= a.length; i++) {
-    let prev = i
-    for (let j = 1; j <= b.length; j++) {
-      const curr = a[i - 1] === b[j - 1]
-        ? dp[j - 1]!
-        : 1 + Math.min(dp[j]!, dp[j - 1]!, prev)
-      dp[j - 1] = prev
-      prev = curr
-    }
-    dp[b.length] = prev
-  }
-  return dp[b.length]!
-}
-
-function isSpeechMatch(transcript: string, expected: string): boolean {
-  const heard = normalize(transcript)
-  const target = normalize(expected)
-  if (!heard) return false
-  if (heard === target) return true
-  for (const word of heard.split(/\s+/)) {
-    if (word === target) return true
-    if (target.length >= 6 && levenshtein(word, target) <= 1) return true
-  }
-  return false
-}
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
   for (let i = a.length - 1; i > 0; i--) {
@@ -311,54 +251,41 @@ function MicButton({ isActive, isProcessing, disabled, onClick, color }: {
 
 export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, progress }: Props) {
   const { reportCorrect, reportWrong, isTerminated } = useGameEvents()
-  const speechProvider = useSpeechProvider()
   const speak = useSpeak()
   const [questions] = useState(() => shuffle([...items]))
   const [currentQ, setCurrentQ] = useState(0)
-  const [micState, setMicState] = useState<MicState>('idle')
+  const [result, setResult] = useState<null | 'correct' | 'wrong'>(null)
+  const [retry, setRetry] = useState(false)
   const [heard, setHeard] = useState<string | null>(null)
   const [results, setResults] = useState<boolean[]>([])
   const [heardList, setHeardList] = useState<(string | null)[]>([])
   const [cardColor, setCardColor] = useState(() => PAIR_COLORS[Math.floor(Math.random() * PAIR_COLORS.length)]!)
-  const recognitionRef    = useRef<RecognitionInstance | null>(null)
-  const mediaRecorderRef  = useRef<MediaRecorder | null>(null)
-  const recordingStartRef = useRef<number>(0)
-  const sessionRef        = useRef(0)
-  const lowConfListRef    = useRef<(boolean | undefined)[]>([])
-  const attemptRef        = useRef(0)
-  const audioCtxRef       = useRef<AudioContext | null>(null)
-  const vadIntervalRef    = useRef<ReturnType<typeof setInterval> | null>(null)
-  const resetTimeoutRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const maxTimeoutRef     = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const volumeBarRef      = useRef<HTMLDivElement | null>(null)
+  const lowConfListRef  = useRef<(boolean | undefined)[]>([])
+  const attemptRef      = useRef(0)
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const question = questions[currentQ]
 
-  useEffect(() => {
-    if (speechProvider === 'web-speech' && !getSpeechRecognition()) setMicState('unsupported')
-    return () => {
-      try { recognitionRef.current?.abort() } catch { /* ignore */ }
-      try { mediaRecorderRef.current?.stop() } catch { /* ignore */ }
-      if (vadIntervalRef.current) clearInterval(vadIntervalRef.current)
-      if (maxTimeoutRef.current)  clearTimeout(maxTimeoutRef.current)
-      audioCtxRef.current?.close().catch(() => {})
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  // Toda la lógica de micrófono/Whisper/Web-Speech vive en el hook compartido.
+  const { state, start, volumeRef } = useSpeechAttempt({
+    onResult: ({ correct, heard: transcript, lowConfidence }) => handleSpeechResult(correct, transcript, lowConfidence),
+  })
 
   useEffect(() => {
     setCardColor(PAIR_COLORS[Math.floor(Math.random() * PAIR_COLORS.length)]!)
     attemptRef.current = 0
+    setRetry(false)
+    setResult(null)
+    setHeard(null)
   }, [currentQ])
 
-  function advanceWith(newResults: boolean[], isCorrect: boolean, heardTranscript: string | null, sessionGuard?: number) {
+  useEffect(() => () => { if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current) }, [])
+
+  function advanceWith(newResults: boolean[], isCorrect: boolean, heardTranscript: string | null) {
     const newHeardList = [...heardList, heardTranscript]
     setResults(newResults)
     setHeardList(newHeardList)
     setTimeout(() => {
-      if (sessionGuard !== undefined && sessionGuard !== sessionRef.current) return
-      setMicState('idle')
-      setHeard(null)
       if (currentQ < questions.length - 1) {
         setCurrentQ(prev => prev + 1)
       } else {
@@ -375,270 +302,36 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
     }, isCorrect ? 2600 : 2800)
   }
 
-  function handleSpeechResult(
-    isCorrect: boolean,
-    transcript: string | null,
-    lowConf: boolean,
-    session?: number,
-  ) {
+  function handleSpeechResult(isCorrect: boolean, transcript: string | null, lowConf: boolean) {
     if (isCorrect) {
       reportCorrect()
       setHeard(transcript)
-      setMicState('correct')
+      setResult('correct')
       playSuccessSound()
       const word = question?.text_en
       if (word) setTimeout(() => speak(word), 700)
       lowConfListRef.current = [...lowConfListRef.current, lowConf]
-      advanceWith([...results, true], true, transcript, session)
+      advanceWith([...results, true], true, transcript)
     } else if (attemptRef.current === 0) {
+      // Primer fallo: otra oportunidad (pudo ser ruido).
       attemptRef.current = 1
-      setMicState('retry')
-      if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current)
-      resetTimeoutRef.current = setTimeout(() => {
-        resetTimeoutRef.current = null
-        if (session !== undefined && session !== sessionRef.current) return
-        setMicState('idle')
-      }, 1600)
+      setRetry(true)
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current)
+      retryTimeoutRef.current = setTimeout(() => { retryTimeoutRef.current = null; setRetry(false) }, 1600)
     } else {
       reportWrong()
       setHeard(transcript)
-      setMicState('wrong')
+      setResult('wrong')
       lowConfListRef.current = [...lowConfListRef.current, lowConf]
-      advanceWith([...results, false], false, transcript, session)
+      advanceWith([...results, false], false, transcript)
     }
-  }
-
-  // ── Whisper + VAD (RMS) ───────────────────────────────────────────────────
-  async function startListeningWhisper() {
-    if ((micState !== 'idle' && micState !== 'no-speech' && micState !== 'retry') || !question || isTerminated) return
-
-    const whisperSession = ++sessionRef.current
-    setMicState('recording')
-    setHeard(null)
-
-    let stream: MediaStream
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
-      })
-    } catch { setMicState('unsupported'); return }
-
-    const capturedQuestion = question
-    const chunks: Blob[] = []
-
-    // ── VAD state ──────────────────────────────────────────────────────────
-    // RMS sobre datos de tiempo (getByteTimeDomainData) — técnica más fiable
-    // que el promedio de frecuencias para detectar silencio.
-    const SPEECH_RMS_THRESHOLD = 0.012  // ~1.2% de amplitud máxima
-    const SILENCE_AFTER_SPEECH = 380    // ms de silencio tras hablar → cortar
-    const NO_SPEECH_MAX        = 3500   // ms sin detectar habla → abortar
-    const MIN_RECORD_AFTER_SPEECH = 250 // ms mínimos grabados tras detectar habla
-    const HARD_MAX             = 6000   // ms absoluto máximo
-
-    let speechDetected = false
-    let speechEndedAt  = 0
-    let vadWorking     = false
-
-    function stopVAD() {
-      if (vadIntervalRef.current) { clearInterval(vadIntervalRef.current); vadIntervalRef.current = null }
-      audioCtxRef.current?.close().catch(() => {}); audioCtxRef.current = null
-      if (volumeBarRef.current) volumeBarRef.current.style.width = '0%'
-    }
-
-    function stopRecording() {
-      if (maxTimeoutRef.current) { clearTimeout(maxTimeoutRef.current); maxTimeoutRef.current = null }
-      stopVAD()
-      if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop()
-    }
-
-    try {
-      const AudioCtxCtor = (
-        window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-      )
-      if (AudioCtxCtor) {
-        const audioCtx   = new AudioCtxCtor()
-        audioCtxRef.current = audioCtx
-        const analyser   = audioCtx.createAnalyser()
-        analyser.fftSize = 256
-        audioCtx.createMediaStreamSource(stream).connect(analyser)
-        const timeData   = new Uint8Array(analyser.fftSize)
-        vadWorking       = true
-        const startTs    = Date.now()
-
-        vadIntervalRef.current = setInterval(() => {
-          if (mediaRecorderRef.current?.state !== 'recording') { stopVAD(); return }
-
-          // Calcular RMS
-          analyser.getByteTimeDomainData(timeData)
-          let sum = 0
-          for (const s of timeData) { const n = (s - 128) / 128; sum += n * n }
-          const rms = Math.sqrt(sum / timeData.length)
-
-          // Actualizar barra de volumen sin causar re-render de React
-          if (volumeBarRef.current) {
-            volumeBarRef.current.style.width = `${Math.min(100, rms * 6000)}%`
-          }
-
-          const elapsed = Date.now() - startTs
-
-          if (rms > SPEECH_RMS_THRESHOLD) {
-            speechDetected = true
-            speechEndedAt  = 0
-          } else if (speechDetected) {
-            if (speechEndedAt === 0) speechEndedAt = Date.now()
-            const silenceDuration = Date.now() - speechEndedAt
-            const recordedAfterSpeech = elapsed - (speechEndedAt - startTs)
-            if (silenceDuration > SILENCE_AFTER_SPEECH && recordedAfterSpeech > MIN_RECORD_AFTER_SPEECH) {
-              stopRecording()
-            }
-          } else if (elapsed > NO_SPEECH_MAX) {
-            // Usuario no habló en 3.5s
-            stopRecording()
-          }
-        }, 50)
-      }
-    } catch { /* AudioContext no disponible — usa el hard max */ }
-
-    // Hard max absoluto
-    maxTimeoutRef.current = setTimeout(stopRecording, HARD_MAX)
-
-    recordingStartRef.current = Date.now()
-    const recorder = new MediaRecorder(stream)
-    mediaRecorderRef.current = recorder
-    recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data) }
-
-    recorder.onstop = async () => {
-      stopVAD()
-      stream.getTracks().forEach(t => t.stop())
-
-      // VAD activo pero sin habla detectada → no-speech
-      if (vadWorking && !speechDetected) {
-        setMicState('no-speech')
-        resetTimeoutRef.current = setTimeout(() => {
-          resetTimeoutRef.current = null
-          if (sessionRef.current === whisperSession) setMicState('idle')
-        }, 1400)
-        return
-      }
-
-      const durationMs = Date.now() - recordingStartRef.current
-      setMicState('processing')
-
-      const blob = new Blob(chunks, { type: recorder.mimeType })
-      const ext  = recorder.mimeType.includes('ogg') ? 'audio.ogg' : 'audio.webm'
-      const file = new File([blob], ext, { type: blob.type })
-      const body = new FormData()
-      body.append('audio', file)
-      body.append('expected', capturedQuestion.text_en)
-      body.append('duration_ms', String(durationMs))
-
-      try {
-        const res  = await fetch('/api/speech/evaluate', { method: 'POST', body })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data = await res.json() as { transcript: string; correct: boolean; noSpeech: boolean; lowConfidence: boolean }
-        if (data.noSpeech) {
-          setMicState('no-speech')
-          resetTimeoutRef.current = setTimeout(() => {
-            resetTimeoutRef.current = null
-            if (sessionRef.current === whisperSession) setMicState('idle')
-          }, 1400)
-          return
-        }
-        handleSpeechResult(data.correct, data.transcript, data.lowConfidence, whisperSession)
-      } catch {
-        if (sessionRef.current === whisperSession) setMicState('idle')
-      }
-    }
-
-    recorder.start()
-  }
-
-  // ── Web Speech ────────────────────────────────────────────────────────────
-  function startListening() {
-    if (micState === 'listening' || micState === 'listening-retry' || !question || isTerminated) return
-    const RecognitionCtor = getSpeechRecognition()
-    if (!RecognitionCtor) return
-    const currentQuestion = question
-    const session = ++sessionRef.current
-    try { recognitionRef.current?.abort() } catch { /* ignore */ }
-    recognitionRef.current = null
-    setMicState('listening')
-    setHeard(null)
-    let gotResult = false
-
-    function attempt(retryCount: number) {
-      if (session !== sessionRef.current) return
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const rec = new RecognitionCtor!()
-      rec.lang = 'en-US'; rec.continuous = false; rec.interimResults = false; rec.maxAlternatives = 3
-      recognitionRef.current = rec
-      if (retryCount > 0) setMicState('listening-retry')
-
-      const safetyTimer = setTimeout(() => {
-        if (session !== sessionRef.current) return
-        try { recognitionRef.current?.abort() } catch { /* ignore */ }
-        setMicState('idle')
-      }, 7000)
-      let handled = false
-
-      rec.onresult = (event: SpeechEvent) => {
-        if (session !== sessionRef.current) return
-        gotResult = true; handled = true; clearTimeout(safetyTimer)
-        const result = event.results[0]
-        if (!result) return
-        let transcript = result[0]?.transcript ?? ''
-        for (let j = 1; j < result.length; j++) {
-          const alt = result[j]?.transcript ?? ''
-          if (normalize(alt) === normalize(currentQuestion.text_en)) { transcript = alt; break }
-        }
-        const isCorrect = isSpeechMatch(transcript, currentQuestion.text_en)
-        handleSpeechResult(isCorrect, transcript, false, session)
-      }
-      rec.onnomatch = () => {
-        if (session !== sessionRef.current) return
-        gotResult = true; handled = true; clearTimeout(safetyTimer)
-        handleSpeechResult(false, null, false, session)
-      }
-      rec.onerror = (e: { error: string }) => {
-        if (session !== sessionRef.current) return
-        clearTimeout(safetyTimer)
-        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-          handled = true; setMicState('unsupported')
-        } else if (e.error === 'no-speech') {
-          handled = true; setMicState('no-speech')
-          setTimeout(() => { if (session !== sessionRef.current) return; setMicState('idle') }, 1400)
-        } else if (e.error === 'aborted' && !gotResult && retryCount < 2) {
-          recognitionRef.current = null
-          setTimeout(() => attempt(retryCount + 1), 300)
-        } else { handled = true; setMicState('idle') }
-      }
-      rec.onend = () => {
-        if (session !== sessionRef.current) return
-        clearTimeout(safetyTimer); recognitionRef.current = null
-        if (!handled) {
-          setMicState('no-speech')
-          setTimeout(() => { if (session !== sessionRef.current) return; setMicState('idle') }, 1400)
-        }
-      }
-      navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => {
-          stream.getTracks().forEach(t => t.stop())
-          if (session !== sessionRef.current) return
-          try { rec.start() } catch { clearTimeout(safetyTimer); setMicState('idle') }
-        })
-        .catch(() => { clearTimeout(safetyTimer); setMicState('unsupported') })
-    }
-    attempt(0)
   }
 
   function skipItem() {
-    try { recognitionRef.current?.abort() } catch { /* ignore */ }
-    try { mediaRecorderRef.current?.stop() } catch { /* ignore */ }
-    sessionRef.current++
     const newResults   = [...results, false]
     const newHeardList = [...heardList, null]
     lowConfListRef.current = [...lowConfListRef.current, undefined]
-    setResults(newResults); setHeardList(newHeardList); setMicState('idle'); setHeard(null)
+    setResults(newResults); setHeardList(newHeardList); setResult(null); setHeard(null); setRetry(false)
     if (currentQ < questions.length - 1) {
       setCurrentQ(prev => prev + 1)
     } else {
@@ -655,28 +348,22 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
 
   if (!question) return null
 
-  const isListening  = micState === 'listening' || micState === 'listening-retry'
-  const isRecording  = micState === 'recording'
-  const isProcessing = micState === 'processing'
-  const isActive     = isListening || isRecording || isProcessing
-  const isFlipped    = micState === 'correct' || micState === 'wrong'
-  const isRetry      = micState === 'retry'
+  const isProcessing = state === 'processing'
+  const isActive     = state === 'listening' || state === 'recording' || isProcessing
+  const isFlipped    = result !== null
+  const unsupported  = state === 'unsupported'
 
   function handleMicPress() {
-    if (resetTimeoutRef.current) {
-      clearTimeout(resetTimeoutRef.current)
-      resetTimeoutRef.current = null
-    }
-    if (speechProvider === 'whisper') void startListeningWhisper()
-    else startListening()
+    if (isTerminated || !question) return
+    setRetry(false)
+    start(question.text_en)
   }
 
   function micLabel() {
-    if (micState === 'listening-retry') return 'Reintentando…'
-    if (isListening)  return 'Escuchando…'
-    if (isRecording)  return 'Grabando…'
-    if (isProcessing) return 'Procesando…'
-    if (isFlipped || isRetry) return ''
+    if (state === 'listening')  return 'Escuchando…'
+    if (state === 'recording')  return 'Grabando…'
+    if (isProcessing)           return 'Procesando…'
+    if (isFlipped || retry)     return ''
     return '¡Toca para hablar!'
   }
 
@@ -717,7 +404,7 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
         </div>
       </header>
 
-      {micState === 'unsupported' ? (
+      {unsupported ? (
         <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 sm:px-8 text-center gap-4">
           <p className="text-5xl">😔</p>
           <p className="font-extrabold text-base sm:text-lg" style={{ color: 'var(--kids-text)' }}>Tu navegador no soporta el micrófono</p>
@@ -739,7 +426,7 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
               wordEn={question.text_en}
               wordEs={question.text_es}
               flipped={isFlipped}
-              isCorrect={micState === 'correct'}
+              isCorrect={result === 'correct'}
               heard={heard}
               cardColor={cardColor}
             />
@@ -749,7 +436,7 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
           <MicButton
             isActive={isActive}
             isProcessing={isProcessing}
-            disabled={isActive || isFlipped || isRetry}
+            disabled={isActive || isFlipped || retry}
             onClick={handleMicPress}
             color={cardColor}
           />
@@ -757,7 +444,7 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
           {/* Barra de volumen — se actualiza via DOM ref sin re-render */}
           <div className="w-40 h-2 rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.1)' }}>
             <div
-              ref={volumeBarRef}
+              ref={volumeRef}
               className="h-full rounded-full"
               style={{ width: '0%', background: cardColor, transition: 'width 40ms linear' }}
             />
@@ -769,19 +456,19 @@ export function SpeakingExercise({ items, onComplete, onBack, moduleConfig, prog
             </p>
           )}
 
-          {isRetry && (
+          {retry && (
             <p className="text-sm sm:text-base font-bold animate-pulse" style={{ color: '#F59E0B' }}>
               ¡Casi! Try again. 🎤
             </p>
           )}
 
-          {micState === 'no-speech' && (
+          {state === 'no-speech' && (
             <p className="text-sm font-bold" style={{ color: 'var(--kids-text-muted)' }}>
               No te escuché. ¡Intenta otra vez! 🎤
             </p>
           )}
 
-          {micState === 'idle' && (
+          {state === 'idle' && !isFlipped && !retry && (
             <button onClick={skipItem} className="text-xs font-semibold mt-4 sm:mt-6"
               style={{ color: 'var(--kids-text-muted)', opacity: 0.55 }}>
               Saltar →

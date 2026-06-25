@@ -9,10 +9,6 @@ export function seeSentence(word: string): string {
   return `I see ${withArticle(word)}.`
 }
 
-export function itsSentence(word: string): string {
-  return `It's ${withArticle(word)}.`
-}
-
 // Artículo indefinido español por heurística: termina en -a → "una", si no "un".
 // Acierta el grueso del vocab concreto infantil; excepciones (la flor, la mano)
 // son minoría y se afinarían con género en BD si hiciera falta.

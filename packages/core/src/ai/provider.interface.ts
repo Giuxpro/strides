@@ -17,7 +17,7 @@ export interface GenerateContentResult {
     text_es: string
     type: 'word' | 'phrase'
     min_age: 4 | 6
-    emoji_unicode?: string
+    emoji?: string
   }>
   usage: AIUsage
 }
@@ -41,7 +41,7 @@ export interface GeneratedVocabItem {
   text_es: string
   type: 'word' | 'phrase'
   min_age: 4 | 6
-  emoji_unicode?: string
+  emoji?: string
 }
 
 export interface GeneratedLesson {

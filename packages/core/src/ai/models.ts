@@ -183,7 +183,7 @@ export const MODELS: ModelMetadata[] = [
     description: 'Modelo de transcripción de OpenAI. Se usa para evaluar pronunciación de los niños.',
   },
 
-  // ── Groq (open-source, siempre gratuito) ──────────────────────────────────
+  // ── Groq (open-source, tier gratuito) ─────────────────────────────────────
   {
     id: 'llama-3.3-70b-versatile',
     provider: 'groq',
@@ -200,34 +200,19 @@ export const MODELS: ModelMetadata[] = [
     description: 'Llama 3.3 de Meta. Bueno para tareas generales y tutor conversacional.',
   },
   {
-    id: 'llama-3.1-8b-instant',
+    id: 'openai/gpt-oss-20b',
     provider: 'groq',
-    displayName: 'Llama 3.1 8B Instant',
+    displayName: 'GPT OSS 20B',
     inputCostPerMTok: 0,
     outputCostPerMTok: 0,
-    contextWindow: 128000,
+    contextWindow: 131072,
     hasReasoning: false,
     hasFreeTier: true,
-    freeTierLimits: { requestsPerDay: 14400, requestsPerMinute: 30 },
+    freeTierLimits: { requestsPerDay: 1000, requestsPerMinute: 30 },
     speed: 'fast',
-    bestFor: ['generación masiva de contenido', 'respuestas rápidas'],
-    limitations: ['modelo pequeño, menor calidad en instrucciones complejas'],
-    description: 'El más rápido de Groq. Ideal para generar vocab en volumen.',
-  },
-  {
-    id: 'mixtral-8x7b-32768',
-    provider: 'groq',
-    displayName: 'Mixtral 8x7B',
-    inputCostPerMTok: 0,
-    outputCostPerMTok: 0,
-    contextWindow: 32768,
-    hasReasoning: false,
-    hasFreeTier: true,
-    freeTierLimits: { requestsPerDay: 14400, requestsPerMinute: 30 },
-    speed: 'fast',
-    bestFor: ['generación de contenido multilingüe', 'tareas en español e inglés'],
-    limitations: ['contexto más corto'],
-    description: 'Mixtral de Mistral AI. Excelente en tareas bilingües español/inglés.',
+    bestFor: ['generación de contenido', 'respuestas rápidas', 'tareas generales'],
+    limitations: ['open-source, menor coherencia en tareas muy complejas'],
+    description: 'Modelo de pesos abiertos servido gratis por Groq. Reemplazo del Llama 3.1 8B deprecado.',
   },
 ]
 

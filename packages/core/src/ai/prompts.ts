@@ -17,9 +17,9 @@ export function buildVocabPrompt(p: GenerateContentParams): string {
     `for children aged ${p.ageRange}. ` +
     exclusion +
     (p.style ? `Style: ${p.style}. ` : '') +
-    `Return JSON: {"vocabularyItems":[{"text_en":"apple","text_es":"manzana","type":"word","min_age":4,"emoji_unicode":"1f34e"}]}. ` +
+    `Return JSON: {"vocabularyItems":[{"text_en":"apple","text_es":"manzana","type":"word","min_age":4,"emoji":"🍎"}]}. ` +
     `type: "word" or "phrase". min_age: 4 (simple) or 6 (complex). ` +
-    `emoji_unicode: the hex Unicode codepoint of the most representative emoji for the word (e.g. "1f34e" for apple, "1f431" for cat). Use only simple single-codepoint codes, no ZWJ sequences.`
+    `emoji: the single most representative emoji character for the word (e.g. "🍎" for apple, "🐱" for cat). One emoji only, no text.`
   )
 }
 
@@ -34,9 +34,9 @@ export function buildModulePrompt(p: GenerateModuleParams): string {
     (p.style ? `Style: ${p.style}. ` : '') +
     `Return JSON only:\n` +
     `{"module":{"title_en":"Animals","title_es":"Animales","description_es":"Aprende los animales en inglés"},` +
-    `"lessons":[{"title_en":"Farm Animals","title_es":"Animales de granja","vocab":[{"text_en":"cow","text_es":"vaca","type":"word","min_age":4,"emoji_unicode":"1f404"}]}]}\n` +
+    `"lessons":[{"title_en":"Farm Animals","title_es":"Animales de granja","vocab":[{"text_en":"cow","text_es":"vaca","type":"word","min_age":4,"emoji":"🐄"}]}]}\n` +
     `Rules: type "word" for single words, "phrase" for multi-word. ` +
     `min_age 4 for easy (4-5y), 6 for harder (6-7y). description_es: one sentence in Spanish. ` +
-    `emoji_unicode: hex Unicode codepoint of the best matching emoji (e.g. "1f404" for cow). Single codepoint only, no ZWJ.`
+    `emoji: the single best matching emoji character (e.g. "🐄" for cow). One emoji only, no text.`
   )
 }

@@ -16,7 +16,8 @@ import { VowelsOrderGame }   from './games/VowelsOrderGame'
 import { AlphabetGame }      from './games/AlphabetGame'
 import { VowelsSequenceGame } from './games/VowelsSequenceGame'
 import { ListeningSpellGame } from './games/ListeningSpellGame'
-import type { WordResult } from '@strides/core/kids'
+import { CountingGame } from './games/CountingGame'
+import type { WordResult, GameRuntimeConfig } from '@strides/core/kids'
 
 export type { GameConfigs } from '@strides/core/kids'
 
@@ -26,6 +27,7 @@ export interface GameProps {
   onBack: () => void
   moduleConfig: ModuleConfig
   progress?: { current: number; total: number }
+  config?: GameRuntimeConfig
 }
 
 export interface PoolEntry {
@@ -54,6 +56,7 @@ const COMPONENT_MAP: Record<string, ComponentType<GameProps>> = {
   alphabet:    AlphabetGame     as ComponentType<GameProps>,
   'vowels-order':     VowelsSequenceGame  as ComponentType<GameProps>,
   'listening-spell':  ListeningSpellGame  as ComponentType<GameProps>,
+  counting:           CountingGame        as ComponentType<GameProps>,
 }
 
 export const GAME_POOL: PoolEntry[] = GAME_REGISTRY.map(g => ({

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { updateVocabItem } from '@/app/admin/_actions'
 import { ImageUploadField } from '@/components/admin/shared/ImageUploadField'
+import { EmojiPickerField } from '@/components/admin/shared/EmojiPickerField'
 import { SubmitButton } from '@/components/admin/shared/SubmitButton'
 
 const I = 'w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500'
@@ -16,7 +17,7 @@ export default async function EditVocabPage({ params }: Props) {
   const [{ data: mod }, { data: item }] = await Promise.all([
     supabase.from('modules').select('id, title_es').eq('id', params.moduleId).single(),
     supabase.from('vocabulary_items')
-      .select('id, text_es, text_en, image_url, audio_url, type, min_age')
+      .select('id, text_es, text_en, image_url, emoji_unicode, audio_url, type, min_age')
       .eq('id', params.itemId)
       .single(),
   ])
@@ -59,6 +60,8 @@ export default async function EditVocabPage({ params }: Props) {
           label="Audio"
           accept="audio/*"
         />
+
+        <EmojiPickerField name="emoji_unicode" defaultValue={item.emoji_unicode ?? ''} label="Emoji (si no subes imagen)" />
 
         <div className="grid grid-cols-2 gap-4">
           <div>

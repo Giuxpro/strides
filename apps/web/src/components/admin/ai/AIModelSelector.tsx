@@ -19,7 +19,20 @@ const SPEED_LABEL: Record<ModelMetadata['speed'], string> = {
   slow: 'Lento',
 }
 
+// Los modelos de audio (costo por minuto, ej. Whisper) no se generan como contenido:
+// su proveedor se elige en la sección "Reconocimiento de voz", no aquí.
+const isAudioModel = (m: ModelMetadata) => m.costPerMinute != null
+const contentModels = (provider: ModelMetadata['provider']) =>
+  MODELS.filter(m => m.provider === provider && !isAudioModel(m))
+
 function PricingChip({ model }: { model: ModelMetadata }) {
+  if (model.costPerMinute != null) {
+    return (
+      <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400">
+        Pago · ${model.costPerMinute}/min
+      </span>
+    )
+  }
   if (model.inputCostPerMTok === 0) {
     return (
       <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">
@@ -42,6 +55,14 @@ function PricingChip({ model }: { model: ModelMetadata }) {
 }
 
 function ModelFooter({ model }: { model: ModelMetadata }) {
+  if (model.costPerMinute != null) {
+    return (
+      <p className="text-xs text-gray-600">
+        Costo: <span className="text-amber-400">${model.costPerMinute}/min de audio</span>
+      </p>
+    )
+  }
+
   const isFree = model.inputCostPerMTok === 0
 
   if (isFree) {
@@ -99,44 +120,60 @@ function filterUsageForModel(all: AIUsageSummary | undefined, modelId: string): 
 }
 
 export function AIModelSelector({ initialProvider, initialModel, usage: allUsage }: Props) {
-  const validProvider = (PROVIDERS.find(p => p.value === initialProvider)?.value ?? 'anthropic') as ModelMetadata['provider']
-  const [provider, setProvider] = useState<ModelMetadata['provider']>(validProvider)
+  const savedProvider = (PROVIDERS.find(p => p.value === initialProvider)?.value ?? 'anthropic') as ModelMetadata['provider']
+  const savedModels = contentModels(savedProvider)
+  const savedModel = savedModels.find(m => m.id === initialModel)?.id ?? savedModels[0]?.id ?? ''
 
-  const providerModels = MODELS.filter(m => m.provider === provider)
-  const defaultModel = providerModels.find(m => m.id === initialModel)?.id ?? providerModels[0]?.id ?? ''
-  const [model, setModel] = useState(defaultModel)
+  const [provider, setProvider] = useState<ModelMetadata['provider']>(savedProvider)
+  // '' = ningún modelo elegido en esta pestaña (proveedor no activo, sin selección explícita)
+  const [model, setModel] = useState(savedModel)
+
+  const providerModels = contentModels(provider)
 
   function handleProviderChange(next: ModelMetadata['provider']) {
     setProvider(next)
-    const first = MODELS.find(m => m.provider === next)?.id ?? ''
-    setModel(first)
+    // Solo la pestaña del proveedor guardado arranca con su modelo marcado.
+    setModel(next === savedProvider ? savedModel : '')
   }
 
-  const selected = MODELS.find(m => m.id === model)
+  // Guardado seguro: si no hay selección explícita, se conserva lo guardado (no cambia nada).
+  const submitProvider = model ? provider : savedProvider
+  const submitModel    = model ? model    : savedModel
+
+  const savedProviderLabel = PROVIDERS.find(p => p.value === savedProvider)?.label ?? savedProvider
+  const providerLabel      = PROVIDERS.find(p => p.value === provider)?.label ?? provider
+  const willChangeProvider = !!model && submitProvider !== savedProvider
+
+  const selected = model ? MODELS.find(m => m.id === model) : undefined
   const usageForModel = filterUsageForModel(allUsage, model)
 
   return (
     <>
-      <input type="hidden" name="ai_provider" value={provider} />
-      <input type="hidden" name="ai_model" value={model} />
+      <input type="hidden" name="ai_provider" value={submitProvider} />
+      <input type="hidden" name="ai_model" value={submitModel} />
 
       <div>
         <label className="block text-sm text-gray-400 mb-2">Proveedor activo</label>
         <div className="flex flex-wrap items-center gap-2">
-          {PROVIDERS.map(p => (
-            <button
-              key={p.value}
-              type="button"
-              onClick={() => handleProviderChange(p.value)}
-              className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
-                provider === p.value
-                  ? 'border-violet-500 bg-violet-500/10 text-violet-300'
-                  : 'border-gray-700 text-gray-500 hover:border-gray-600 hover:text-gray-400'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
+          {PROVIDERS.map(p => {
+            const isTab    = provider === p.value
+            const isActive = savedProvider === p.value
+            return (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => handleProviderChange(p.value)}
+                className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                  isTab
+                    ? 'border-violet-500 bg-violet-500/10 text-violet-300'
+                    : 'border-gray-700 text-gray-500 hover:border-gray-600 hover:text-gray-400'
+                }`}
+              >
+                {p.label}
+                {isActive && <span className="ml-1.5 text-[10px] text-emerald-400">● activo</span>}
+              </button>
+            )
+          })}
 
           {selected && (
             <div className="ml-auto">
@@ -145,6 +182,21 @@ export function AIModelSelector({ initialProvider, initialModel, usage: allUsage
           )}
         </div>
       </div>
+
+      {/* Aviso al ver un proveedor que no es el activo */}
+      {provider !== savedProvider && (
+        <div className={`rounded-lg border px-3 py-2 text-xs ${
+          willChangeProvider
+            ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+            : 'border-gray-700 bg-gray-800/40 text-gray-400'
+        }`}>
+          {willChangeProvider ? (
+            <>Al guardar cambiarás el proveedor activo de <b>{savedProviderLabel}</b> a <b>{providerLabel}</b> · {selected?.displayName}.</>
+          ) : (
+            <>Estás viendo <b>{providerLabel}</b>. Tu proveedor activo es <b>{savedProviderLabel}</b>. Elige un modelo para cambiar; si guardas sin elegir, no cambia nada.</>
+          )}
+        </div>
+      )}
 
       <div>
         <label className="block text-sm text-gray-400 mb-2">Modelo</label>

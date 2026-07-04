@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { toggleModulePublished, reorderModules } from '@/app/admin/_actions'
+import { toggleModulePublished, reorderModules, deleteModule } from '@/app/admin/_actions'
 import { getStorageUrl } from '@strides/core'
 
 interface ModuleRow {
@@ -230,17 +230,30 @@ export function SortableModuleList({ modules: initial, lessonCounts, searchActiv
                 <td className="px-4 sm:px-5 py-3">
                   <div className="flex items-center justify-end gap-3">
                     <Link
-                      href={`/admin/content/${mod.id}/edit?from=list`}
-                      className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
-                    >
-                      Editar
-                    </Link>
-                    <Link
                       href={`/admin/content/${mod.id}`}
                       className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
                     >
                       Ver →
                     </Link>
+                    <Link
+                      href={`/admin/content/${mod.id}/edit?from=list`}
+                      className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                    >
+                      Editar
+                    </Link>
+                    <form
+                      action={deleteModule}
+                      onSubmit={e => {
+                        if (!confirm(`¿Eliminar el módulo "${mod.title_es}"? Se borrarán sus lecciones, vocabulario, ejercicios y el progreso asociado. Esta acción no se puede deshacer.`)) {
+                          e.preventDefault()
+                        }
+                      }}
+                    >
+                      <input type="hidden" name="module_id" value={mod.id} />
+                      <button type="submit" className="text-xs text-red-800 hover:text-red-500 transition-colors">
+                        Eliminar
+                      </button>
+                    </form>
                   </div>
                 </td>
               </tr>

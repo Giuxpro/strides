@@ -1,3 +1,5 @@
+import { FLUENT_DEFAULT_PATH } from './fluentDefaultPath'
+
 /**
  * Maps Unicode codepoint(s) → Fluent Emoji folder name.
  *
@@ -1615,9 +1617,33 @@ export const FLUENT_EMOJI_MAP: Record<string, string> = {
  * Build a jsDelivr CDN URL for a Fluent Emoji 3D PNG.
  * @param codepoint - space-separated lowercase hex codepoints, e.g. "1f437"
  */
+const FLUENT_ASSETS = 'https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets';
+
+/**
+ * Build the Fluent Emoji 3D asset URL for a codepoint. Emojis with skin-tone
+ * variants (see {@link FLUENT_DEFAULT_PATH}) live under `{Name}/Default/3D/…_3d_default.png`;
+ * the rest use the flat `{Name}/3D/…_3d.png`. Picking the right path here means every
+ * render site gets a working URL with no runtime fallback.
+ */
 export function fluentEmojiUrl(codepoint: string): string | null {
   const folder = FLUENT_EMOJI_MAP[codepoint];
   if (!folder) return null;
-  const fileName = folder.toLowerCase().replace(/ /g, '_') + '_3d.png';
-  return `https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/${encodeURIComponent(folder)}/3D/${fileName}`;
+  const base = folder.toLowerCase().replace(/ /g, '_');
+  const dir = encodeURIComponent(folder);
+  return FLUENT_DEFAULT_PATH.has(codepoint)
+    ? `${FLUENT_ASSETS}/${dir}/Default/3D/${base}_3d_default.png`
+    : `${FLUENT_ASSETS}/${dir}/3D/${base}_3d.png`;
+}
+
+/**
+ * Derives the Fluent codepoint key from an actual emoji glyph (e.g. "🐝" → "1f41d").
+ * Returns null if the emoji has no matching Fluent 3D asset, so callers store no
+ * icon instead of one that renders the wrong picture.
+ */
+export function emojiToCodepoint(emoji: string): string | null {
+  const key = Array.from(emoji.trim())
+    .map(ch => ch.codePointAt(0)?.toString(16))
+    .filter((h): h is string => !!h)
+    .join(' ');
+  return key && FLUENT_EMOJI_MAP[key] ? key : null;
 }

@@ -153,9 +153,10 @@ interface Props {
   config: AudioConfig
   audioVolume: number
   clickVolume: number
+  cardSoundsEnabled: boolean
 }
 
-export function MusicUploaderPanel({ config, audioVolume: initialAudio, clickVolume: initialClick }: Props) {
+export function MusicUploaderPanel({ config, audioVolume: initialAudio, clickVolume: initialClick, cardSoundsEnabled }: Props) {
   const [audioVol, setAudioVol] = useState(initialAudio)
   const [clickVol, setClickVol] = useState(initialClick)
 
@@ -221,6 +222,22 @@ export function MusicUploaderPanel({ config, audioVolume: initialAudio, clickVol
           />
           <span className="text-xs text-gray-500 w-10 text-right">{Math.round(clickVol * 100)}%</span>
         </div>
+      </div>
+
+      <div className="border-t border-gray-800 pt-6">
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            name="card_sounds_enabled"
+            defaultChecked={cardSoundsEnabled}
+            className="sr-only peer"
+          />
+          <div className="w-9 h-5 rounded-full bg-gray-700 transition-colors peer-checked:bg-violet-500 relative after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-4 after:h-4 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-4 shrink-0" />
+          <span>
+            <span className="block text-sm text-gray-300 font-medium">🃏 Sonido al elegir lección</span>
+            <span className="block text-xs text-gray-600">Reproduce el audio de la card al seleccionarla para entrar a la lección</span>
+          </span>
+        </label>
       </div>
     </div>
   )

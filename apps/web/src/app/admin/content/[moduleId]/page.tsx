@@ -15,6 +15,7 @@ import {
   getVocabAdmin,
   getVocabAdminCount,
   getExercisesForVocabUsage,
+  getLessonVocabForUsage,
 } from '@strides/db'
 import type { ModifierConfig } from '@strides/core/kids'
 
@@ -28,6 +29,10 @@ type ExerciseRow = {
   lesson_id: string | null
   lessons: LessonRef | null
   exercise_items: { vocabulary_item_id: string }[] | null
+}
+type LessonVocabRow = {
+  vocabulary_item_id: string
+  lessons: LessonRef | null
 }
 
 const TB = 'px-4 py-1.5 rounded-lg text-sm font-medium transition-colors'
@@ -59,6 +64,7 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
   let vocab:        { id: string; text_es: string; text_en: string; image_url: string | null; emoji_unicode: string | null; type: string | null; order: number }[] = []
   let vocabCount    = 0
   let exercisesRaw: ExerciseRow[] | null = null
+  let lessonVocabRaw: LessonVocabRow[] | null = null
 
   if (tab === 'lessons') {
     const [{ data: ld, count: lc }, { count: vc }] = await Promise.all([
@@ -69,15 +75,17 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
     lessonCount = lc ?? 0
     vocabCount  = vc ?? 0
   } else if (tab === 'vocab') {
-    const [{ data: vd, count: vc }, { count: lc }, { data: ex }] = await Promise.all([
+    const [{ data: vd, count: vc }, { count: lc }, { data: ex }, { data: lv }] = await Promise.all([
       getVocabAdmin(supabase, { moduleId: params.moduleId, q, offset, limit: PAGE_SIZE }),
       getLessonsAdminCount(supabase, params.moduleId),
       getExercisesForVocabUsage(supabase, params.moduleId),
+      getLessonVocabForUsage(supabase, params.moduleId),
     ])
     vocab       = vd ?? []
     vocabCount  = vc ?? 0
     lessonCount = lc ?? 0
     exercisesRaw = ex as ExerciseRow[] | null
+    lessonVocabRaw = lv as unknown as LessonVocabRow[] | null
   } else {
     const [{ count: lc }, { count: vc }] = await Promise.all([
       getLessonsAdminCount(supabase, params.moduleId),
@@ -88,15 +96,21 @@ export default async function AdminModuleDetailPage({ params, searchParams }: Pr
   }
 
   const usageMap: Record<string, LessonRef[]> = {}
+  const addUsage = (vid: string, lesson: LessonRef) => {
+    if (!usageMap[vid]) usageMap[vid] = []
+    if (!usageMap[vid].some(l => l.id === lesson.id)) {
+      usageMap[vid].push({ id: lesson.id, title_es: lesson.title_es })
+    }
+  }
+  // Vocab enlazado a la evaluación de la lección (fuente principal del modelo actual)
+  for (const row of lessonVocabRaw ?? []) {
+    if (row.lessons) addUsage(row.vocabulary_item_id, row.lessons)
+  }
+  // Vocab en ejercicios explícitos (steps de tipo exercise)
   for (const ex of exercisesRaw ?? []) {
-    const lesson = ex.lessons
-    if (!lesson) continue
+    if (!ex.lessons) continue
     for (const item of ex.exercise_items ?? []) {
-      const vid = item.vocabulary_item_id
-      if (!usageMap[vid]) usageMap[vid] = []
-      if (!usageMap[vid].some(l => l.id === lesson.id)) {
-        usageMap[vid].push({ id: lesson.id, title_es: lesson.title_es })
-      }
+      addUsage(item.vocabulary_item_id, ex.lessons)
     }
   }
 

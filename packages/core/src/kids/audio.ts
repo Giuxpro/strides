@@ -4,6 +4,7 @@ export interface AudioConfig {
   volume: number
   click_sound_url?: string | null
   click_volume?: number
+  card_sounds_enabled?: boolean
 }
 
 export const DEFAULT_AUDIO_CONFIG: AudioConfig = {

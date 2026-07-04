@@ -15,7 +15,13 @@ export interface GameMeta {
   maxItems: number
 }
 
-export type GameConfigs = Record<string, { minItems?: number; maxItems?: number; adminOnly?: boolean; showAlways?: boolean; disabledForUsers?: boolean }>
+export type GameConfigs = Record<string, { minItems?: number; maxItems?: number; adminOnly?: boolean; showAlways?: boolean; disabledForUsers?: boolean; maxCount?: number; rounds?: number }>
+
+// Parámetros que el engine pasa al componente del juego en tiempo de ejecución.
+export interface GameRuntimeConfig {
+  maxCount?: number
+  rounds?: number
+}
 
 export const GAME_REGISTRY: GameMeta[] = [
   {
@@ -157,6 +163,17 @@ export const GAME_REGISTRY: GameMeta[] = [
     role: 'productive',
     minItems: 2,
     maxItems: 8,
+  },
+  {
+    id: 'counting',
+    emoji: '🔢',
+    titleEn: 'Counting',
+    title: 'A contar',
+    description: 'Cuenta cuántos hay y elige el número',
+    role: 'literacy',
+    // No usa el vocabulario del módulo: genera sus propias rondas con emojis.
+    minItems: 0,
+    maxItems: 1,
   },
 ]
 

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createVocabItem } from '@/app/admin/_actions'
 import { SubmitButton } from '@/components/admin/shared/SubmitButton'
 import { ImageUploadField } from '@/components/admin/shared/ImageUploadField'
+import { EmojiPickerField } from '@/components/admin/shared/EmojiPickerField'
 
 const I = 'w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-violet-500'
 const L = 'block text-sm text-gray-400 mb-1.5'
@@ -48,6 +49,8 @@ export default async function NewVocabPage({ params }: Props) {
           label="Audio"
           accept="audio/*"
         />
+
+        <EmojiPickerField name="emoji_unicode" label="Emoji (si no subes imagen)" />
 
         <div className="grid grid-cols-2 gap-4">
           <div>

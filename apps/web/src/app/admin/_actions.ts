@@ -5,9 +5,20 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { Json } from '@strides/db'
 import { getAllSettings, insertGeneratedModule, insertGeneratedVocab, insertGeneratedLessons, logAIUsage } from '@strides/db'
-import { GAME_REGISTRY, LESSON_RECIPE, getVocabImageUrl, DEFAULT_EVALUATION_CONFIG, EVAL_FORMAT_REGISTRY, DEFAULT_EVAL_FORMATS, buildEvalItems } from '@strides/core/kids'
+import { GAME_REGISTRY, LESSON_RECIPE, getVocabImageUrl, DEFAULT_EVALUATION_CONFIG, EVAL_FORMAT_REGISTRY, DEFAULT_EVAL_FORMATS, buildEvalItems, emojiToCodepoint, COUNTING_DEFAULTS, COUNTING_MAX_COUNT_LIMIT, COUNTING_ROUNDS_LIMIT } from '@strides/core/kids'
 import type { EvaluationConfig, EvalManualItem, VocabItem } from '@strides/core/kids'
 import { isValidExerciseType } from '@strides/core/exercises'
+
+// La IA devuelve el emoji como glifo; derivamos el codepoint Fluent aquí y descartamos
+// los que no tengan asset 3D (queda sin icono en vez de un icono equivocado).
+type AiVocab = { text_en: string; text_es: string; type: 'word' | 'phrase'; min_age: 4 | 6; emoji?: string }
+type AiLesson = { title_en: string; title_es: string; vocab: AiVocab[] }
+function withEmojiCodepoint({ emoji, ...rest }: AiVocab) {
+  return { ...rest, emoji_unicode: emoji ? emojiToCodepoint(emoji) ?? undefined : undefined }
+}
+function withEmojiCodepoints(lessons: AiLesson[]) {
+  return lessons.map(l => ({ ...l, vocab: l.vocab.map(withEmojiCodepoint) }))
+}
 
 // Misma config para ambos comportamientos; el modo solo cambia si se materializa
 // (fijo) o se sortea en vivo (aleatorio). Los `items` del fijo los pone el action.
@@ -106,6 +117,23 @@ export async function reorderModules(orders: { id: string; order: number }[]) {
   )
   revalidatePath('/admin/content')
   revalidatePath('/kids/play')
+}
+
+export async function deleteModule(formData: FormData) {
+  await requireAdmin()
+  const admin    = createAdminClient()
+  const moduleId = formData.get('module_id') as string
+
+  // content_generation_jobs.module_id es NO ACTION; el resto (lecciones, vocab,
+  // ejercicios, accesos, progreso) cae por ON DELETE CASCADE al borrar el módulo.
+  await admin.from('content_generation_jobs').delete().eq('module_id', moduleId)
+
+  const { error } = await admin.from('modules').delete().eq('id', moduleId)
+  if (error) throw new Error(`Error eliminando módulo: ${error.message}`)
+
+  revalidatePath('/admin/content')
+  revalidatePath('/kids/play')
+  redirect('/admin/content')
 }
 
 export async function reorderLessons(moduleId: string, orders: { id: string; order: number }[]) {
@@ -517,6 +545,7 @@ export async function createVocabItem(formData: FormData) {
   const text_en   = formData.get('text_en') as string
   const image_url = toStoragePath((formData.get('image_url') as string) || null)
   const audio_url = toStoragePath((formData.get('audio_url') as string) || null)
+  const emoji_unicode = ((formData.get('emoji_unicode') as string) || '').trim() || null
   const type      = formData.get('type') as 'word' | 'phrase'
   const min_age   = Number(formData.get('min_age'))
 
@@ -526,7 +555,7 @@ export async function createVocabItem(formData: FormData) {
     .eq('module_id', moduleId)
 
   await supabase.from('vocabulary_items').insert({
-    module_id: moduleId, text_es, text_en, image_url, audio_url, type, min_age,
+    module_id: moduleId, text_es, text_en, image_url, audio_url, emoji_unicode, type, min_age,
     order: (count ?? 0) + 1,
   })
 
@@ -543,11 +572,12 @@ export async function updateVocabItem(formData: FormData) {
   const text_en   = formData.get('text_en') as string
   const image_url = toStoragePath((formData.get('image_url') as string) || null)
   const audio_url = toStoragePath((formData.get('audio_url') as string) || null)
+  const emoji_unicode = ((formData.get('emoji_unicode') as string) || '').trim() || null
   const type      = formData.get('type') as 'word' | 'phrase'
   const min_age   = Number(formData.get('min_age'))
 
   const { error } = await admin.from('vocabulary_items')
-    .update({ text_es, text_en, image_url, audio_url, type, min_age })
+    .update({ text_es, text_en, image_url, audio_url, emoji_unicode, type, min_age })
     .eq('id', itemId)
 
   if (error) throw new Error(`Error actualizando vocabulario: ${error.message}`)
@@ -620,10 +650,22 @@ export async function updateSettings(formData: FormData) {
         cooldown_days:   Number(formData.get('nps_cooldown_days')) || 30,
       } as Json },
     { key: 'game_configs', value: Object.fromEntries(
-        GAME_REGISTRY.map(g => [g.id, {
-          minItems: Number(formData.get(`min_${g.id}`)),
-          maxItems: Number(formData.get(`max_${g.id}`)),
-        }])
+        GAME_REGISTRY.map(g => {
+          if (g.id === 'counting') {
+            const clamp = (v: number, min: number, max: number, fallback: number) =>
+              Number.isFinite(v) ? Math.max(min, Math.min(v, max)) : fallback
+            return [g.id, {
+              minItems: g.minItems,
+              maxItems: g.maxItems,
+              maxCount: clamp(Number(formData.get('counting_max_count')), 2, COUNTING_MAX_COUNT_LIMIT, COUNTING_DEFAULTS.maxCount),
+              rounds:   clamp(Number(formData.get('counting_rounds')), 1, COUNTING_ROUNDS_LIMIT, COUNTING_DEFAULTS.rounds),
+            }]
+          }
+          return [g.id, {
+            minItems: Number(formData.get(`min_${g.id}`)),
+            maxItems: Number(formData.get(`max_${g.id}`)),
+          }]
+        })
       ) as Json },
     { key: 'admin_only_games', value: GAME_REGISTRY
         .filter(g => formData.get(`admin_only_${g.id}`) === 'on')
@@ -639,6 +681,7 @@ export async function updateSettings(formData: FormData) {
       ...currentAudio,
       volume:        Math.min(1, Math.max(0, Number(formData.get('audio_volume') ?? 0.3))),
       click_volume:  Math.min(1, Math.max(0, Number(formData.get('click_volume') ?? currentAudio['click_volume'] ?? currentAudio['volume'] ?? 0.3))),
+      card_sounds_enabled: formData.get('card_sounds_enabled') === 'on',
     } as Json,
   })
 
@@ -819,7 +862,7 @@ export async function generateAIContent(formData: FormData) {
 
     const moduleId = await insertGeneratedModule(supabase, {
       ...result.module,
-      lessons: result.lessons,
+      lessons: withEmojiCodepoints(result.lessons),
     })
 
     await logAIUsage(createAdminClient(), {
@@ -844,7 +887,7 @@ export async function generateAIContent(formData: FormData) {
 
     const result = await aiProvider.generateModule({ topic, ageRange, lessonCount, vocabPerLesson, style, existingVocab })
 
-    await insertGeneratedLessons(supabase, moduleId, result.lessons)
+    await insertGeneratedLessons(supabase, moduleId, withEmojiCodepoints(result.lessons))
 
     await logAIUsage(createAdminClient(), {
       provider,
@@ -866,7 +909,7 @@ export async function generateAIContent(formData: FormData) {
 
   const result = await aiProvider.generateContent({ topic, ageRange, wordCount, style, existingVocab })
 
-  await insertGeneratedVocab(supabase, moduleId, result.vocabularyItems)
+  await insertGeneratedVocab(supabase, moduleId, result.vocabularyItems.map(withEmojiCodepoint))
 
   await logAIUsage(createAdminClient(), {
     provider,

@@ -44,7 +44,7 @@ export default async function ModulePage({ params, searchParams }: Props) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [{ data: lessons }, { data: completions }, { data: vocab }, { data: dailyRow }, { count: countdownCount }, { data: availModRow }, { data: gameConfigsRow }, { data: speechRow }, { data: npsConfigRow }, { data: masteryRows }, { data: profile }, { data: subscription }, { data: lockConfigRow }, { data: previewConfigRow }, { data: adminOnlyGamesRow }, { data: allModules }, { data: allLessons }] = await Promise.all([
+  const [{ data: lessons }, { data: completions }, { data: vocab }, { data: dailyRow }, { count: countdownCount }, { data: availModRow }, { data: gameConfigsRow }, { data: speechRow }, { data: npsConfigRow }, { data: masteryRows }, { data: profile }, { data: subscription }, { data: lockConfigRow }, { data: previewConfigRow }, { data: adminOnlyGamesRow }, { data: allModules }, { data: allLessons }, { data: audioConfigRow }] = await Promise.all([
     supabase
       .from('lessons')
       .select('*')
@@ -99,7 +99,10 @@ export default async function ModulePage({ params, searchParams }: Props) {
     supabase.from('settings').select('value').eq('key', 'admin_only_games').maybeSingle(),
     supabase.from('modules').select('id, order').eq('is_published', true).order('order'),
     supabase.from('lessons').select('id, module_id, order').eq('is_published', true),
+    supabase.from('settings').select('value').eq('key', 'audio_config').maybeSingle(),
   ])
+
+  const cardSoundsEnabled = (audioConfigRow?.value as { card_sounds_enabled?: boolean } | null)?.card_sounds_enabled !== false
 
   const config = getModuleConfig(moduleSlug)
   const availableModifiers = (availModRow?.value as AvailableModifiers | null) ?? null
@@ -305,6 +308,7 @@ export default async function ModulePage({ params, searchParams }: Props) {
             vocabMasteryMap={vocabMasteryMap}
             speechProvider={speechProvider}
             showNps={showNps}
+            cardSoundsEnabled={cardSoundsEnabled}
           />
         ) : (
           <div className="text-center py-16 px-6">

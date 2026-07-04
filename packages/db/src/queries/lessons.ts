@@ -58,6 +58,13 @@ export function getExercisesForVocabUsage(db: DB, moduleId: string) {
     .eq('module_id', moduleId)
 }
 
+export function getLessonVocabForUsage(db: DB, moduleId: string) {
+  return db
+    .from('lesson_vocabulary')
+    .select('vocabulary_item_id, lessons!inner(id, title_es, module_id)')
+    .eq('lessons.module_id', moduleId)
+}
+
 export function getLessonStepsWithExercises(db: DB, lessonId: string) {
   return db
     .from('lesson_steps')

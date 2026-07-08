@@ -173,7 +173,7 @@ export function useSpeechAttempt(opts: {
 
   function start(expected: string) {
     if (state !== 'idle' && state !== 'no-speech') return
-    if (provider === 'whisper') void startWhisper(expected)
+    if (provider !== 'web-speech') void startWhisper(expected)
     else startWeb(expected)
   }
 

@@ -2,6 +2,7 @@ export type { AIProvider, GenerateContentParams, GenerateContentResult, ChatMess
 export { MODELS, getModel, getModelsByProvider } from './models'
 export type { ModelMetadata } from './models'
 export { evaluateSpeech } from './whisper'
+export type { WhisperBackend } from './whisper'
 export { OpenAIProvider } from './openai.provider'
 export { GoogleProvider } from './google.provider'
 export { AnthropicProvider } from './anthropic.provider'

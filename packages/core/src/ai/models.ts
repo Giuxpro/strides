@@ -182,6 +182,22 @@ export const MODELS: ModelMetadata[] = [
     limitations: ['solo audio, no texto'],
     description: 'Modelo de transcripción de OpenAI. Se usa para evaluar pronunciación de los niños.',
   },
+  {
+    id: 'whisper-large-v3-turbo',
+    provider: 'groq',
+    displayName: 'Whisper Large v3 Turbo',
+    inputCostPerMTok: 0,
+    outputCostPerMTok: 0,
+    costPerMinute: 0,
+    contextWindow: 0,
+    hasReasoning: false,
+    hasFreeTier: true,
+    freeTierLimits: { requestsPerDay: 2000, requestsPerMinute: 20 },
+    speed: 'fast',
+    bestFor: ['reconocimiento de voz', 'evaluación de pronunciación'],
+    limitations: ['solo audio, no texto'],
+    description: 'Whisper de Groq (free tier). Evalúa pronunciación sin costo, más rápido que OpenAI.',
+  },
 
   // ── Groq (open-source, tier gratuito) ─────────────────────────────────────
   {
@@ -193,7 +209,7 @@ export const MODELS: ModelMetadata[] = [
     contextWindow: 128000,
     hasReasoning: false,
     hasFreeTier: true,
-    freeTierLimits: { requestsPerDay: 14400, requestsPerMinute: 30 },
+    freeTierLimits: { requestsPerDay: 1000, requestsPerMinute: 30 },
     speed: 'fast',
     bestFor: ['generación de contenido', 'tutor conversacional', 'tareas generales'],
     limitations: ['open-source, menor coherencia en tareas muy complejas'],

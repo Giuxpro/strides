@@ -24,11 +24,16 @@ export default async function AdminSettingsPage() {
   const { data: allFlows } = await getAllFlows(supabase)
   const aiUsageToday = await getAIUsageToday(createAdminClient())
 
-  const whisperRow = aiUsageToday.byModel.find(m => m.model === 'whisper-1')
-  const whisperUsage = whisperRow
-    ? { requestsToday: whisperRow.requests, inputTokensToday: 0, outputTokensToday: 0, totalDurationMsToday: whisperRow.totalDurationMs, byModel: [whisperRow] }
-    : { requestsToday: 0, inputTokensToday: 0, outputTokensToday: 0, totalDurationMsToday: 0, byModel: [] }
+  const buildUsage = (modelId: string) => {
+    const row = aiUsageToday.byModel.find(m => m.model === modelId)
+    return row
+      ? { requestsToday: row.requests, inputTokensToday: 0, outputTokensToday: 0, totalDurationMsToday: row.totalDurationMs, byModel: [row] }
+      : { requestsToday: 0, inputTokensToday: 0, outputTokensToday: 0, totalDurationMsToday: 0, byModel: [] }
+  }
+  const whisperUsage = buildUsage('whisper-1')
   const whisperModel = getModel('whisper-1')!
+  const groqWhisperUsage = buildUsage('whisper-large-v3-turbo')
+  const groqWhisperModel = getModel('whisper-large-v3-turbo')!
 
   const aiProvider = (s['ai_provider'] as string) ?? 'anthropic'
   const aiModel    = (s['ai_model']    as string) ?? 'claude-haiku-4-5'
@@ -94,6 +99,8 @@ export default async function AdminSettingsPage() {
                 initialProvider={speechProvider}
                 whisperUsage={whisperUsage}
                 whisperModel={whisperModel}
+                groqWhisperUsage={groqWhisperUsage}
+                groqWhisperModel={groqWhisperModel}
               />
             </section>
 

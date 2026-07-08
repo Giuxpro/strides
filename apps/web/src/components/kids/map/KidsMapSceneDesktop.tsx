@@ -89,7 +89,7 @@ export function KidsMapSceneDesktop({ modules, childName, childAvatar, currentSt
             Strides
           </span>
           <div className="flex items-center gap-4 mr-14">
-            {currentStreak > 0 && (
+            {currentStreak > 0 ? (
               <div
                 className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-orange-400/40"
                 style={{ background: 'rgba(251,146,60,0.2)', fontSize: 'clamp(0.65rem, 1.4vw, 0.9rem)' }}
@@ -97,6 +97,14 @@ export function KidsMapSceneDesktop({ modules, childName, childAvatar, currentSt
                 <span style={{ fontSize: 'clamp(0.8rem, 1.6vw, 1.1rem)' }}>🔥</span>
                 <span className="font-bold text-white">{currentStreak}</span>
                 <span className="text-white/70">{currentStreak === 1 ? 'día seguido' : 'días seguidos'}</span>
+              </div>
+            ) : (
+              <div
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-white/20"
+                style={{ background: 'rgba(255,255,255,0.1)', fontSize: 'clamp(0.65rem, 1.4vw, 0.9rem)' }}
+              >
+                <span className="opacity-60 grayscale" style={{ fontSize: 'clamp(0.8rem, 1.6vw, 1.1rem)' }}>🔥</span>
+                <span className="text-white/70">Sin racha</span>
               </div>
             )}
             <Link

@@ -28,8 +28,8 @@ export function getVocabMastery(db: DB, childId: string) {
 
 export function getChildStreak(db: DB, childId: string) {
   return db
-    .from('child_streaks')
-    .select('current_streak')
+    .from('child_streaks_status')
+    .select('effective_streak')
     .eq('child_id', childId)
     .single()
 }

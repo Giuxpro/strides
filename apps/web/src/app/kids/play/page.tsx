@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
+import { getChildStreak } from '@strides/db'
 import { KidsMapScene } from '@/components/kids/map/KidsMapScene'
 import {
   computeProgressiveUnlock,
@@ -29,7 +30,7 @@ export default async function KidsPlayPage() {
       ? supabase.from('children').select('name, avatar_url').eq('id', selectedChildId).single()
       : Promise.resolve({ data: null }),
     selectedChildId
-      ? supabase.from('child_streaks').select('current_streak').eq('child_id', selectedChildId).single()
+      ? getChildStreak(supabase, selectedChildId)
       : Promise.resolve({ data: null }),
     user
       ? supabase.from('profiles').select('role').eq('id', user.id).single()
@@ -74,7 +75,7 @@ export default async function KidsPlayPage() {
         modules={sortedModules}
         childName={child?.name ?? null}
         childAvatar={child?.avatar_url ?? '🧒'}
-        currentStreak={streak?.current_streak ?? 0}
+        currentStreak={streak?.effective_streak ?? 0}
         moduleLockStates={moduleLockStates}
       />
     </>

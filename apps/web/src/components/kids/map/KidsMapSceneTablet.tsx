@@ -47,11 +47,16 @@ export function KidsMapSceneTablet({ modules, childName, childAvatar, currentStr
       <header className="flex items-center justify-between px-8 py-4 z-30">
         <span className="font-bold tracking-widest uppercase text-white/70 text-xs">Strides</span>
         <div className="flex items-center gap-5 mr-14">
-          {currentStreak > 0 && (
+          {currentStreak > 0 ? (
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-400/20 border border-orange-400/40">
               <span>🔥</span>
               <span className="font-bold text-white text-sm">{currentStreak}</span>
               <span className="text-white/60 text-sm">{currentStreak === 1 ? 'día seguido' : 'días seguidos'}</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/20">
+              <span className="opacity-60 grayscale">🔥</span>
+              <span className="text-white/60 text-sm">Sin racha</span>
             </div>
           )}
           <Link href="/select-profile" className="flex items-center gap-2 text-white/80 hover:opacity-70 transition-opacity">

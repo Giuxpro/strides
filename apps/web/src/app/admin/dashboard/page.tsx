@@ -13,8 +13,9 @@ import {
   getSetting,
 } from '@strides/db'
 import { GAME_REGISTRY } from '@strides/core/kids'
-import { Suspense } from 'react'
-import { AIUsageChip }      from '@/components/admin/dashboard/AIUsageChip'
+import { Suspense, type ReactNode } from 'react'
+import { PeriodMetricChip } from '@/components/admin/dashboard/PeriodMetricChip'
+import { StaticMetricChip } from '@/components/admin/dashboard/StaticMetricChip'
 import { OnlineNow }        from '@/components/admin/dashboard/OnlineNow'
 import { StatCard }         from '@/components/admin/dashboard/StatCard'
 import { GrowthChart }      from '@/components/admin/dashboard/GrowthChart'
@@ -26,37 +27,11 @@ import { DeviceBreakdown }  from '@/components/admin/dashboard/DeviceBreakdown'
 import { PeriodSelector }   from '@/components/admin/dashboard/PeriodSelector'
 import { LastUpdated }      from '@/components/admin/dashboard/LastUpdated'
 
-function InfoChip({
-  label,
-  value,
-  color,
-  tooltip,
-  tooltipAlign = 'left',
-  muted = false,
-}: {
-  label: string
-  value: string
-  color: string
-  tooltip?: string
-  tooltipAlign?: 'left' | 'right'
-  muted?: boolean
-}) {
+function MetricGroup({ label, cols, children }: { label: string; cols: string; children: ReactNode }) {
   return (
-    <div style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '14px 16px' }}>
-      <div className="flex items-center gap-1.5 mb-2">
-        <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color }}>{label}</p>
-        {tooltip && (
-          <div className="relative group cursor-help flex items-center">
-            <span className="text-[11px] leading-none select-none text-slate-400">ⓘ</span>
-            <div
-              className={`absolute bottom-full mb-2 w-64 bg-gray-900 border border-gray-700 rounded-xl p-3 text-[11px] text-gray-300 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 z-[200] shadow-xl text-left whitespace-pre-line leading-relaxed ${tooltipAlign === 'right' ? 'right-0' : 'left-0'}`}
-            >
-              {tooltip}
-            </div>
-          </div>
-        )}
-      </div>
-      <p className={`text-base font-bold ${muted ? 'text-gray-600' : 'text-white'}`} style={{ fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>{value}</p>
+    <div>
+      <p className="text-[9px] font-semibold tracking-widest uppercase text-gray-700 mb-1.5 px-0.5">{label}</p>
+      <div className={`grid ${cols} gap-3`}>{children}</div>
     </div>
   )
 }
@@ -272,6 +247,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           paidExpired={summary.paidExpired}
           checkoutAbandoned={summary.checkoutAbandoned}
           monthlyPrice={monthlyPrice}
+          currencySymbol={currencySymbol}
         />
         <TopGamesChart data={topGames} />
       </div>
@@ -299,58 +275,66 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         <EngagementChart data={engagement} />
       </div>
 
-      {/* ── Info row ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
-        <AIUsageChip
-          label="Ingreso recurrente"
-          color="#34D399"
-          defaultPeriod="month"
-          periods={['month', 'total']}
-          labels={{ month: 'MRR', total: 'ARR' }}
-          today={mrrMonth}
-          month={mrrMonth}
-          total={mrrAnnual}
-          tooltip={`MRR — ingreso recurrente mensual.
+      {/* ── Info row — agrupada por dominio: Dinero · IA · Calidad ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_2fr_1fr] gap-4">
+        <MetricGroup label="💰 Dinero" cols="grid-cols-2">
+          <PeriodMetricChip
+            label="Ingreso recurrente"
+            color="#34D399"
+            defaultPeriod="month"
+            periods={['month', 'total']}
+            labels={{ month: 'MRR', total: 'ARR' }}
+            today={mrrMonth}
+            month={mrrMonth}
+            total={mrrAnnual}
+            tooltip={`MRR — ingreso recurrente mensual.
 ARR — proyección anual (MRR × 12).
 
 El MRR estima el ingreso mensual estable. Las suscripciones mensuales se cuentan a su precio completo, y las anuales se reparten entre 12 meses para reflejar cuánto representan por mes (ya con su descuento aplicado).
 
 Es una proyección del ritmo de ingresos, no el dinero que realmente entró este mes. Solo se consideran los padres con una suscripción de pago activa.`}
-        />
-        <InfoChip
-          label="Ingreso real (caja)"
-          value="No disponible"
-          color="#34D399"
-          muted
-          tooltip={`Es el dinero que realmente se cobró durante el mes. A diferencia del MRR, aquí una suscripción anual se cuenta completa en el mes en que se paga, en lugar de repartirse.
+          />
+          <StaticMetricChip
+            label="Ingreso real (caja)"
+            value="No disponible"
+            color="#34D399"
+            muted
+            tooltip={`Es el dinero que realmente se cobró durante el mes. A diferencia del MRR, aquí una suscripción anual se cuenta completa en el mes en que se paga, en lugar de repartirse.
 
 Todavía no está disponible porque faltan dos cosas: que los pagos reales estén activos en producción (hoy funcionan en modo de prueba, sin montos), y un registro que guarde cada cobro con su monto y su fecha.
 
 Cuando ambas estén listas, esta tarjeta mostrará la suma de los pagos reales del mes.`}
-        />
-        <AIUsageChip
-          label="Costo IA"
-          color="#F59E0B"
-          today={`$${costToday.toFixed(4)}`}
-          month={`$${costMonth.toFixed(4)}`}
-          total={`$${costTotal.toFixed(4)}`}
-          tooltip="Costo estimado de llamadas a la IA. Token-based: $0.002/M entrada · $0.010/M salida. Audio: $0.006/min. Seleccioná el período con los botones."
-        />
-        <AIUsageChip
-          label="Peticiones IA"
-          color="#A78BFA"
-          today={aiUsage.requestsToday.toLocaleString('es-AR')}
-          month={aiThisMonth.requests.toLocaleString('es-AR')}
-          total={aiAllTime.requests.toLocaleString('es-AR')}
-          tooltip="Cantidad de llamadas a la IA (generación de ejercicios, evaluaciones de pronunciación, etc.). Seleccioná el período con los botones."
-        />
-        <InfoChip
-          label="Precisión pronunciación"
-          value={summary.totalEvals > 0 ? `${summary.avgEvalScore}%` : 'Sin datos'}
-          color="#38BDF8"
-          tooltipAlign="right"
-          tooltip="Promedio del puntaje (0-100) en evaluaciones de módulo completadas. Refleja qué tan bien los niños pronuncian el vocabulario evaluado."
-        />
+          />
+        </MetricGroup>
+
+        <MetricGroup label="🤖 IA" cols="grid-cols-2">
+          <PeriodMetricChip
+            label="Costo IA"
+            color="#F59E0B"
+            today={`$${costToday.toFixed(4)}`}
+            month={`$${costMonth.toFixed(4)}`}
+            total={`$${costTotal.toFixed(4)}`}
+            tooltip="Costo estimado de llamadas a la IA. Token-based: $0.002/M entrada · $0.010/M salida. Audio: $0.006/min. Seleccioná el período con los botones."
+          />
+          <PeriodMetricChip
+            label="Peticiones IA"
+            color="#A78BFA"
+            today={aiUsage.requestsToday.toLocaleString('es-AR')}
+            month={aiThisMonth.requests.toLocaleString('es-AR')}
+            total={aiAllTime.requests.toLocaleString('es-AR')}
+            tooltip="Cantidad de llamadas a la IA (generación de ejercicios, evaluaciones de pronunciación, etc.). Seleccioná el período con los botones."
+          />
+        </MetricGroup>
+
+        <MetricGroup label="🎯 Calidad" cols="grid-cols-1">
+          <StaticMetricChip
+            label="Precisión pronunciación"
+            value={summary.totalEvals > 0 ? `${summary.avgEvalScore}%` : 'Sin datos'}
+            color="#38BDF8"
+            tooltipAlign="right"
+            tooltip="Promedio del puntaje (0-100) en evaluaciones de módulo completadas. Refleja qué tan bien los niños pronuncian el vocabulario evaluado."
+          />
+        </MetricGroup>
       </div>
 
       {/* ── Export all ── */}

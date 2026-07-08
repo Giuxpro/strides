@@ -20,7 +20,7 @@ interface Props {
 
 const DEFAULT_LABELS: Record<Period, string> = { today: 'Hoy', month: 'Mes', total: 'Total' }
 
-export function AIUsageChip({ label, color, tooltip, tooltipAlign = 'left', today, month, total, defaultPeriod = 'today', periods = ['today', 'month', 'total'], labels }: Props) {
+export function PeriodMetricChip({ label, color, tooltip, tooltipAlign = 'left', today, month, total, defaultPeriod = 'today', periods = ['today', 'month', 'total'], labels }: Props) {
   const [period, setPeriod] = useState<Period>(defaultPeriod)
 
   const value = period === 'today' ? today : period === 'month' ? month : total

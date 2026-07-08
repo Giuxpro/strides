@@ -179,7 +179,7 @@ export function CountingGame({ onComplete, onBack, moduleConfig, progress, confi
             How many {round.emoji.plural}?
           </p>
           <p className="text-sm font-semibold" style={{ color: 'var(--kids-text-faint)' }}>
-            ¿Cuántos ves?
+            ¿{round.emoji.gender === 'f' ? 'Cuántas' : 'Cuántos'} {round.emoji.pluralEs} ves?
           </p>
         </div>
 

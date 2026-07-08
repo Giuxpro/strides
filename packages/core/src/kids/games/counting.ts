@@ -5,33 +5,35 @@ export interface CountEmoji {
   codepoint: string
   singular: string
   plural: string
+  pluralEs: string
+  gender: 'm' | 'f'
 }
 
 export const EMOJI_COUNT_POOL: CountEmoji[] = [
-  { codepoint: '1f436', singular: 'dog',        plural: 'dogs' },
-  { codepoint: '1f431', singular: 'cat',        plural: 'cats' },
-  { codepoint: '1f430', singular: 'rabbit',     plural: 'rabbits' },
-  { codepoint: '1f437', singular: 'pig',        plural: 'pigs' },
-  { codepoint: '1f438', singular: 'frog',       plural: 'frogs' },
-  { codepoint: '1f435', singular: 'monkey',     plural: 'monkeys' },
-  { codepoint: '1f981', singular: 'lion',       plural: 'lions' },
-  { codepoint: '1f984', singular: 'unicorn',    plural: 'unicorns' },
-  { codepoint: '1f427', singular: 'penguin',    plural: 'penguins' },
-  { codepoint: '1f422', singular: 'turtle',     plural: 'turtles' },
-  { codepoint: '1f41f', singular: 'fish',       plural: 'fish' },
-  { codepoint: '1f98b', singular: 'butterfly',  plural: 'butterflies' },
-  { codepoint: '1f41d', singular: 'bee',        plural: 'bees' },
-  { codepoint: '1f41e', singular: 'ladybug',    plural: 'ladybugs' },
-  { codepoint: '1f34e', singular: 'apple',      plural: 'apples' },
-  { codepoint: '1f34c', singular: 'banana',     plural: 'bananas' },
-  { codepoint: '1f353', singular: 'strawberry', plural: 'strawberries' },
-  { codepoint: '1f36a', singular: 'cookie',     plural: 'cookies' },
-  { codepoint: '1f382', singular: 'cake',       plural: 'cakes' },
-  { codepoint: '2b50',  singular: 'star',       plural: 'stars' },
-  { codepoint: '1f388', singular: 'balloon',    plural: 'balloons' },
-  { codepoint: '1f33b', singular: 'flower',     plural: 'flowers' },
-  { codepoint: '1f697', singular: 'car',        plural: 'cars' },
-  { codepoint: '1f680', singular: 'rocket',     plural: 'rockets' },
+  { codepoint: '1f436', singular: 'dog',        plural: 'dogs',        pluralEs: 'perros',     gender: 'm' },
+  { codepoint: '1f431', singular: 'cat',        plural: 'cats',        pluralEs: 'gatos',      gender: 'm' },
+  { codepoint: '1f430', singular: 'rabbit',     plural: 'rabbits',     pluralEs: 'conejos',    gender: 'm' },
+  { codepoint: '1f437', singular: 'pig',        plural: 'pigs',        pluralEs: 'cerdos',     gender: 'm' },
+  { codepoint: '1f438', singular: 'frog',       plural: 'frogs',       pluralEs: 'ranas',      gender: 'f' },
+  { codepoint: '1f435', singular: 'monkey',     plural: 'monkeys',     pluralEs: 'monos',      gender: 'm' },
+  { codepoint: '1f981', singular: 'lion',       plural: 'lions',       pluralEs: 'leones',     gender: 'm' },
+  { codepoint: '1f984', singular: 'unicorn',    plural: 'unicorns',    pluralEs: 'unicornios', gender: 'm' },
+  { codepoint: '1f427', singular: 'penguin',    plural: 'penguins',    pluralEs: 'pingüinos',  gender: 'm' },
+  { codepoint: '1f422', singular: 'turtle',     plural: 'turtles',     pluralEs: 'tortugas',   gender: 'f' },
+  { codepoint: '1f41f', singular: 'fish',       plural: 'fish',        pluralEs: 'peces',      gender: 'm' },
+  { codepoint: '1f98b', singular: 'butterfly',  plural: 'butterflies', pluralEs: 'mariposas',  gender: 'f' },
+  { codepoint: '1f41d', singular: 'bee',        plural: 'bees',        pluralEs: 'abejas',     gender: 'f' },
+  { codepoint: '1f41e', singular: 'ladybug',    plural: 'ladybugs',    pluralEs: 'mariquitas', gender: 'f' },
+  { codepoint: '1f34e', singular: 'apple',      plural: 'apples',      pluralEs: 'manzanas',   gender: 'f' },
+  { codepoint: '1f34c', singular: 'banana',     plural: 'bananas',     pluralEs: 'plátanos',   gender: 'm' },
+  { codepoint: '1f353', singular: 'strawberry', plural: 'strawberries',pluralEs: 'fresas',     gender: 'f' },
+  { codepoint: '1f36a', singular: 'cookie',     plural: 'cookies',     pluralEs: 'galletas',   gender: 'f' },
+  { codepoint: '1f382', singular: 'cake',       plural: 'cakes',       pluralEs: 'pasteles',   gender: 'm' },
+  { codepoint: '2b50',  singular: 'star',       plural: 'stars',       pluralEs: 'estrellas',  gender: 'f' },
+  { codepoint: '1f388', singular: 'balloon',    plural: 'balloons',    pluralEs: 'globos',     gender: 'm' },
+  { codepoint: '1f33b', singular: 'flower',     plural: 'flowers',     pluralEs: 'flores',     gender: 'f' },
+  { codepoint: '1f697', singular: 'car',        plural: 'cars',        pluralEs: 'carros',     gender: 'm' },
+  { codepoint: '1f680', singular: 'rocket',     plural: 'rockets',     pluralEs: 'cohetes',    gender: 'm' },
 ]
 
 const NUMBER_WORDS_EN = [

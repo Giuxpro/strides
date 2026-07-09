@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
     void logAIUsage(admin, {
       provider: useGroq ? 'groq' : 'openai',
-      model: useGroq ? 'whisper-large-v3-turbo' : 'whisper-1',
+      model: useGroq ? 'whisper-large-v3' : 'whisper-1',
       inputTokens: 0,
       outputTokens: 0,
       durationMs,

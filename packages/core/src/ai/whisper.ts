@@ -5,7 +5,7 @@ export type WhisperBackend = 'openai' | 'groq'
 
 const WHISPER_MODEL: Record<WhisperBackend, string> = {
   openai: 'whisper-1',
-  groq: 'whisper-large-v3-turbo',
+  groq: 'whisper-large-v3',
 }
 
 let _openai: OpenAI | undefined
@@ -26,9 +26,15 @@ const WHISPER_HALLUCINATIONS = new Set([
   'please subscribe', 'like and subscribe',
   'subtitles by', 'captions by', 'subs by',
   'you', 'the', 'a', 'i',
+  // Groq (Whisper v3) a veces filtra el prompt hacia la transcripción en silencio.
+  'the word', 'word',
 ])
 
 const HALLUCINATION_PREFIXES = ['subs by', 'subtitles by', 'captions by', 'www.', 'http']
+
+// Groq (v3) a veces hace "eco" del prompt cuando el audio es marginal, p.ej.
+// "...will say the word: shark". Se trata como noSpeech (reintento), no como error.
+const PROMPT_ECHO_FRAGMENTS = ['say the word', 'will say', 'practicing english', 'transcribe only', 'what is spoken']
 
 export async function evaluateSpeech(
   audio: File,
@@ -42,7 +48,8 @@ export async function evaluateSpeech(
     response_format: 'verbose_json',
     // temperature 0 = deterministic, reduce hallucinations in short audio
     temperature: 0,
-    // prompt guides Whisper toward the expected word — clave para palabras cortas
+    // El parámetro más impactante para palabras cortas: sin él "cat" → "cast/cut/at".
+    // Sesga la decodificación hacia la palabra esperada. Ver docs/SPEECH_RECOGNITION.md §4.
     prompt: `The student is practicing English pronunciation. They will say the word: "${expected}". Transcribe only what is spoken.`,
   }) as unknown as {
     text: string
@@ -71,7 +78,8 @@ export async function evaluateSpeech(
 
   const isHallucination =
     WHISPER_HALLUCINATIONS.has(normalizedTranscript) ||
-    HALLUCINATION_PREFIXES.some(p => normalizedTranscript.includes(p))
+    HALLUCINATION_PREFIXES.some(p => normalizedTranscript.includes(p)) ||
+    PROMPT_ECHO_FRAGMENTS.some(p => normalizedTranscript.includes(p))
 
   if (isHallucination) {
     return { transcript: '', correct: false, noSpeech: true, lowConfidence: false }

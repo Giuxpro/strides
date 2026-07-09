@@ -85,7 +85,7 @@ export function SpeechProviderSelector({ initialProvider, whisperUsage, whisperM
       {selected === 'groq-whisper' && (
         <div className="border-t border-gray-800 pt-4 space-y-1.5">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-medium text-gray-400">Whisper Large v3 Turbo · uso hoy</p>
+            <p className="text-xs font-medium text-gray-400">Whisper Large v3 · uso hoy</p>
             <AIUsageRing usage={groqWhisperUsage} model={groqWhisperModel} />
           </div>
           <div className="flex justify-between text-xs text-gray-500">

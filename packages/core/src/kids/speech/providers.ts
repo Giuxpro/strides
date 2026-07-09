@@ -35,8 +35,8 @@ export const SPEECH_PROVIDERS: SpeechProviderMeta[] = [
     label: 'Groq Whisper',
     emoji: '⚡',
     description:
-      'Whisper Large v3 Turbo procesado en servidor vía Groq. Misma precisión que OpenAI ' +
-      'pero más rápido y sin costo dentro del tier gratuito. Requiere GROQ_API_KEY configurada.',
+      'Whisper Large v3 procesado en servidor vía Groq. Gratis dentro del tier gratuito. ' +
+      'Buena precisión en ambiente silencioso; más sensible al ruido de fondo que OpenAI. Requiere GROQ_API_KEY.',
     cost: 'Gratis (free tier de Groq)',
     badge: 'Gratuito en servidor',
   },

@@ -183,9 +183,9 @@ export const MODELS: ModelMetadata[] = [
     description: 'Modelo de transcripción de OpenAI. Se usa para evaluar pronunciación de los niños.',
   },
   {
-    id: 'whisper-large-v3-turbo',
+    id: 'whisper-large-v3',
     provider: 'groq',
-    displayName: 'Whisper Large v3 Turbo',
+    displayName: 'Whisper Large v3',
     inputCostPerMTok: 0,
     outputCostPerMTok: 0,
     costPerMinute: 0,

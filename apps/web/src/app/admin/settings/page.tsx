@@ -32,8 +32,8 @@ export default async function AdminSettingsPage() {
   }
   const whisperUsage = buildUsage('whisper-1')
   const whisperModel = getModel('whisper-1')!
-  const groqWhisperUsage = buildUsage('whisper-large-v3-turbo')
-  const groqWhisperModel = getModel('whisper-large-v3-turbo')!
+  const groqWhisperUsage = buildUsage('whisper-large-v3')
+  const groqWhisperModel = getModel('whisper-large-v3')!
 
   const aiProvider = (s['ai_provider'] as string) ?? 'anthropic'
   const aiModel    = (s['ai_model']    as string) ?? 'claude-haiku-4-5'

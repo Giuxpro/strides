@@ -149,9 +149,18 @@ export function YesNoQuestion({ item, allVocab, moduleConfig, onAnswer, onSnapsh
         </div>
       </div>
 
-      <p className="text-[11px] font-semibold" style={{ color: 'var(--kids-text-muted)' }}>
-        Desliza ➡️ si coinciden · ⬅️ si no
-      </p>
+      {answered === false ? (
+        <span
+          className="correct-glow inline-block px-3 py-1.5 rounded-full text-xs font-extrabold"
+          style={{ background: 'rgba(34,197,94,0.15)', color: '#16a34a' }}
+        >
+          Era: {isMatch ? 'sí coinciden ✓' : 'no coinciden ✗'}
+        </span>
+      ) : (
+        <p className="text-[11px] font-semibold" style={{ color: 'var(--kids-text-muted)' }}>
+          Desliza ➡️ si coinciden · ⬅️ si no
+        </p>
+      )}
     </div>
   )
 }

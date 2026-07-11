@@ -10,6 +10,7 @@ interface Props {
   childAvatar: string
   currentStreak: number
   moduleLockStates: Record<string, ModuleLockState>
+  reviewCount: number
 }
 
 export function KidsMapScene(props: Props) {

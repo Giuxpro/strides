@@ -72,14 +72,15 @@ export function WordChoiceQuestion({ item, allVocab, onAnswer, onSnapshot, revie
         {options.map(o => {
           const sel = selected === o.id
           const correct = o.id === vocab.id
-          const border = sel ? (correct ? '#22c55e' : '#ef4444') : 'var(--kids-border-color)'
+          const revealCorrect = !readOnly && selected !== null && selected !== vocab.id && correct
+          const border = sel ? (correct ? '#22c55e' : '#ef4444') : (revealCorrect ? '#22c55e' : 'var(--kids-border-color)')
           return (
             <button
               key={o.id}
               onClick={() => pick(o)}
               disabled={readOnly || selected !== null}
-              className="py-3 rounded-xl font-bold text-base capitalize transition-all active:scale-95"
-              style={{ background: 'var(--kids-bg)', border: `2px solid ${border}`, color: sel ? border : 'var(--kids-text)' }}
+              className={`py-3 rounded-xl font-bold text-base capitalize transition-all active:scale-95 ${revealCorrect ? 'correct-glow' : ''}`}
+              style={{ background: 'var(--kids-bg)', border: `2px solid ${border}`, color: sel || revealCorrect ? '#22c55e' : 'var(--kids-text)' }}
             >
               {o.text_en}
             </button>

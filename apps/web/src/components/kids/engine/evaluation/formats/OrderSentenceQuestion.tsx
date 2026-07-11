@@ -136,6 +136,15 @@ export function OrderSentenceQuestion({ item, moduleConfig, onAnswer, onSnapshot
           ⌫ Borrar
         </button>
       )}
+
+      {done === 'wrong' && !readOnly && (
+        <span
+          className="correct-glow inline-block px-3 py-1.5 rounded-full text-sm font-extrabold capitalize"
+          style={{ background: 'rgba(34,197,94,0.15)', color: '#16a34a' }}
+        >
+          Era: {words.join(' ')}
+        </span>
+      )}
     </div>
   )
 }

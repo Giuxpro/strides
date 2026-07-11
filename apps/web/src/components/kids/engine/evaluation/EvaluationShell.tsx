@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import type { ModuleConfig, VocabItem, WordResult, EvaluationConfig, EvalItem, EvalAttemptQuestion } from '@strides/core/kids'
-import { buildEvalItems, getEvalFormat } from '@strides/core/kids'
+import { buildEvalItems, getEvalFormat, resolveEvalFormats } from '@strides/core/kids'
 import { getEvalFormatComponent } from './formatPool'
+import { RecycleRound } from './RecycleRound'
 import type { EvalSnapshot } from './snapshots'
 
 export interface PreviousAttempt {
@@ -33,8 +34,9 @@ export function EvaluationShell({ config, vocab, enabled, childAge, previewMode 
   // Los ítems se generan tras montar (usan Math.random): si se generaran en el
   // render del servidor, el HTML SSR ≠ cliente → error de hidratación.
   const [items, setItems]       = useState<EvalItem[] | null>(null)
-  const [stage, setStage]       = useState<'intro' | 'playing' | 'review'>('intro')
+  const [stage, setStage]       = useState<'intro' | 'playing' | 'review' | 'recycle'>('intro')
   const [results, setResults]   = useState<(boolean | null)[]>([])
+  const [recycleWords, setRecycleWords] = useState<VocabItem[]>([])
   const [timeLeft, setTimeLeft] = useState(config.timerSeconds ?? 0)
   const [confirmRetake, setConfirmRetake] = useState(false)
   // El primer audio espera a que la página cargue y las voces estén disponibles:
@@ -62,6 +64,35 @@ export function EvaluationShell({ config, vocab, enabled, childAge, previewMode 
       snapshot: snapshotsRef.current[i] ?? null,
     }))
     onComplete({ correct, total: its.length, wordResults, detail })
+  }
+
+  // Al terminar: si hubo palabras respondidas mal, pasa al reciclaje correctivo
+  // (segunda oportunidad) antes de cerrar; si no, cierra directo.
+  function handleTerminar() {
+    const its = itemsRef.current ?? []
+    const res = resultsRef.current
+    const seen = new Set<string>()
+    const failed: VocabItem[] = []
+    its.forEach((it, i) => {
+      if (res[i] === false && !seen.has(it.vocab.id)) {
+        seen.add(it.vocab.id)
+        failed.push(it.vocab)
+      }
+    })
+    if (failed.length === 0) { finish(); return }
+    setRecycleWords(failed)
+    setStage('recycle')
+  }
+
+  // Vuelta del reciclaje: las palabras recuperadas corrigen sus ítems a correctos
+  // (mejora la nota) antes de cerrar.
+  function handleRecycleDone(recovered: Set<string>) {
+    const its = itemsRef.current ?? []
+    const corrected = resultsRef.current.map((r, i) =>
+      r === false && recovered.has(its[i]!.vocab.id) ? true : r)
+    resultsRef.current = corrected
+    setResults(corrected)
+    finish()
   }
 
   // Listo = documento cargado + voces de síntesis disponibles (con fallback por si
@@ -261,6 +292,20 @@ export function EvaluationShell({ config, vocab, enabled, childAge, previewMode 
     )
   }
 
+  if (stage === 'recycle') {
+    const usable = resolveEvalFormats({ config, enabled, childAge })
+    const formatIds = [...usable.receptive, ...usable.productive].map(f => f.id)
+    return (
+      <RecycleRound
+        words={recycleWords}
+        allVocab={vocab}
+        moduleConfig={moduleConfig}
+        formatIds={formatIds}
+        onDone={handleRecycleDone}
+      />
+    )
+  }
+
   if (items === null) return null
 
   if (items.length === 0) {
@@ -366,9 +411,9 @@ export function EvaluationShell({ config, vocab, enabled, childAge, previewMode 
           })}
         </div>
 
-        {/* ── Terminar: el niño cierra cuando quiera ── */}
+        {/* ── Terminar: el niño cierra cuando quiera (pasa por el reciclaje si falló) ── */}
         <button
-          onClick={finish}
+          onClick={handleTerminar}
           className="w-full mt-5 text-white font-extrabold px-6 py-3.5 rounded-2xl transition-all hover:scale-[1.02] active:scale-95"
           style={{ background: moduleConfig.accent }}
         >

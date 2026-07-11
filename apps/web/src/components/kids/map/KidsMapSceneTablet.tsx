@@ -2,11 +2,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { logout } from '@/app/actions/auth'
 import type { Module } from '@strides/db'
 import type { ModuleLockState } from '@strides/core'
 import { getModuleConfig } from '@strides/core/kids'
 import { getStorageUrl } from '@strides/core'
+import { ReforzarPill } from './ReforzarPill'
 
 const ISLAND_STORAGE_PATHS: Partial<Record<string, string>> = {
   animales:      'module-covers/animal_island_mobile.png',
@@ -24,9 +24,10 @@ interface Props {
   childAvatar: string
   currentStreak: number
   moduleLockStates: Record<string, ModuleLockState>
+  reviewCount: number
 }
 
-export function KidsMapSceneTablet({ modules, childName, childAvatar, currentStreak, moduleLockStates }: Props) {
+export function KidsMapSceneTablet({ modules, childName, childAvatar, currentStreak, moduleLockStates, reviewCount }: Props) {
   const [page, setPage] = useState(0)
 
   const totalPages = Math.max(1, Math.ceil(modules.length / PER_PAGE))
@@ -43,10 +44,18 @@ export function KidsMapSceneTablet({ modules, childName, childAvatar, currentStr
         backgroundPosition: 'center',
       }}
     >
+      {/* Marca — sobre la ruedita de ajustes (esquina superior derecha) */}
+      <span
+        className="fixed top-1.5 right-3 z-40 font-bold tracking-widest uppercase text-white/70 text-xs"
+        style={{ textShadow: '0 1px 6px rgba(40,0,100,0.6)' }}
+      >
+        Strides
+      </span>
+
       {/* Header */}
-      <header className="flex items-center justify-between px-8 py-4 z-30">
-        <span className="font-bold tracking-widest uppercase text-white/70 text-xs">Strides</span>
-        <div className="flex items-center gap-5 mr-14">
+      <header className="flex items-center px-8 py-4 z-30">
+        <ReforzarPill count={reviewCount} />
+        <div className="flex items-center gap-5 mr-14 ml-auto">
           {currentStreak > 0 ? (
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-400/20 border border-orange-400/40">
               <span>🔥</span>
@@ -63,9 +72,6 @@ export function KidsMapSceneTablet({ modules, childName, childAvatar, currentStr
             <span className="text-xl">{childAvatar}</span>
             {childName && <span className="text-sm">{childName}</span>}
           </Link>
-          <form action={logout}>
-            <button type="submit" className="text-white/40 text-xs hover:opacity-70 transition-opacity">Salir</button>
-          </form>
         </div>
       </header>
 

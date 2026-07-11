@@ -88,14 +88,15 @@ export function ChoiceQuestion({ item, allVocab, onAnswer, onSnapshot, review, a
         {options.map(o => {
           const sel = selected === o.id
           const correct = o.id === vocab.id
-          const border = sel ? (correct ? '#22c55e' : '#ef4444') : 'var(--kids-border-color)'
+          const revealCorrect = !readOnly && selected !== null && selected !== vocab.id && correct
+          const border = sel ? (correct ? '#22c55e' : '#ef4444') : (revealCorrect ? '#22c55e' : 'var(--kids-border-color)')
           const img = getVocabImageUrl(o)
           return (
             <button
               key={o.id}
               onClick={() => pick(o)}
               disabled={readOnly || selected !== null}
-              className="w-[58px] h-[58px] rounded-xl flex items-center justify-center transition-all active:scale-95"
+              className={`w-[58px] h-[58px] rounded-xl flex items-center justify-center transition-all active:scale-95 ${revealCorrect ? 'correct-glow' : ''}`}
               style={{ background: 'var(--kids-bg)', border: `2.5px solid ${border}` }}
             >
               {img ? (

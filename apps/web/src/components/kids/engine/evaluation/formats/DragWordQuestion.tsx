@@ -125,7 +125,8 @@ export function DragWordQuestion({ item, allVocab, moduleConfig, onAnswer, onSna
         {tiles.map(t => {
           const dragging = drag?.id === t.id
           const dropped = result !== null && t.id === droppedId
-          const dropBorder = dropped ? (result === 'correct' ? '#22c55e' : '#ef4444') : 'var(--kids-border-color)'
+          const revealCorrect = !readOnly && result === 'wrong' && t.id === vocab.id
+          const dropBorder = dropped ? (result === 'correct' ? '#22c55e' : '#ef4444') : (revealCorrect ? '#22c55e' : 'var(--kids-border-color)')
           return (
             <button
               key={t.id}
@@ -133,12 +134,12 @@ export function DragWordQuestion({ item, allVocab, moduleConfig, onAnswer, onSna
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
               disabled={readOnly || result !== null}
-              className="px-4 h-[44px] rounded-xl font-bold text-sm capitalize select-none"
+              className={`px-4 h-[44px] rounded-xl font-bold text-sm capitalize select-none ${revealCorrect ? 'correct-glow' : ''}`}
               style={{
                 touchAction: 'none',
                 background: 'var(--kids-bg)',
                 border: `2px solid ${dropBorder}`,
-                color: dropped ? dropBorder : 'var(--kids-text)',
+                color: dropped || revealCorrect ? dropBorder : 'var(--kids-text)',
                 transform: dragging ? `translate(${drag!.x}px, ${drag!.y}px)` : 'none',
                 transition: dragging ? 'none' : 'transform 0.2s',
                 zIndex: dragging ? 10 : 1,

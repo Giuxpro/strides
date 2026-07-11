@@ -23,6 +23,11 @@ export type { EvaluationConfig, EvalItem, EvalManualItem, EvalAttemptQuestion } 
 export { DEFAULT_EVALUATION_CONFIG, resolveEvalFormats, buildEvalItems } from './evaluation/config'
 export type { RetoId, RetoConfig, RetoState, RetoEntry } from './retos/registry'
 export { RETO_REGISTRY } from './retos/registry'
+export type { ReviewMasteryRow, ReviewRankingOptions, RankedReviewWord } from './repaso/ranking'
+export { rankReviewWords, REVIEW_RANKING_DEFAULTS, REVIEW_SESSION_SIZE, REVIEW_MIN_POOL } from './repaso/ranking'
+export type { ReviewSessionStep } from './repaso/session'
+export { buildReviewSession, REVIEW_ROUNDS } from './repaso/session'
+export { REVIEW_MODULE_CONFIG } from './repaso/theme'
 export type {
   OnboardingFlow,
   HeroBlockProps, FeatureBlockProps, CTABlockProps,

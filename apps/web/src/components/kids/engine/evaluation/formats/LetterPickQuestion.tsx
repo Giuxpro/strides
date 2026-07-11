@@ -104,14 +104,15 @@ function LetterPick({ item, moduleConfig, onAnswer, onSnapshot, review, autoPlay
         {options.map(letter => {
           const sel = selected === letter
           const correct = letter === target
-          const border = sel ? (correct ? '#22c55e' : '#ef4444') : 'var(--kids-border-color)'
+          const revealCorrect = !readOnly && selected !== null && selected !== target && correct
+          const border = sel ? (correct ? '#22c55e' : '#ef4444') : (revealCorrect ? '#22c55e' : 'var(--kids-border-color)')
           return (
             <button
               key={letter}
               onClick={() => pick(letter)}
               disabled={readOnly || selected !== null}
-              className="w-[48px] h-[48px] rounded-xl font-extrabold text-xl transition-all active:scale-90"
-              style={{ background: 'var(--kids-bg)', border: `2.5px solid ${border}`, color: sel ? border : 'var(--kids-text)' }}
+              className={`w-[48px] h-[48px] rounded-xl font-extrabold text-xl transition-all active:scale-90 ${revealCorrect ? 'correct-glow' : ''}`}
+              style={{ background: 'var(--kids-bg)', border: `2.5px solid ${border}`, color: sel || revealCorrect ? '#22c55e' : 'var(--kids-text)' }}
             >
               {letter}
             </button>

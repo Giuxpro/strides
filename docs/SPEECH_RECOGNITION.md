@@ -317,26 +317,38 @@ Cuando se detecta una alucinación, se devuelve `noSpeech: true` para darle al n
 
 ---
 
-## 7. Proveedores de voz — Web Speech vs Whisper
+## 7. Proveedores de voz — Web Speech vs OpenAI Whisper vs Groq Whisper
 
-El sistema soporta dos providers, configurable desde el panel admin en `Settings > Reconocimiento de voz`.
+El sistema soporta **tres** providers, configurables desde el panel admin en `Settings > Reconocimiento de voz` (`SpeechProvider = 'web-speech' | 'whisper' | 'groq-whisper'`).
 
-| | Web Speech API | Whisper |
-|---|---|---|
-| **Costo** | Gratis | ~$0.006/min |
-| **Latencia** | Muy baja (~200ms) | Alta (~1.5–3s) |
-| **Precisión** | Media | Alta |
-| **Funciona offline** | No (requiere servidor del navegador) | No |
-| **Soporte iOS** | Limitado (Safari quirky) | Sí |
-| **Soporte Chrome** | Excelente | Sí |
-| **Para niños pequeños** | Suficiente para MVP | Recomendado |
+| | Web Speech API | OpenAI Whisper | Groq Whisper (v3) |
+|---|---|---|---|
+| **Costo** | Gratis | ~$0.006/min | Gratis (free tier) |
+| **Dónde corre** | Navegador | Servidor (OpenAI) | Servidor (Groq) |
+| **Latencia** | Muy baja (~200ms) | Alta (~1.5–3s) | Media (~0.7–1.3s) |
+| **Precisión palabras cortas** | Media | Alta | Buena en silencio, floja con ruido |
+| **`no_speech_prob` fiable** | n/a | Sí | **No (ver §7.1)** |
+| **Para niños pequeños** | Suficiente para MVP | Recomendado (máx fiabilidad) | OK gratis, en ambiente silencioso |
 
 ### Cuándo usar cada uno
 
-- **Web Speech** — Buena opción para vocabulario básico, respuesta inmediata, zero costo.
-- **Whisper** — Cuando se necesita alta precisión (palabras difíciles, acento no nativo) y el costo no es un blockeante.
+- **Web Speech** — vocabulario básico, respuesta inmediata, zero costo. Juzga en el navegador.
+- **OpenAI Whisper** — máxima fiabilidad (ruido, acento, 1er intento). Cuesta pero es el más robusto.
+- **Groq Whisper** — gratis y decente en ambiente silencioso; ver limitaciones abajo.
 
-El proveedor activo se lee de la tabla `settings` con clave `speech_provider` y se inyecta en `SpeechConfigContext` para que llegue a `SpeakingExercise`.
+El proveedor activo se lee de la tabla `settings` con clave `speech_provider` y se inyecta en `SpeechConfigContext` para que llegue a `SpeakingExercise`. `web-speech` juzga en el cliente; `whisper` y `groq-whisper` graban + POST a `/api/speech/evaluate`, que enruta el backend según el setting. La **verificación de coincidencia es única y compartida** (`@strides/core/speech`), así los tres proveedores juzgan idéntico.
+
+### 7.1 Groq Whisper — lecciones aprendidas (2026-07-08)
+
+Groq expone Whisper vía API compatible con OpenAI, pero **no es intercambiable 1:1**:
+
+- **`whisper-large-v3-turbo` NO sirve** para palabras cortas: alucina fuerte ("crab"→"Wow", "bee"→"BING") e **ignora el prompt sesgado**. Se usa el **no-turbo `whisper-large-v3`**, notablemente mejor.
+- **`no_speech_prob` no es fiable en Groq.** El turbo lo devuelve siempre `0`; el no-turbo da valores bajos (0.02–0.24) que se **solapan** entre voz real y alucinación. El gate `> 0.7` (que sí funciona en OpenAI) **nunca dispara**. Esta es la señal que OpenAI usaba para convertir el audio marginal del 1er intento en "intenta otra vez"; Groq no la tiene, así que ese audio se transcribe como basura → "mal".
+- **`avg_logprob` tampoco separa** basura de acierto en Groq (un acierto tuvo -2.2 y una alucinación -1.0). No usar confianza como gate en Groq.
+- **El prompt sesgado se "filtra"** hacia la transcripción en audio marginal ("...will say the word: shark"). Mitigado tratando fragmentos del prompt como alucinación (`PROMPT_ECHO_FRAGMENTS` en `whisper.ts`) → reintento en vez de error.
+- **Sensible al ruido de fondo.** Con sonido ambiente captado por el micro, la precisión cae; en silencio acierta la mayoría (~10/12 palabras, casi todo al 2º intento).
+
+**Veredicto:** Groq v3 es usable gratis en ambiente silencioso (MVP en casa). Para máxima fiabilidad (ruido, 1er intento), OpenAI sigue siendo superior por su `no_speech_prob`.
 
 ---
 
@@ -346,7 +358,8 @@ El proveedor activo se lee de la tabla `settings` con clave `speech_provider` y 
 |---|---|
 | `apps/web/src/components/kids/engine/games/SpeakingExercise.tsx` | Componente UI + grabación + VAD |
 | `apps/web/src/app/api/speech/evaluate/route.ts` | API Route — recibe audio, llama evaluateSpeech |
-| `packages/core/src/ai/whisper.ts` | Lógica de llamada a Whisper + evaluación de coincidencia |
+| `packages/core/src/ai/whisper.ts` | Llamada a Whisper (OpenAI/Groq según backend) + gates de alucinación/silencio |
+| `packages/core/src/speech/matching.ts` | Verificación de coincidencia (`normalizeSpeech`, `isSpeechMatch`) — fuente única compartida por cliente y server |
 | `apps/web/src/components/kids/engine/SpeechConfigContext.tsx` | Context que propaga el provider activo |
 | `packages/db/src/queries/ai-usage.ts` | Registro de uso y costo de Whisper |
 

@@ -11,6 +11,7 @@ interface Props {
   paidExpired: number
   checkoutAbandoned: number
   monthlyPrice: number
+  currencySymbol: string
 }
 
 interface TPayload { value: number; name: string; payload: { color: string } }
@@ -75,7 +76,7 @@ function LegendRow({ s, total }: { s: Slice; total: number }) {
   )
 }
 
-export function SubBreakdown({ paidActive, trialActive, complimentaryActive, trialExpired, paidExpired, checkoutAbandoned, monthlyPrice }: Props) {
+export function SubBreakdown({ paidActive, trialActive, complimentaryActive, trialExpired, paidExpired, checkoutAbandoned, monthlyPrice, currencySymbol }: Props) {
   const allSlices: Slice[] = [
     {
       name: 'Activos pagados', value: paidActive, color: '#10B981', active: true,
@@ -182,12 +183,12 @@ export function SubBreakdown({ paidActive, trialActive, complimentaryActive, tri
             </div>
           </div>
           <span className="text-sm font-bold" style={{ color: mrr > 0 ? '#34D399' : '#4B5563', fontVariantNumeric: 'tabular-nums' }}>
-            {mrr > 0 ? `$${mrr.toLocaleString('es-AR')}` : paidActive === 0 ? 'Sin pagos aún' : '—'}
+            {mrr > 0 ? `${currencySymbol}${mrr.toLocaleString('es-AR')}` : paidActive === 0 ? 'Sin pagos aún' : '—'}
           </span>
         </div>
         {paidActive > 0 && monthlyPrice > 0 && (
           <p className="text-[10px] text-gray-700">
-            {paidActive} activa{paidActive !== 1 ? 's' : ''} × ${monthlyPrice}/mes
+            {paidActive} activa{paidActive !== 1 ? 's' : ''} × {currencySymbol}{monthlyPrice}/mes
           </p>
         )}
       </div>

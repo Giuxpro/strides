@@ -2,7 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { LessonEngine, type LessonStep, type ExerciseData, type VocabItem } from '@/components/kids/engine/LessonEngine'
-import { getModuleConfig, isSpeechProvider, DEFAULT_SPEECH_PROVIDER, DEFAULT_EVAL_FORMATS, type EvaluationConfig } from '@strides/core/kids'
+import { getModuleConfig, isSpeechProvider, DEFAULT_SPEECH_PROVIDER, DEFAULT_EVAL_FORMATS, type EvaluationConfig, type EvalAttemptQuestion } from '@strides/core/kids'
+import { getEvaluationAttempt } from '@strides/db'
 
 interface Props {
   params: Promise<{ moduleSlug: string; lessonSlug: string }>
@@ -83,6 +84,20 @@ export default async function LessonPage({ params }: Props) {
     .map(r => r.vocabulary_items as unknown as VocabItem | null)
     .filter((v): v is VocabItem => !!v)
 
+  // Intento previo de la evaluación: si existe, la intro ofrece ver respuestas o repetir.
+  const { data: attemptRow } = childId
+    ? await getEvaluationAttempt(supabase, childId, lesson.id)
+    : { data: null }
+  const previousEvalAttempt = attemptRow
+    ? {
+        detail: (attemptRow.detail as unknown as EvalAttemptQuestion[]) ?? [],
+        correct: attemptRow.correct,
+        total: attemptRow.total,
+        stars: attemptRow.stars,
+        attempts: attemptRow.attempts,
+      }
+    : null
+
   const steps = (rawSteps ?? [])
     .flatMap((s): LessonStep[] => {
       if (s.step_type === 'exercise') {
@@ -121,6 +136,7 @@ export default async function LessonPage({ params }: Props) {
       speechProvider={speechProvider}
       childAge={childAge}
       evalFormatsEnabled={evalFormatsEnabled}
+      previousEvalAttempt={previousEvalAttempt}
     />
   )
 }

@@ -8,3 +8,4 @@ dist
 .claude/settings.local.json
 apps/web/certificates/
 apps/web/mkcert/
+.playwright-mcp/

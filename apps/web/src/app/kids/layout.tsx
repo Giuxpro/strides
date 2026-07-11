@@ -48,7 +48,12 @@ export default async function KidsLayout({ children }: { children: React.ReactNo
     supabase.from('settings').select('value').eq('key', 'audio_config').maybeSingle(),
   ])
 
-  const voicePreset  = isVoicePreset(voiceRow?.value) ? voiceRow.value : DEFAULT_VOICE_PRESET
+  // Preferencia del usuario (cookie por dispositivo) tiene prioridad sobre la voz
+  // global que fija el admin.
+  const cookieVoice  = cookies().get('kids_voice')?.value
+  const voicePreset  = isVoicePreset(cookieVoice)
+    ? cookieVoice
+    : isVoicePreset(voiceRow?.value) ? voiceRow.value : DEFAULT_VOICE_PRESET
   const rawConfig    = isAudioConfig(audioRow?.value) ? audioRow.value : DEFAULT_AUDIO_CONFIG
   const audioConfig  = {
     ...rawConfig,
@@ -75,8 +80,8 @@ export default async function KidsLayout({ children }: { children: React.ReactNo
           <VoicePresetProvider preset={voicePreset}>
             {children}
             <PresenceTracker childId={selectedChildId} />
+            <ThemeButton currentTheme={themeId} />
           </VoicePresetProvider>
-          <ThemeButton currentTheme={themeId} />
         </ClickSoundProvider>
       </MusicProvider>
     </div>

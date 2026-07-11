@@ -96,7 +96,7 @@ export async function getAnalyticsSummary(db: DB): Promise<AnalyticsSummary> {
     db.from('modules').select('*', { count: 'exact', head: true }).eq('is_published', true),
     db.from('lessons').select('*', { count: 'exact', head: true }),
     db.from('vocabulary_items').select('*', { count: 'exact', head: true }),
-    db.from('child_streaks').select('current_streak').gt('current_streak', 0),
+    db.from('child_streaks_status').select('effective_streak').gt('effective_streak', 0),
     db.from('child_game_plays').select('child_id').gte('played_at', weekAgo.toISOString()),
     db.from('evaluation_results').select('score'),
   ])
@@ -150,7 +150,7 @@ export async function getAnalyticsSummary(db: DB): Promise<AnalyticsSummary> {
     totalVocab: totalVocab ?? 0,
     totalStreaksActive: streakArr.length,
     avgStreakActive: streakArr.length > 0
-      ? Math.round(streakArr.reduce((s, r) => s + (r.current_streak ?? 0), 0) / streakArr.length)
+      ? Math.round(streakArr.reduce((s, r) => s + (r.effective_streak ?? 0), 0) / streakArr.length)
       : 0,
     childrenActiveThisWeek: childrenSet.size,
     totalEvals: evalsArr.length,

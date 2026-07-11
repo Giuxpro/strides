@@ -1,4 +1,4 @@
-export type SpeechProvider = 'web-speech' | 'whisper'
+export type SpeechProvider = 'web-speech' | 'whisper' | 'groq-whisper'
 
 export interface SpeechProviderMeta {
   id: SpeechProvider
@@ -30,10 +30,20 @@ export const SPEECH_PROVIDERS: SpeechProviderMeta[] = [
     cost: '~$0.0003 por intento (audio de ~3 seg)',
     badge: 'Recomendado para producción',
   },
+  {
+    id: 'groq-whisper',
+    label: 'Groq Whisper',
+    emoji: '⚡',
+    description:
+      'Whisper Large v3 procesado en servidor vía Groq. Gratis dentro del tier gratuito. ' +
+      'Buena precisión en ambiente silencioso; más sensible al ruido de fondo que OpenAI. Requiere GROQ_API_KEY.',
+    cost: 'Gratis (free tier de Groq)',
+    badge: 'Gratuito en servidor',
+  },
 ]
 
 export const DEFAULT_SPEECH_PROVIDER: SpeechProvider = 'web-speech'
 
 export function isSpeechProvider(v: unknown): v is SpeechProvider {
-  return v === 'web-speech' || v === 'whisper'
+  return v === 'web-speech' || v === 'whisper' || v === 'groq-whisper'
 }

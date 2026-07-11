@@ -2,11 +2,11 @@
 
 import { useState, useRef } from 'react'
 import Link from 'next/link'
-import { logout } from '@/app/actions/auth'
 import type { Module } from '@strides/db'
 import type { ModuleLockState } from '@strides/core'
 import { getModuleConfig } from '@strides/core/kids'
 import { getStorageUrl } from '@strides/core'
+import { ReforzarPill } from './ReforzarPill'
 
 const ISLAND_STORAGE_PATHS: Partial<Record<string, string>> = {
   animales:      'module-covers/animal_island_mobile.png',
@@ -23,9 +23,10 @@ interface Props {
   childAvatar: string
   currentStreak: number
   moduleLockStates: Record<string, ModuleLockState>
+  reviewCount: number
 }
 
-export function KidsMapSceneMobile({ modules, childName, childAvatar, currentStreak, moduleLockStates }: Props) {
+export function KidsMapSceneMobile({ modules, childName, childAvatar, currentStreak, moduleLockStates, reviewCount }: Props) {
   const [mobileSlide, setMobileSlide] = useState(0)
   const carouselRef = useRef<HTMLDivElement>(null)
 
@@ -48,23 +49,33 @@ export function KidsMapSceneMobile({ modules, childName, childAvatar, currentStr
       className="block md:hidden relative overflow-hidden"
       style={{ height: '100dvh', backgroundColor: '#6b21a8' }}
     >
+      {/* Marca — sobre la ruedita de ajustes (esquina superior derecha) */}
+      <span
+        className="fixed top-1 right-3 z-40 font-bold tracking-widest uppercase text-white/70 text-[0.6rem]"
+        style={{ textShadow: '0 1px 6px rgba(40,0,100,0.6)' }}
+      >
+        Strides
+      </span>
+
       {/* Header */}
-      <header className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-5 py-3">
-        <span className="font-bold tracking-widest uppercase text-white/60 text-[0.6rem]">Strides</span>
-        <div className="flex items-center gap-3 mr-14">
-          {currentStreak > 0 && (
+      <header className="absolute top-0 left-0 right-0 z-30 flex items-center px-5 py-3">
+        <ReforzarPill count={reviewCount} />
+        <div className="flex items-center gap-3 mr-14 ml-auto">
+          {currentStreak > 0 ? (
             <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-400/20 border border-orange-400/40">
               <span className="text-base">🔥</span>
               <span className="font-bold text-white text-sm">{currentStreak}</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/10 border border-white/20">
+              <span className="text-base opacity-60 grayscale">🔥</span>
+              <span className="text-white/60 text-sm">Sin racha</span>
             </div>
           )}
           <Link href="/select-profile" className="flex items-center gap-1.5 text-white/80 text-sm">
             <span className="text-lg">{childAvatar}</span>
             {childName && <span>{childName}</span>}
           </Link>
-          <form action={logout}>
-            <button type="submit" className="text-white/40 text-xs">Salir</button>
-          </form>
         </div>
       </header>
 

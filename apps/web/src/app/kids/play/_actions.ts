@@ -35,6 +35,9 @@ export async function completeLesson(formData: FormData) {
   const score       = Number(formData.get('score'))
   const stars       = Math.min(3, Math.max(0, Number(formData.get('stars'))))
   const wordResultsRaw = formData.get('wordResults') as string | null
+  const evalDetailRaw  = formData.get('evalDetail') as string | null
+  const evalCorrect    = Number(formData.get('evalCorrect') ?? 0)
+  const evalTotal      = Number(formData.get('evalTotal') ?? 0)
 
   const supabase = createClient()
   const selectedChildId = cookies().get('selected_child_id')?.value
@@ -61,6 +64,27 @@ export async function completeLesson(formData: FormData) {
   ])
 
   if (error) throw new Error(`completeLesson: ${error.message}`)
+
+  // Registro revisable de la evaluación: una fila por (child, lesson). Repetir
+  // reemplaza el detalle e incrementa el contador de intentos (trazabilidad).
+  if (evalTotal > 0 && evalDetailRaw) {
+    const { data: prevAttempt } = await supabase
+      .from('child_evaluation_attempts')
+      .select('attempts')
+      .eq('child_id', selectedChildId)
+      .eq('lesson_id', lessonId)
+      .maybeSingle()
+    await supabase.from('child_evaluation_attempts').upsert({
+      child_id:  selectedChildId,
+      lesson_id: lessonId,
+      score,
+      correct:   evalCorrect,
+      total:     evalTotal,
+      stars,
+      attempts:  (prevAttempt?.attempts ?? 0) + 1,
+      detail:    JSON.parse(evalDetailRaw),
+    }, { onConflict: 'child_id,lesson_id' })
+  }
 
   revalidatePath('/kids/play')
 

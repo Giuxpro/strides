@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, type ComponentType } from 'react'
-import type { VocabItem, ModuleConfig, ModifierConfig, GameResult, WordResult } from '@strides/core/kids'
+import type { VocabItem, ModuleConfig, ModifierConfig, GameResult, WordResult, GameRuntimeConfig } from '@strides/core/kids'
 import type { GameProps } from '../gamePool'
 import { GameEventsContext } from './ModifierContext'
 import { playWrongSound, playVictoryFanfare } from '@/lib/gameAudio'
@@ -14,9 +14,10 @@ interface Props {
   onBack: () => void
   moduleConfig: ModuleConfig
   progress?: { current: number; total: number }
+  gameConfig?: GameRuntimeConfig
 }
 
-export function ModifierStack({ game: Game, items, modifiers, onGameEnd, onBack, moduleConfig, progress }: Props) {
+export function ModifierStack({ game: Game, items, modifiers, onGameEnd, onBack, moduleConfig, progress, gameConfig }: Props) {
   const timerCfg  = modifiers.find((m): m is { type: 'timer'; seconds: number } => m.type === 'timer')
   const livesCfg  = modifiers.find((m): m is { type: 'lives'; count: number } => m.type === 'lives')
 
@@ -88,6 +89,7 @@ export function ModifierStack({ game: Game, items, modifiers, onGameEnd, onBack,
           onBack={onBack}
           moduleConfig={moduleConfig}
           progress={progress}
+          config={gameConfig}
         />
 
         {/* Timer bar */}

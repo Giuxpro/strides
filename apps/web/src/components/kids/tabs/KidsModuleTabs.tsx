@@ -41,6 +41,7 @@ interface Props {
   speechProvider?: SpeechProvider
   showNps?: boolean
   lessonLockStates?: Record<string, LessonLockState>
+  cardSoundsEnabled?: boolean
 }
 
 export function KidsModuleTabs({
@@ -51,6 +52,7 @@ export function KidsModuleTabs({
   speechProvider = 'web-speech',
   showNps = false,
   lessonLockStates = {},
+  cardSoundsEnabled = true,
 }: Props) {
   const [tab, setTab] = useState<TabId>('aprender')
   const [npsVisible, setNpsVisible] = useState(showNps)
@@ -72,7 +74,7 @@ export function KidsModuleTabs({
               stars={starsMap[lesson.id] ?? 0}
               previousStars={lesson.id === animLessonId ? animPrevStars : undefined}
               animationDelay={`${index * 90}ms`}
-              audioUrl={getStorageUrl(lesson.audio_url) ?? undefined}
+              audioUrl={cardSoundsEnabled ? getStorageUrl(lesson.audio_url) ?? undefined : undefined}
               lockState={lessonLockStates[lesson.id]}
             />
           ))}

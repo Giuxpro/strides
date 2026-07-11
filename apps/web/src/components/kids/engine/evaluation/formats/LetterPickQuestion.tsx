@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { getVocabImageUrl } from '@strides/core/kids'
 import { useSpeak } from '@/components/kids/audio/VoicePresetProvider'
 import type { EvalFormatProps } from '../types'
+import type { LetterPickSnapshot } from '../snapshots'
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 
@@ -21,30 +22,42 @@ function buildOptions(target: string): string[] {
   return shuffle([target, ...distractors])
 }
 
-function LetterPick({ item, moduleConfig, onAnswer, autoPlay = true, mode }: EvalFormatProps & { mode: 'missing' | 'first' }) {
+function LetterPick({ item, moduleConfig, onAnswer, onSnapshot, review, autoPlay = true, mode }: EvalFormatProps & { mode: 'missing' | 'first' }) {
   const speak = useSpeak()
   const { vocab } = item
   const word = vocab.text_en.toUpperCase()
   const imgUrl = getVocabImageUrl(vocab)
+  const rev = review?.kind === 'letterpick' ? review : null
+  const readOnly = !!rev
 
   const [{ blankIdx, target, options }] = useState(() => {
+    if (rev) return { blankIdx: rev.blankIdx, target: rev.target, options: rev.options }
     const idx = mode === 'first' ? 0 : Math.floor(Math.random() * word.length)
     const t = word[idx] ?? word[0]!
     return { blankIdx: idx, target: t, options: buildOptions(t) }
   })
-  const [selected, setSelected] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string | null>(rev ? rev.picked : null)
 
   useEffect(() => {
-    if (!autoPlay) return
+    if (readOnly) return
+    onSnapshot?.({ kind: 'letterpick', mode, blankIdx, target, options, picked: null })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    // En "sonido inicial" no se reproduce audio: el niño debe deducir la letra
+    // por el dibujo, no oír la palabra.
+    if (readOnly || !autoPlay || mode === 'first') return
     const t = setTimeout(() => speak(vocab.text_en), 300)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPlay])
 
   function pick(letter: string) {
-    if (selected !== null) return
+    if (readOnly || selected !== null) return
     setSelected(letter)
-    setTimeout(() => onAnswer(letter === target), 800)
+    const snapshot: LetterPickSnapshot = { kind: 'letterpick', mode, blankIdx, target, options, picked: letter }
+    onAnswer(letter === target, snapshot)
   }
 
   return (
@@ -52,10 +65,10 @@ function LetterPick({ item, moduleConfig, onAnswer, autoPlay = true, mode }: Eva
       {/* Corneta + palabra en fila; la letra que falta es un subrayado resaltado */}
       <div className="flex items-center gap-3 flex-wrap justify-center">
         <button
-          onClick={() => speak(vocab.text_en)}
+          onClick={mode === 'first' ? undefined : () => speak(vocab.text_en)}
           className="w-12 h-12 rotate-45 rounded-lg flex items-center justify-center shrink-0 transition-all active:scale-95"
-          style={{ background: 'var(--kids-bg)', border: '2px solid var(--kids-border-color)' }}
-          aria-label="Escuchar"
+          style={{ background: 'var(--kids-bg)', border: '2px solid var(--kids-border-color)', cursor: mode === 'first' ? 'default' : 'pointer' }}
+          aria-label={mode === 'first' ? undefined : 'Escuchar'}
         >
           <span className="-rotate-45 flex items-center justify-center">
             {imgUrl ? (
@@ -91,14 +104,15 @@ function LetterPick({ item, moduleConfig, onAnswer, autoPlay = true, mode }: Eva
         {options.map(letter => {
           const sel = selected === letter
           const correct = letter === target
-          const border = sel ? (correct ? '#22c55e' : '#ef4444') : 'var(--kids-border-color)'
+          const revealCorrect = !readOnly && selected !== null && selected !== target && correct
+          const border = sel ? (correct ? '#22c55e' : '#ef4444') : (revealCorrect ? '#22c55e' : 'var(--kids-border-color)')
           return (
             <button
               key={letter}
               onClick={() => pick(letter)}
-              disabled={selected !== null}
-              className="w-[48px] h-[48px] rounded-xl font-extrabold text-xl transition-all active:scale-90"
-              style={{ background: 'var(--kids-bg)', border: `2.5px solid ${border}`, color: sel ? border : 'var(--kids-text)' }}
+              disabled={readOnly || selected !== null}
+              className={`w-[48px] h-[48px] rounded-xl font-extrabold text-xl transition-all active:scale-90 ${revealCorrect ? 'correct-glow' : ''}`}
+              style={{ background: 'var(--kids-bg)', border: `2.5px solid ${border}`, color: sel || revealCorrect ? '#22c55e' : 'var(--kids-text)' }}
             >
               {letter}
             </button>

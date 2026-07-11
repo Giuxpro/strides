@@ -6,6 +6,7 @@ import { getVocabImageUrl } from '@strides/core/kids'
 import { useSpeak } from '@/components/kids/audio/VoicePresetProvider'
 import { seeSentence } from '../sentence'
 import type { EvalFormatProps } from '../types'
+import type { CompleteSnapshot } from '../snapshots'
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -16,31 +17,44 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-export function CompleteSentenceQuestion({ item, allVocab, moduleConfig, onAnswer, autoPlay = true }: EvalFormatProps) {
+export function CompleteSentenceQuestion({ item, allVocab, moduleConfig, onAnswer, onSnapshot, review, autoPlay = true }: EvalFormatProps) {
   const speak = useSpeak()
   const { vocab } = item
   const imgUrl = getVocabImageUrl(vocab)
+  const rev = review?.kind === 'complete' ? review : null
+  const readOnly = !!rev
+
   const [options] = useState<VocabItem[]>(() => {
+    if (rev) {
+      const byId = new Map(allVocab.map(v => [v.id, v]))
+      return rev.optionIds.map(id => byId.get(id)).filter((v): v is VocabItem => !!v)
+    }
     const distractors = shuffle(allVocab.filter(v => v.id !== vocab.id)).slice(0, Math.max(0, Math.min(3, allVocab.length) - 1))
     return shuffle([vocab, ...distractors])
   })
-  const [selected, setSelected] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string | null>(rev ? rev.pickedId : null)
 
   // Frase con hueco: "I see a ___."
   const sentenceParts = seeSentence(vocab.text_en).split(vocab.text_en)
 
   useEffect(() => {
-    if (!autoPlay) return
+    if (readOnly) return
+    onSnapshot?.({ kind: 'complete', optionIds: options.map(o => o.id), pickedId: null })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (readOnly || !autoPlay) return
     const t = setTimeout(() => speak(seeSentence(vocab.text_en)), 300)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPlay])
 
   function pick(o: VocabItem) {
-    if (selected !== null) return
+    if (readOnly || selected !== null) return
     setSelected(o.id)
-    if (o.id === vocab.id) speak(seeSentence(vocab.text_en))
-    setTimeout(() => onAnswer(o.id === vocab.id), 800)
+    const snapshot: CompleteSnapshot = { kind: 'complete', optionIds: options.map(x => x.id), pickedId: o.id }
+    onAnswer(o.id === vocab.id, snapshot)
   }
 
   const blank = selected ? (options.find(o => o.id === selected)?.text_en ?? '___') : '___'
@@ -66,14 +80,15 @@ export function CompleteSentenceQuestion({ item, allVocab, moduleConfig, onAnswe
         {options.map(o => {
           const sel = selected === o.id
           const correct = o.id === vocab.id
-          const border = sel ? (correct ? '#22c55e' : '#ef4444') : 'var(--kids-border-color)'
+          const revealCorrect = !readOnly && selected !== null && selected !== vocab.id && correct
+          const border = sel ? (correct ? '#22c55e' : '#ef4444') : (revealCorrect ? '#22c55e' : 'var(--kids-border-color)')
           return (
             <button
               key={o.id}
               onClick={() => pick(o)}
-              disabled={selected !== null}
-              className="py-3 rounded-xl font-bold text-sm capitalize transition-all active:scale-95"
-              style={{ background: 'var(--kids-bg)', border: `2px solid ${border}`, color: sel ? border : 'var(--kids-text)' }}
+              disabled={readOnly || selected !== null}
+              className={`py-3 rounded-xl font-bold text-sm capitalize transition-all active:scale-95 ${revealCorrect ? 'correct-glow' : ''}`}
+              style={{ background: 'var(--kids-bg)', border: `2px solid ${border}`, color: sel || revealCorrect ? '#22c55e' : 'var(--kids-text)' }}
             >
               {o.text_en}
             </button>

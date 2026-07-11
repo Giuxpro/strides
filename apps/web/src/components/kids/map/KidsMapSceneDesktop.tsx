@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { logout } from '@/app/actions/auth'
 import { KidsModuleCard } from '../cards/KidsModuleCard'
+import { ReforzarPill } from './ReforzarPill'
 import type { Module } from '@strides/db'
 import type { ModuleLockState } from '@strides/core'
 
@@ -22,6 +22,7 @@ interface Props {
   childAvatar: string
   currentStreak: number
   moduleLockStates: Record<string, ModuleLockState>
+  reviewCount: number
 }
 
 function ArrowButton({ direction, onClick }: { direction: 'prev' | 'next'; onClick: () => void }) {
@@ -48,7 +49,7 @@ function ArrowButton({ direction, onClick }: { direction: 'prev' | 'next'; onCli
   )
 }
 
-export function KidsMapSceneDesktop({ modules, childName, childAvatar, currentStreak, moduleLockStates }: Props) {
+export function KidsMapSceneDesktop({ modules, childName, childAvatar, currentStreak, moduleLockStates, reviewCount }: Props) {
   const [page, setPage] = useState(0)
 
   const totalPages = Math.max(1, Math.ceil(modules.length / PER_MAP))
@@ -81,15 +82,17 @@ export function KidsMapSceneDesktop({ modules, childName, childAvatar, currentSt
           style={{ height: '25%', background: 'linear-gradient(to bottom, rgba(70,20,130,0.55) 0%, transparent 100%)' }}
         />
 
-        <header className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between pl-5 pr-[3%] py-[2%]">
-          <span
-            className="font-bold tracking-widest uppercase text-white/70"
-            style={{ fontSize: 'clamp(0.6rem, 1.2vw, 0.85rem)' }}
-          >
-            Strides
-          </span>
-          <div className="flex items-center gap-4 mr-14">
-            {currentStreak > 0 && (
+        <span
+          className="fixed top-1.5 right-3 z-40 font-bold tracking-widest uppercase text-white/70"
+          style={{ fontSize: 'clamp(0.6rem, 1.2vw, 0.85rem)', textShadow: '0 1px 6px rgba(40,0,100,0.5)' }}
+        >
+          Strides
+        </span>
+
+        <header className="absolute top-0 left-0 right-0 z-30 flex items-center pl-5 pr-[3%] py-[2%]">
+          <ReforzarPill count={reviewCount} />
+          <div className="flex items-center gap-4 mr-14 ml-auto">
+            {currentStreak > 0 ? (
               <div
                 className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-orange-400/40"
                 style={{ background: 'rgba(251,146,60,0.2)', fontSize: 'clamp(0.65rem, 1.4vw, 0.9rem)' }}
@@ -97,6 +100,14 @@ export function KidsMapSceneDesktop({ modules, childName, childAvatar, currentSt
                 <span style={{ fontSize: 'clamp(0.8rem, 1.6vw, 1.1rem)' }}>🔥</span>
                 <span className="font-bold text-white">{currentStreak}</span>
                 <span className="text-white/70">{currentStreak === 1 ? 'día seguido' : 'días seguidos'}</span>
+              </div>
+            ) : (
+              <div
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-white/20"
+                style={{ background: 'rgba(255,255,255,0.1)', fontSize: 'clamp(0.65rem, 1.4vw, 0.9rem)' }}
+              >
+                <span className="opacity-60 grayscale" style={{ fontSize: 'clamp(0.8rem, 1.6vw, 1.1rem)' }}>🔥</span>
+                <span className="text-white/70">Sin racha</span>
               </div>
             )}
             <Link
@@ -107,15 +118,6 @@ export function KidsMapSceneDesktop({ modules, childName, childAvatar, currentSt
               <span style={{ fontSize: 'clamp(0.9rem, 1.8vw, 1.2rem)' }}>{childAvatar}</span>
               <span>{childName ?? 'Cambiar perfil'}</span>
             </Link>
-            <form action={logout}>
-              <button
-                type="submit"
-                className="transition-opacity hover:opacity-70 text-white/50"
-                style={{ fontSize: 'clamp(0.6rem, 1.1vw, 0.8rem)' }}
-              >
-                Salir
-              </button>
-            </form>
           </div>
         </header>
 

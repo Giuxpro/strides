@@ -11,9 +11,11 @@ interface Props {
   initialProvider: SpeechProvider
   whisperUsage: AIUsageSummary
   whisperModel: ModelMetadata
+  groqWhisperUsage: AIUsageSummary
+  groqWhisperModel: ModelMetadata
 }
 
-export function SpeechProviderSelector({ initialProvider, whisperUsage, whisperModel }: Props) {
+export function SpeechProviderSelector({ initialProvider, whisperUsage, whisperModel, groqWhisperUsage, groqWhisperModel }: Props) {
   const [selected, setSelected] = useState<SpeechProvider>(initialProvider)
   const meta = SPEECH_PROVIDERS.find(p => p.id === selected)
 
@@ -76,6 +78,32 @@ export function SpeechProviderSelector({ initialProvider, whisperUsage, whisperM
             <span className="text-amber-400">
               ${((whisperUsage.totalDurationMsToday / 60_000) * 0.006).toFixed(4)}
             </span>
+          </div>
+        </div>
+      )}
+
+      {selected === 'groq-whisper' && (
+        <div className="border-t border-gray-800 pt-4 space-y-1.5">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-medium text-gray-400">Whisper Large v3 · uso hoy</p>
+            <AIUsageRing usage={groqWhisperUsage} model={groqWhisperModel} />
+          </div>
+          <div className="flex justify-between text-xs text-gray-500">
+            <span>Evaluaciones</span>
+            <span className="text-gray-300">
+              {groqWhisperUsage.requestsToday}
+              {groqWhisperModel.freeTierLimits && (
+                <span className="text-gray-600"> / {groqWhisperModel.freeTierLimits.requestsPerDay} día</span>
+              )}
+            </span>
+          </div>
+          <div className="flex justify-between text-xs text-gray-500">
+            <span>Duración total</span>
+            <span className="text-gray-300">{(groqWhisperUsage.totalDurationMsToday / 60_000).toFixed(1)} min</span>
+          </div>
+          <div className="flex justify-between text-xs text-gray-500">
+            <span>Costo est.</span>
+            <span className="text-emerald-400">Gratis</span>
           </div>
         </div>
       )}

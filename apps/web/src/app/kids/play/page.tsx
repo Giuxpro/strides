@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
+import { getChildStreak, getReviewMasteryPool } from '@strides/db'
 import { KidsMapScene } from '@/components/kids/map/KidsMapScene'
+import { rankReviewWords, type ReviewMasteryRow } from '@strides/core/kids'
 import {
   computeProgressiveUnlock,
   type LockConfig,
@@ -23,13 +25,14 @@ export default async function KidsPlayPage() {
     { data: childCompletions },
     { data: lockConfigRow },
     { data: previewConfigRow },
+    { data: reviewPool },
   ] = await Promise.all([
     supabase.from('modules').select('*').eq('is_published', true).order('order'),
     selectedChildId
       ? supabase.from('children').select('name, avatar_url').eq('id', selectedChildId).single()
       : Promise.resolve({ data: null }),
     selectedChildId
-      ? supabase.from('child_streaks').select('current_streak').eq('child_id', selectedChildId).single()
+      ? getChildStreak(supabase, selectedChildId)
       : Promise.resolve({ data: null }),
     user
       ? supabase.from('profiles').select('role').eq('id', user.id).single()
@@ -43,6 +46,9 @@ export default async function KidsPlayPage() {
       : Promise.resolve({ data: [] }),
     supabase.from('settings').select('value').eq('key', 'lock_config').maybeSingle(),
     supabase.from('settings').select('value').eq('key', 'preview_config').maybeSingle(),
+    selectedChildId
+      ? getReviewMasteryPool(supabase, selectedChildId)
+      : Promise.resolve({ data: [] }),
   ])
 
   const isAdmin        = profile?.role === 'admin'
@@ -53,6 +59,22 @@ export default async function KidsPlayPage() {
   const shouldLock     = !isAdmin && lockConfig.enabled
   const isPreviewUser  = !isAdmin && acquisitionType === 'preview'
   const sortedModules  = modules ?? []
+
+  const reviewRows: ReviewMasteryRow[] = (reviewPool ?? []).map((r) => ({
+    vocabId: r.vocab_id,
+    correctCount: r.correct_count,
+    attemptCount: r.attempt_count,
+    practicedAt: r.updated_at,
+    item: {
+      id: r.vocabulary_items.id,
+      text_en: r.vocabulary_items.text_en,
+      text_es: r.vocabulary_items.text_es,
+      image_url: r.vocabulary_items.image_url,
+      emoji_unicode: r.vocabulary_items.emoji_unicode,
+      audio_url: r.vocabulary_items.audio_url,
+    },
+  }))
+  const reviewCount = rankReviewWords(reviewRows, Date.now()).length
 
   const { unlockedModuleIds } = shouldLock
     ? computeProgressiveUnlock(sortedModules, allLessons ?? [], completedIds)
@@ -74,8 +96,9 @@ export default async function KidsPlayPage() {
         modules={sortedModules}
         childName={child?.name ?? null}
         childAvatar={child?.avatar_url ?? '🧒'}
-        currentStreak={streak?.current_streak ?? 0}
+        currentStreak={streak?.effective_streak ?? 0}
         moduleLockStates={moduleLockStates}
+        reviewCount={reviewCount}
       />
     </>
   )

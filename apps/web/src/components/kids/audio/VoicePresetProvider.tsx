@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useRef } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type { VoicePreset } from '@strides/core/kids'
 import { VOICE_PRESET_CONFIGS, DEFAULT_VOICE_PRESET, SPEECH_RATE_NORMAL, SPEECH_RATE_SLOW } from '@strides/core/kids'
 
@@ -12,6 +12,12 @@ export interface SpeakOptions {
 export type SpeakFn = (text: string, options?: SpeakOptions) => void
 
 const VoicePresetContext = createContext<SpeakFn>(() => {})
+
+interface VoiceSetting {
+  preset: VoicePreset
+  setPreset: (p: VoicePreset) => void
+}
+const VoiceSettingContext = createContext<VoiceSetting>({ preset: DEFAULT_VOICE_PRESET, setPreset: () => {} })
 
 function pickVoiceFrom(voices: SpeechSynthesisVoice[], preferFemale: boolean, pitch: number): SpeechSynthesisVoice | null {
   const enVoices = voices.filter(v => v.lang.startsWith('en'))
@@ -45,7 +51,7 @@ function pickVoiceFrom(voices: SpeechSynthesisVoice[], preferFemale: boolean, pi
 }
 
 export function VoicePresetProvider({
-  preset = DEFAULT_VOICE_PRESET,
+  preset: initialPreset = DEFAULT_VOICE_PRESET,
   audioEnabled = true,
   children,
 }: {
@@ -56,6 +62,17 @@ export function VoicePresetProvider({
   // getVoices() devuelve [] en la primera llamada síncrona — las voces se cargan async.
   // Las cacheamos aquí y las actualizamos cuando el navegador las tenga listas.
   const voicesRef = useRef<SpeechSynthesisVoice[]>([])
+
+  // El preset se guarda en estado (para la UI) y en ref (para que speak use
+  // siempre el último valor, incluso si se llama justo tras cambiarlo).
+  const [preset, setPresetState] = useState<VoicePreset>(initialPreset)
+  const presetRef = useRef<VoicePreset>(initialPreset)
+
+  const setPreset = useCallback((p: VoicePreset) => {
+    presetRef.current = p
+    setPresetState(p)
+    document.cookie = `kids_voice=${p}; path=/; max-age=31536000; SameSite=Lax`
+  }, [])
 
   useEffect(() => {
     function loadVoices() {
@@ -73,7 +90,8 @@ export function VoicePresetProvider({
       return
     }
 
-    const cfg    = VOICE_PRESET_CONFIGS[preset]
+    const active = presetRef.current
+    const cfg    = VOICE_PRESET_CONFIGS[active]
     const rate   = options.slow ? SPEECH_RATE_SLOW : SPEECH_RATE_NORMAL
     const voices = voicesRef.current.length > 0
       ? voicesRef.current
@@ -81,7 +99,7 @@ export function VoicePresetProvider({
     const voice  = pickVoiceFrom(voices, cfg.preferFemale, cfg.pitch)
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('[Voice]', preset, '→', voice?.name ?? 'default', '| pitch:', cfg.pitch)
+      console.log('[Voice]', active, '→', voice?.name ?? 'default', '| pitch:', cfg.pitch)
     }
 
     const utt   = new SpeechSynthesisUtterance(text)
@@ -98,15 +116,21 @@ export function VoicePresetProvider({
       window.speechSynthesis.resume()
       window.speechSynthesis.speak(utt)
     }, 50)
-  }, [preset, audioEnabled])
+  }, [audioEnabled])
 
   return (
-    <VoicePresetContext.Provider value={speak}>
-      {children}
-    </VoicePresetContext.Provider>
+    <VoiceSettingContext.Provider value={{ preset, setPreset }}>
+      <VoicePresetContext.Provider value={speak}>
+        {children}
+      </VoicePresetContext.Provider>
+    </VoiceSettingContext.Provider>
   )
 }
 
 export function useSpeak(): SpeakFn {
   return useContext(VoicePresetContext)
+}
+
+export function useVoicePreset(): VoiceSetting {
+  return useContext(VoiceSettingContext)
 }

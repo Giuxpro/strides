@@ -1,53 +1,21 @@
 import OpenAI from 'openai'
+import { normalizeSpeech, isSpeechMatch } from '../speech/matching'
 
-let _client: OpenAI | undefined
+export type WhisperBackend = 'openai' | 'groq'
 
-function getClient(): OpenAI {
-  return (_client ??= new OpenAI())
+const WHISPER_MODEL: Record<WhisperBackend, string> = {
+  openai: 'whisper-1',
+  groq: 'whisper-large-v3',
 }
 
-function normalize(text: string): string {
-  return text.toLowerCase().trim().replace(/[^a-z0-9\s]/g, '')
-}
+let _openai: OpenAI | undefined
+let _groq: OpenAI | undefined
 
-function levenshtein(a: string, b: string): number {
-  const dp = Array.from({ length: b.length + 1 }, (_, i) => i)
-  for (let i = 1; i <= a.length; i++) {
-    let prev = i
-    for (let j = 1; j <= b.length; j++) {
-      const curr = a[i - 1] === b[j - 1]
-        ? dp[j - 1]!
-        : 1 + Math.min(dp[j]!, dp[j - 1]!, prev)
-      dp[j - 1] = prev
-      prev = curr
-    }
-    dp[b.length] = prev
+function getClient(backend: WhisperBackend): OpenAI {
+  if (backend === 'groq') {
+    return (_groq ??= new OpenAI({ baseURL: 'https://api.groq.com/openai/v1', apiKey: process.env.GROQ_API_KEY }))
   }
-  return dp[b.length]!
-}
-
-function isSpeechMatch(transcript: string, expected: string): boolean {
-  const heard  = normalize(transcript)
-  const target = normalize(expected)
-  if (!heard) return false
-  if (heard === target) return true
-
-  // Tolerar plurales simples: "cats" ↔ "cat"
-  const heardDeplural  = heard.endsWith('s')  ? heard.slice(0, -1)  : null
-  const targetDeplural = target.endsWith('s') ? target.slice(0, -1) : null
-  if (heardDeplural  === target)  return true
-  if (targetDeplural === heard)   return true
-
-  for (const word of heard.split(/\s+/)) {
-    if (word === target) return true
-    if (word.endsWith('s') && word.slice(0, -1) === target) return true
-    if (targetDeplural && word === targetDeplural) return true
-
-    // Levenshtein: 1 edición para ≥4 chars, 2 para ≥8 chars
-    const maxEdits = target.length >= 8 ? 2 : target.length >= 4 ? 1 : 0
-    if (maxEdits > 0 && levenshtein(word, target) <= maxEdits) return true
-  }
-  return false
+  return (_openai ??= new OpenAI())
 }
 
 const WHISPER_HALLUCINATIONS = new Set([
@@ -58,22 +26,30 @@ const WHISPER_HALLUCINATIONS = new Set([
   'please subscribe', 'like and subscribe',
   'subtitles by', 'captions by', 'subs by',
   'you', 'the', 'a', 'i',
+  // Groq (Whisper v3) a veces filtra el prompt hacia la transcripción en silencio.
+  'the word', 'word',
 ])
 
 const HALLUCINATION_PREFIXES = ['subs by', 'subtitles by', 'captions by', 'www.', 'http']
 
+// Groq (v3) a veces hace "eco" del prompt cuando el audio es marginal, p.ej.
+// "...will say the word: shark". Se trata como noSpeech (reintento), no como error.
+const PROMPT_ECHO_FRAGMENTS = ['say the word', 'will say', 'practicing english', 'transcribe only', 'what is spoken']
+
 export async function evaluateSpeech(
   audio: File,
   expected: string,
+  backend: WhisperBackend = 'openai',
 ): Promise<{ transcript: string; correct: boolean; noSpeech: boolean; lowConfidence: boolean }> {
-  const raw = await getClient().audio.transcriptions.create({
+  const raw = await getClient(backend).audio.transcriptions.create({
     file: audio,
-    model: 'whisper-1',
+    model: WHISPER_MODEL[backend],
     language: 'en',
     response_format: 'verbose_json',
     // temperature 0 = deterministic, reduce hallucinations in short audio
     temperature: 0,
-    // prompt guides Whisper toward the expected word — clave para palabras cortas
+    // El parámetro más impactante para palabras cortas: sin él "cat" → "cast/cut/at".
+    // Sesga la decodificación hacia la palabra esperada. Ver docs/SPEECH_RECOGNITION.md §4.
     prompt: `The student is practicing English pronunciation. They will say the word: "${expected}". Transcribe only what is spoken.`,
   }) as unknown as {
     text: string
@@ -98,11 +74,12 @@ export async function evaluateSpeech(
   const lowConfidence = confidence < 35
 
   const transcript = raw.text.trim()
-  const normalizedTranscript = normalize(transcript)
+  const normalizedTranscript = normalizeSpeech(transcript)
 
   const isHallucination =
     WHISPER_HALLUCINATIONS.has(normalizedTranscript) ||
-    HALLUCINATION_PREFIXES.some(p => normalizedTranscript.includes(p))
+    HALLUCINATION_PREFIXES.some(p => normalizedTranscript.includes(p)) ||
+    PROMPT_ECHO_FRAGMENTS.some(p => normalizedTranscript.includes(p))
 
   if (isHallucination) {
     return { transcript: '', correct: false, noSpeech: true, lowConfidence: false }

@@ -184,6 +184,63 @@ export type Database = {
           },
         ]
       }
+      child_evaluation_attempts: {
+        Row: {
+          attempts: number
+          child_id: string
+          correct: number
+          created_at: string
+          detail: Json
+          id: string
+          lesson_id: string
+          score: number | null
+          stars: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          child_id: string
+          correct?: number
+          created_at?: string
+          detail?: Json
+          id?: string
+          lesson_id: string
+          score?: number | null
+          stars?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          child_id?: string
+          correct?: number
+          created_at?: string
+          detail?: Json
+          id?: string
+          lesson_id?: string
+          score?: number | null
+          stars?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "child_evaluation_attempts_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "child_evaluation_attempts_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       child_game_plays: {
         Row: {
           child_id: string
@@ -1082,6 +1139,21 @@ export type Database = {
           },
         ]
       }
+      payment_webhook_events: {
+        Row: {
+          event_id: string
+          received_at: string
+        }
+        Insert: {
+          event_id: string
+          received_at?: string
+        }
+        Update: {
+          event_id?: string
+          received_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar: string | null
@@ -1182,21 +1254,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      payment_webhook_events: {
-        Row: {
-          event_id: string
-          received_at: string
-        }
-        Insert: {
-          event_id: string
-          received_at?: string
-        }
-        Update: {
-          event_id?: string
-          received_at?: string
-        }
-        Relationships: []
       }
       subscriptions: {
         Row: {
@@ -1361,9 +1418,47 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      child_streaks_status: {
+        Row: {
+          child_id: string | null
+          current_streak: number | null
+          effective_streak: number | null
+          last_activity_date: string | null
+          longest_streak: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          child_id?: string | null
+          current_streak?: number | null
+          effective_streak?: never
+          last_activity_date?: string | null
+          longest_streak?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          child_id?: string | null
+          current_streak?: number | null
+          effective_streak?: never
+          last_activity_date?: string | null
+          longest_streak?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "child_streaks_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: true
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      effective_streak: {
+        Args: { p_current: number; p_last: string }
+        Returns: number
+      }
       get_admin_user_detail: {
         Args: { p_user_id: string }
         Returns: {

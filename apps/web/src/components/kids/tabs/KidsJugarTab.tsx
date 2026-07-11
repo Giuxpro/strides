@@ -114,6 +114,10 @@ export function KidsJugarTab({ vocab, moduleConfig, selectedChildId, availableMo
           onBack={backToPick}
           moduleConfig={moduleConfig}
           progress={{ current: 1, total: 1 }}
+          gameConfig={{
+            maxCount: gameConfigs?.[activeGame.id]?.maxCount,
+            rounds:   gameConfigs?.[activeGame.id]?.rounds,
+          }}
         />
       </div>
     )

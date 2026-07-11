@@ -32,7 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         nav={NAV}
         profileName={profile?.display_name ?? profile?.email}
       />
-      <main className="flex-1 overflow-auto min-h-0">
+      <main className="relative flex-1 overflow-auto min-h-0 bg-gray-950 overscroll-contain">
         {children}
       </main>
     </div>

@@ -5,7 +5,8 @@ import { AIModelSelector } from '@/components/admin/ai/AIModelSelector'
 import { SpeechProviderSelector } from '@/components/admin/ai/SpeechProviderSelector'
 import { AcquisitionSelector } from '@/components/admin/codes/AcquisitionSelector'
 import { SubmitButton } from '@/components/admin/shared/SubmitButton'
-import { GAME_REGISTRY, VOICE_PRESET_CONFIGS, isVoicePreset, DEFAULT_VOICE_PRESET, isSpeechProvider, DEFAULT_SPEECH_PROVIDER, isAudioConfig, DEFAULT_AUDIO_CONFIG, EVAL_FORMAT_REGISTRY, DEFAULT_EVAL_FORMATS } from '@strides/core/kids'
+import { InfoTooltip } from '@/components/admin/shared/InfoTooltip'
+import { GAME_REGISTRY, VOICE_PRESET_CONFIGS, isVoicePreset, DEFAULT_VOICE_PRESET, isSpeechProvider, DEFAULT_SPEECH_PROVIDER, isAudioConfig, DEFAULT_AUDIO_CONFIG, EVAL_FORMAT_REGISTRY, DEFAULT_EVAL_FORMATS, COUNTING_DEFAULTS } from '@strides/core/kids'
 import { MusicUploaderPanel } from '@/components/admin/settings/MusicUploaderPanel'
 import { GlobalDiscountPanel } from '@/components/admin/codes/GlobalDiscountPanel'
 import { FeedbackPromptPanel } from '@/components/admin/settings/FeedbackPromptPanel'
@@ -23,11 +24,16 @@ export default async function AdminSettingsPage() {
   const { data: allFlows } = await getAllFlows(supabase)
   const aiUsageToday = await getAIUsageToday(createAdminClient())
 
-  const whisperRow = aiUsageToday.byModel.find(m => m.model === 'whisper-1')
-  const whisperUsage = whisperRow
-    ? { requestsToday: whisperRow.requests, inputTokensToday: 0, outputTokensToday: 0, totalDurationMsToday: whisperRow.totalDurationMs, byModel: [whisperRow] }
-    : { requestsToday: 0, inputTokensToday: 0, outputTokensToday: 0, totalDurationMsToday: 0, byModel: [] }
+  const buildUsage = (modelId: string) => {
+    const row = aiUsageToday.byModel.find(m => m.model === modelId)
+    return row
+      ? { requestsToday: row.requests, inputTokensToday: 0, outputTokensToday: 0, totalDurationMsToday: row.totalDurationMs, byModel: [row] }
+      : { requestsToday: 0, inputTokensToday: 0, outputTokensToday: 0, totalDurationMsToday: 0, byModel: [] }
+  }
+  const whisperUsage = buildUsage('whisper-1')
   const whisperModel = getModel('whisper-1')!
+  const groqWhisperUsage = buildUsage('whisper-large-v3')
+  const groqWhisperModel = getModel('whisper-large-v3')!
 
   const aiProvider = (s['ai_provider'] as string) ?? 'anthropic'
   const aiModel    = (s['ai_model']    as string) ?? 'claude-haiku-4-5'
@@ -45,7 +51,7 @@ export default async function AdminSettingsPage() {
   const feedbackPrompt = (s['feedback_prompt_config'] as { enabled: boolean; trigger: 'lesson' | 'module' | 'games' | 'admin_test'; games_threshold: number; cooldown_days: number }) ?? { enabled: false, trigger: 'lesson' as const, games_threshold: 10, cooldown_days: 30 }
   const availMods = (s['available_modifiers'] as { timer?: boolean; lives?: boolean }) ??
     { timer: true, lives: true }
-  const gameConfigs = (s['game_configs'] as Record<string, { minItems?: number; maxItems?: number }>) ?? {}
+  const gameConfigs = (s['game_configs'] as Record<string, { minItems?: number; maxItems?: number; maxCount?: number; rounds?: number }>) ?? {}
   const adminOnlyGames = (s['admin_only_games'] as string[]) ?? []
   const voicePreset = isVoicePreset(s['voice_preset']) ? s['voice_preset'] : DEFAULT_VOICE_PRESET
   const speechProvider = isSpeechProvider(s['speech_provider']) ? s['speech_provider'] : DEFAULT_SPEECH_PROVIDER
@@ -93,6 +99,8 @@ export default async function AdminSettingsPage() {
                 initialProvider={speechProvider}
                 whisperUsage={whisperUsage}
                 whisperModel={whisperModel}
+                groqWhisperUsage={groqWhisperUsage}
+                groqWhisperModel={groqWhisperModel}
               />
             </section>
 
@@ -310,36 +318,70 @@ export default async function AdminSettingsPage() {
               </div>
 
               <div className="border-t border-gray-800 pt-6">
-                <p className="text-xs text-gray-400 font-medium mb-1">Límites de palabras por juego</p>
-                <p className="text-xs text-gray-600 mb-4">Mín: palabras para habilitar · Máx: palabras por partida</p>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <p className="text-xs text-gray-400 font-medium">Configuración por juego</p>
+                  <InfoTooltip text="Mín: palabras que debe tener el módulo para que el juego aparezca; por debajo de ese número la tarjeta sale deshabilitada. Máx: palabras que se usan en una partida (el juego toma hasta esa cantidad del vocabulario). 'A contar' no usa palabras: 'Máx objetos' es el mayor número a contar en una ronda (siempre desde 1) y 'Rondas' cuántas veces se repite el ejercicio." />
+                </div>
+                <p className="text-xs text-gray-600 mb-4">Mín: palabras para habilitar · Máx: palabras por partida · &quot;A contar&quot; usa objetos y rondas</p>
                 <div className="flex flex-col gap-3 max-h-[280px] overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-gray-800/50 [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-600">
                   {GAME_REGISTRY.map(game => {
                     const isAdminOnly = adminOnlyGames.includes(game.id)
+                    // "A contar" no usa palabras del módulo: sus parámetros son objetos y rondas.
+                    const isCounting = game.id === 'counting'
                     return (
                       <div key={game.id} className="flex items-center gap-3">
                         <span className="text-sm text-gray-300 flex-1 min-w-0 truncate">{game.emoji} {game.title}</span>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <label className="text-xs text-gray-500">Mín</label>
-                          <input
-                            type="number"
-                            name={`min_${game.id}`}
-                            min={1}
-                            max={50}
-                            defaultValue={gameConfigs[game.id]?.minItems ?? game.minItems}
-                            className="w-14 bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                          />
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <label className="text-xs text-gray-500">Máx</label>
-                          <input
-                            type="number"
-                            name={`max_${game.id}`}
-                            min={1}
-                            max={50}
-                            defaultValue={gameConfigs[game.id]?.maxItems ?? game.maxItems}
-                            className="w-14 bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                          />
-                        </div>
+                        {isCounting ? (
+                          <>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <label className="text-xs text-gray-500">Máx objetos</label>
+                              <input
+                                type="number"
+                                name="counting_max_count"
+                                min={2}
+                                max={20}
+                                defaultValue={gameConfigs[game.id]?.maxCount ?? COUNTING_DEFAULTS.maxCount}
+                                className="w-14 bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <label className="text-xs text-gray-500">Rondas</label>
+                              <input
+                                type="number"
+                                name="counting_rounds"
+                                min={1}
+                                max={15}
+                                defaultValue={gameConfigs[game.id]?.rounds ?? COUNTING_DEFAULTS.rounds}
+                                className="w-14 bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <label className="text-xs text-gray-500">Mín</label>
+                              <input
+                                type="number"
+                                name={`min_${game.id}`}
+                                min={1}
+                                max={50}
+                                defaultValue={gameConfigs[game.id]?.minItems ?? game.minItems}
+                                className="w-14 bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <label className="text-xs text-gray-500">Máx</label>
+                              <input
+                                type="number"
+                                name={`max_${game.id}`}
+                                min={1}
+                                max={50}
+                                defaultValue={gameConfigs[game.id]?.maxItems ?? game.maxItems}
+                                className="w-14 bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                              />
+                            </div>
+                          </>
+                        )}
                         <label className="flex items-center gap-1.5 shrink-0 cursor-pointer" title="Solo visible para admin">
                           <input
                             type="checkbox"
@@ -369,7 +411,7 @@ export default async function AdminSettingsPage() {
               <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-1">Música de fondo</h2>
               <p className="text-xs text-gray-600">Un URL por línea. Se reproducen en bucle con orden aleatorio.</p>
             </div>
-            <MusicUploaderPanel config={bucketAudioConfig} audioVolume={audioVolume} clickVolume={clickVolume} />
+            <MusicUploaderPanel config={bucketAudioConfig} audioVolume={audioVolume} clickVolume={clickVolume} cardSoundsEnabled={audioConfig_.card_sounds_enabled !== false} />
           </section>
 
           {/* Feedback & NPS — tercera columna */}

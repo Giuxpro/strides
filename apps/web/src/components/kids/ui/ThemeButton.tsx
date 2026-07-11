@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { KIDS_THEMES, type KidsTheme } from '@strides/core/kids'
+import { KIDS_THEMES, type KidsTheme, VOICE_PRESET_CONFIGS, type VoicePreset } from '@strides/core/kids'
 import { useMusicContext } from '../audio/MusicProvider'
 import { useClickSoundContext } from '../audio/ClickSoundProvider'
+import { useVoicePreset, useSpeak } from '../audio/VoicePresetProvider'
 
 interface Props {
   currentTheme: string
@@ -22,6 +23,13 @@ export function ThemeButton({ currentTheme }: Props) {
   if (isInLesson) return null
   const { muted: musicMuted, toggleMute: toggleMusic, volume: musicVolume, setVolume: setMusicVolume } = useMusicContext()
   const { muted: soundMuted, toggleMute: toggleSound, volume: soundVolume, setVolume: setSoundVolume } = useClickSoundContext()
+  const { preset: voicePreset, setPreset: setVoicePreset } = useVoicePreset()
+  const speak = useSpeak()
+
+  function selectVoice(id: VoicePreset) {
+    setVoicePreset(id)
+    speak('Hello!')
+  }
 
   function applyTheme(themeId: string) {
     setActive(themeId)
@@ -40,7 +48,7 @@ export function ThemeButton({ currentTheme }: Props) {
       <button
         onClick={() => setOpen(true)}
         aria-label="Ajustes"
-        className="fixed top-4 right-4 z-40 w-10 h-10 rounded-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+        className="fixed top-10 right-4 z-40 w-10 h-10 rounded-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
         style={{
           background: 'var(--kids-surface-alt)',
           border: '1.5px solid var(--kids-border-color)',
@@ -112,6 +120,39 @@ export function ThemeButton({ currentTheme }: Props) {
                   volume={soundVolume}
                   onVolumeChange={setSoundVolume}
                 />
+              </div>
+            </div>
+
+            {/* Voz */}
+            <div>
+              <p
+                className="text-xs font-bold uppercase tracking-widest mb-1"
+                style={{ color: 'var(--kids-text-muted)' }}
+              >
+                Voz
+              </p>
+              <p className="text-xs mb-3" style={{ color: 'var(--kids-text-muted)' }}>
+                Elige la voz que escucharás. Toca para probarla.
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {(Object.entries(VOICE_PRESET_CONFIGS) as [VoicePreset, (typeof VOICE_PRESET_CONFIGS)[VoicePreset]][]).map(([id, cfg]) => {
+                  const isActive = voicePreset === id
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => selectVoice(id)}
+                      className="flex flex-col items-center gap-1 rounded-2xl py-2.5 transition-transform hover:scale-105 active:scale-95"
+                      style={{
+                        background: 'var(--kids-surface-alt)',
+                        boxShadow: isActive ? '0 0 0 2px var(--kids-text)' : 'none',
+                      }}
+                      aria-label={`Voz ${cfg.label}${isActive ? ' (activa)' : ''}`}
+                    >
+                      <span style={{ fontSize: 24 }}>{cfg.emoji}</span>
+                      <span className="text-xs font-semibold" style={{ color: 'var(--kids-text)' }}>{cfg.label}</span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
 

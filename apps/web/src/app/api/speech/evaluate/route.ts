@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { evaluateSpeech } from '@strides/core/ai'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { logAIUsage } from '@strides/db'
+import { getSetting, logAIUsage } from '@strides/db'
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,11 +17,19 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { transcript, correct, noSpeech, lowConfidence } = await evaluateSpeech(audio, expected)
+    const admin = createAdminClient()
+    const { data: providerRow } = await getSetting(admin, 'speech_provider')
+    const useGroq = providerRow?.value === 'groq-whisper'
 
-    void logAIUsage(createAdminClient(), {
-      provider: 'openai',
-      model: 'whisper-1',
+    const { transcript, correct, noSpeech, lowConfidence } = await evaluateSpeech(
+      audio,
+      expected,
+      useGroq ? 'groq' : 'openai',
+    )
+
+    void logAIUsage(admin, {
+      provider: useGroq ? 'groq' : 'openai',
+      model: useGroq ? 'whisper-large-v3' : 'whisper-1',
       inputTokens: 0,
       outputTokens: 0,
       durationMs,

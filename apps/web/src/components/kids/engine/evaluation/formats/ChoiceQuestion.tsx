@@ -6,6 +6,7 @@ import { getVocabImageUrl } from '@strides/core/kids'
 import { useSpeak } from '@/components/kids/audio/VoicePresetProvider'
 import { seeSentence } from '../sentence'
 import type { EvalFormatProps } from '../types'
+import type { ChoiceSnapshot } from '../snapshots'
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -21,41 +22,57 @@ function getOptions(all: VocabItem[], correct: VocabItem, count: number): VocabI
   return shuffle([correct, ...distractors])
 }
 
-// Una sola mecánica "elige la imagen" cuyo estímulo varía al azar cada vez para
-// que no se sienta repetida: a veces muestra la palabra escrita, a veces solo
-// suena la palabra, a veces suena una frase ("I see a cow").
-type Stimulus = 'word' | 'audio' | 'sentence'
+// Mecánica receptiva "escucha y elige la imagen": el estímulo es siempre auditivo
+// para no filtrar la respuesta, pero varía al azar entre la palabra suelta y una
+// frase ("I see a cow") para que no se sienta repetida.
+type Stimulus = 'audio' | 'sentence'
 
-export function ChoiceQuestion({ item, allVocab, onAnswer, autoPlay = true }: EvalFormatProps) {
+export function ChoiceQuestion({ item, allVocab, onAnswer, onSnapshot, review, autoPlay = true }: EvalFormatProps) {
   const speak = useSpeak()
   const { vocab } = item
+  const rev = review?.kind === 'choice' ? review : null
+  const readOnly = !!rev
+
   const [stimulus] = useState<Stimulus>(() => {
-    const modes: Stimulus[] = ['word', 'audio', 'sentence']
+    if (rev) return rev.stimulus
+    const modes: Stimulus[] = ['audio', 'sentence']
     return modes[Math.floor(Math.random() * modes.length)]!
   })
-  const showWord = stimulus === 'word'
   const prompt = stimulus === 'sentence' ? seeSentence(vocab.text_en) : vocab.text_en
 
-  const [options] = useState(() => getOptions(allVocab, vocab, Math.min(4, allVocab.length)))
-  const [selected, setSelected] = useState<string | null>(null)
+  const [options] = useState<VocabItem[]>(() => {
+    if (rev) {
+      const byId = new Map(allVocab.map(v => [v.id, v]))
+      return rev.optionIds.map(id => byId.get(id)).filter((v): v is VocabItem => !!v)
+    }
+    return getOptions(allVocab, vocab, Math.min(4, allVocab.length))
+  })
+  const [selected, setSelected] = useState<string | null>(rev ? rev.pickedId : null)
 
   useEffect(() => {
-    if (!autoPlay) return
+    if (readOnly) return
+    onSnapshot?.({ kind: 'choice', stimulus, optionIds: options.map(o => o.id), pickedId: null })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (readOnly || !autoPlay) return
     const t = setTimeout(() => speak(prompt), 300)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPlay])
 
   function pick(o: VocabItem) {
-    if (selected !== null) return
+    if (readOnly || selected !== null) return
     setSelected(o.id)
-    setTimeout(() => onAnswer(o.id === vocab.id), 700)
+    const snapshot: ChoiceSnapshot = { kind: 'choice', stimulus, optionIds: options.map(x => x.id), pickedId: o.id }
+    onAnswer(o.id === vocab.id, snapshot)
   }
 
   // Layout fila: corneta en diamante (rotada 45°) a la izquierda + opciones en
   // fila horizontal. Distinto del grid 2×2 de los juegos.
   return (
-    <div className="flex items-center gap-3 w-full">
+    <div className="flex items-center justify-center gap-3 w-full">
       <div className="flex flex-col items-center gap-1 shrink-0">
         <button
           onClick={() => speak(prompt)}
@@ -65,21 +82,21 @@ export function ChoiceQuestion({ item, allVocab, onAnswer, autoPlay = true }: Ev
         >
           <span className="-rotate-45 text-xl">🔊</span>
         </button>
-        {showWord && <span className="text-[11px] font-bold capitalize" style={{ color: 'var(--kids-text)' }}>{vocab.text_en}</span>}
       </div>
 
-      <div className="flex gap-2 flex-1 flex-wrap justify-end">
+      <div className="flex gap-2 flex-wrap justify-center">
         {options.map(o => {
           const sel = selected === o.id
           const correct = o.id === vocab.id
-          const border = sel ? (correct ? '#22c55e' : '#ef4444') : 'var(--kids-border-color)'
+          const revealCorrect = !readOnly && selected !== null && selected !== vocab.id && correct
+          const border = sel ? (correct ? '#22c55e' : '#ef4444') : (revealCorrect ? '#22c55e' : 'var(--kids-border-color)')
           const img = getVocabImageUrl(o)
           return (
             <button
               key={o.id}
               onClick={() => pick(o)}
-              disabled={selected !== null}
-              className="w-[58px] h-[58px] rounded-xl flex items-center justify-center transition-all active:scale-95"
+              disabled={readOnly || selected !== null}
+              className={`w-[58px] h-[58px] rounded-xl flex items-center justify-center transition-all active:scale-95 ${revealCorrect ? 'correct-glow' : ''}`}
               style={{ background: 'var(--kids-bg)', border: `2.5px solid ${border}` }}
             >
               {img ? (

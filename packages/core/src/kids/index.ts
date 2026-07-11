@@ -1,6 +1,6 @@
 export type { VocabItem, ExerciseData } from './types'
-export type { ModuleConfig, LessonConfig } from './moduleConfig'
-export { MODULE_CONFIG, DEFAULT_MODULE_CONFIG, getModuleConfig, LESSON_CONFIG, DEFAULT_LESSON_CONFIG, getLessonConfig } from './moduleConfig'
+export type { ModuleConfig, LessonConfig, ModuleCardLayout } from './moduleConfig'
+export { MODULE_CONFIG, DEFAULT_MODULE_CONFIG, getModuleConfig, LESSON_CONFIG, DEFAULT_LESSON_CONFIG, getLessonConfig, MODULE_CARD_LAYOUT, getModuleCardLayout } from './moduleConfig'
 export type { ModifierConfig, WordResult, GameResult, VocabSkillType } from './modifiers/types'
 export { SPEECH_RATE_NORMAL, SPEECH_RATE_SLOW } from './speech/rates'
 export type { VoicePreset, VoicePresetConfig } from './speech/voicePresets'

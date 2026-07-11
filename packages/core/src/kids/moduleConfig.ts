@@ -105,6 +105,31 @@ export function getModuleConfig(slug: string): ModuleConfig {
   return MODULE_CONFIG[slug] ?? DEFAULT_MODULE_CONFIG
 }
 
+// Ajuste fino de posición y tamaño en la tarjeta del mapa (SOLO escritorio;
+// móvil/tablet van bien). Indexado por el slug real del módulo. Se aplica con
+// transform → no empuja el resto del layout. Módulo sin entrada = sin ajuste.
+//   OffsetX: px · positivo → derecha, negativo → izquierda
+//   OffsetY: px · positivo → abajo,   negativo → arriba
+//   Scale:   multiplicador de tamaño · 1 = igual, 1.1 = +10%, 0.9 = −10%
+// Prefijo image* para la imagen, title* para el título. Todos opcionales.
+export interface ModuleCardLayout {
+  imageOffsetX?: number
+  imageOffsetY?: number
+  imageScale?: number
+  titleOffsetX?: number
+  titleOffsetY?: number
+  titleScale?: number
+}
+
+export const MODULE_CARD_LAYOUT: Record<string, ModuleCardLayout> = {
+  letras:        { imageOffsetY: 10, imageScale: 1.1, titleOffsetY: -20, titleScale: 1.1 },
+  'the-numbers': { titleOffsetY: -70, imageOffsetY: -60 },
+}
+
+export function getModuleCardLayout(slug: string): ModuleCardLayout {
+  return MODULE_CARD_LAYOUT[slug] ?? {}
+}
+
 export const LESSON_CONFIG: Record<string, LessonConfig> = {
   granja: {
     emoji: '🐄',

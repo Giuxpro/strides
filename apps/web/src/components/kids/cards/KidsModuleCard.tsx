@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import type { Module } from '@strides/db'
-import { getModuleConfig } from '@strides/core/kids'
+import { getModuleConfig, getModuleCardLayout } from '@strides/core/kids'
 import type { ModuleLockState } from '@strides/core'
 import { getStorageUrl } from '@strides/core'
 
@@ -14,8 +14,18 @@ interface Props {
 
 const LEVITATE_DELAYS = ['0s', '0.7s', '1.4s', '2.1s', '0.35s', '1.05s', '1.75s', '2.45s']
 
+function buildTransform(x?: number, y?: number, scale?: number): string | undefined {
+  const parts: string[] = []
+  if (x || y) parts.push(`translate(${x ?? 0}px, ${y ?? 0}px)`)
+  if (scale != null && scale !== 1) parts.push(`scale(${scale})`)
+  return parts.length > 0 ? parts.join(' ') : undefined
+}
+
 export function KidsModuleCard({ module, index, lockState }: Props) {
   const config = getModuleConfig(module.slug)
+  const layout = getModuleCardLayout(module.slug)
+  const imageTransform = buildTransform(layout.imageOffsetX, layout.imageOffsetY, layout.imageScale)
+  const titleTransform = buildTransform(layout.titleOffsetX, layout.titleOffsetY, layout.titleScale ?? 1.1)
   const popDelay = `${index * 120}ms`
   const levDelay = LEVITATE_DELAYS[index % LEVITATE_DELAYS.length] ?? '0s'
 
@@ -29,6 +39,10 @@ export function KidsModuleCard({ module, index, lockState }: Props) {
       className="animate-pop-in flex flex-col items-center gap-3"
       style={{ animationDelay: popDelay }}
     >
+      <div
+        className="w-full"
+        style={imageTransform ? { transform: imageTransform } : undefined}
+      >
       <div
         className="animate-levitate w-full aspect-square"
         style={{ animationDelay: levDelay }}
@@ -61,10 +75,12 @@ export function KidsModuleCard({ module, index, lockState }: Props) {
           )}
         </div>
       </div>
+      </div>
 
       <h3
         className="text-center font-extrabold text-lg sm:text-xl leading-snug px-2"
         style={{
+          transform: titleTransform,
           color: isLocked ? 'rgba(255,255,255,0.9)' : '#fff',
           textShadow: '-2px -2px 0 rgba(80,20,160,0.7), 2px -2px 0 rgba(80,20,160,0.7), -2px 2px 0 rgba(80,20,160,0.7), 2px 2px 0 rgba(80,20,160,0.7), 0 4px 14px rgba(80,20,160,0.5)',
         }}

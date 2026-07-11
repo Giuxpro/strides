@@ -139,7 +139,7 @@ export function KidsMapSceneDesktop({ modules, childName, childAvatar, currentSt
               <div
                 key={module.id}
                 className="absolute z-20"
-                style={{ left: `${pos.x}%`, top: `${pos.y}%`, width: 'min(44vw, 280px)', transform: 'translate(-50%, -55%)' }}
+                style={{ left: `${pos.x}%`, top: `${pos.y}%`, width: 'min(44vw, 320px)', transform: 'translate(-50%, -55%)' }}
               >
                 <KidsModuleCard module={module} index={index} lockState={moduleLockStates[module.id]} />
               </div>
